@@ -1,0 +1,15 @@
+# Üretim profili (Docker imajında SPRING_PROFILES_ACTIVE=prod). Gizli değerler ortamdan gelir; repoda yok.
+# Zorunlu ortam değişkenleri: DB_ADI, DB_KULLANICI, DB_PAROLA.
+# Seçmeli: MAKINIST_COOKIE_SECURE (TLS arkasında true), MAKINIST_ADMIN_EPOSTA / MAKINIST_ADMIN_SIFRE (ilk yönetici), DB_HOST.
+spring:
+  datasource:
+    # Compose ağında veritabanı her zaman db:5432 (ana makinedeki DB_PORT yalnız dışarıya açılan porttur)
+    url: jdbc:postgresql://${DB_HOST:db}:5432/${DB_ADI}
+
+server:
+  # TLS bir ters vekilde sonlanıyorsa X-Forwarded-* başlıkları (https, istemci adresi) dikkate alınır
+  forward-headers-strategy: framework
+
+logging:
+  level:
+    com.makinistatama: INFO

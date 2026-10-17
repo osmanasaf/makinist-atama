@@ -1,0 +1,320 @@
+/* Makinist Atama: tek stil dosyası (UI kiti yok, yerel HTML + CSS değişkenleri). Masaüstü öncelikli iç uygulama. */
+:root {
+  --renk-zemin: #f4f5f7;
+  --renk-yuzey: #ffffff;
+  --renk-metin: #1d2330;
+  --renk-soluk: #5a6376;
+  --renk-cizgi: #d6dae3;
+  --renk-birincil: #1f5fbf;
+  --renk-birincil-koyu: #174a96;
+  --renk-birincil-yazi: #ffffff;
+  --renk-tehlike: #b3261e;
+  --renk-uyari-zemin: #fff4d6;
+  --renk-uyari-cizgi: #e0b43a;
+  --renk-hata-zemin: #fde8e6;
+  --renk-bilgi-zemin: #e6f0fd;
+  --renk-odak: #0b57d0;
+  --bosluk: 0.75rem;
+  --yaricap: 6px;
+  --yazi-boyutu: 15px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--renk-zemin);
+  color: var(--renk-metin);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: var(--yazi-boyutu);
+  line-height: 1.45;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 var(--bosluk);
+}
+h2 {
+  font-size: 1.15rem;
+  margin: 0 0 var(--bosluk);
+}
+a {
+  color: var(--renk-birincil);
+}
+small,
+.soluk {
+  color: var(--renk-soluk);
+}
+
+/* Odak her zaman görünür (klavye kullanımı) */
+:focus-visible {
+  outline: 3px solid var(--renk-odak);
+  outline-offset: 2px;
+}
+
+/* ---------- düzen ---------- */
+.ust-cubuk {
+  display: flex;
+  flex-wrap: wrap; /* dar ekranda taşmak yerine alt satıra iner */
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--renk-yuzey);
+  border-bottom: 1px solid var(--renk-cizgi);
+}
+.marka {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  flex: 1;
+}
+.menu a {
+  text-decoration: none;
+  padding: 0.25rem 0.1rem;
+  color: var(--renk-metin);
+  border-bottom: 2px solid transparent;
+}
+.menu a.router-link-active {
+  border-bottom-color: var(--renk-birincil);
+  font-weight: 600;
+}
+.sayfa {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+.giris-kutusu {
+  max-width: 380px;
+  margin: 8vh auto 0;
+  padding: 1.5rem;
+  background: var(--renk-yuzey);
+  border: 1px solid var(--renk-cizgi);
+  border-radius: var(--yaricap);
+}
+.kart {
+  background: var(--renk-yuzey);
+  border: 1px solid var(--renk-cizgi);
+  border-radius: var(--yaricap);
+  padding: 1rem 1.25rem;
+}
+.sayfa-baslik {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: var(--bosluk);
+}
+.sayfa-baslik h1 {
+  margin: 0;
+}
+.arac-cubugu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--bosluk);
+  margin-bottom: var(--bosluk);
+}
+.bos-durum {
+  padding: 2rem;
+  text-align: center;
+  color: var(--renk-soluk);
+}
+
+/* ---------- form ---------- */
+.alan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: var(--bosluk);
+}
+.alan label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.form-izgara {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  column-gap: 1.25rem;
+}
+.form-izgara .genis {
+  grid-column: 1 / -1;
+}
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #9aa3b5;
+  border-radius: var(--yaricap);
+  background: var(--renk-yuzey);
+  color: inherit;
+  min-width: 0;
+}
+textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+input[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border-color: var(--renk-tehlike);
+}
+.alan-hata,
+.hata-mesaji {
+  color: var(--renk-tehlike);
+  font-size: 0.9rem;
+  margin: 0;
+}
+.hata-mesaji {
+  margin-bottom: var(--bosluk);
+}
+.satir-ic {
+  display: flex;
+  gap: 0.5rem;
+}
+.satir-ic > input {
+  flex: 1;
+}
+.eylemler {
+  display: flex;
+  gap: var(--bosluk);
+  margin-top: 1rem;
+}
+
+/* ---------- düğme ---------- */
+.btn {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #9aa3b5;
+  border-radius: var(--yaricap);
+  background: var(--renk-yuzey);
+  color: var(--renk-metin);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn:hover:not(:disabled) {
+  background: #eef0f4;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-birincil {
+  background: var(--renk-birincil);
+  border-color: var(--renk-birincil);
+  color: var(--renk-birincil-yazi);
+}
+.btn-birincil:hover:not(:disabled) {
+  background: var(--renk-birincil-koyu);
+}
+
+/* ---------- bildirim ---------- */
+.bildirim {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--yaricap);
+  border: 1px solid var(--renk-cizgi);
+  margin-bottom: var(--bosluk);
+}
+.bildirim p {
+  margin: 0;
+}
+.bildirim-uyari {
+  background: var(--renk-uyari-zemin);
+  border-color: var(--renk-uyari-cizgi);
+}
+.bildirim-hata {
+  background: var(--renk-hata-zemin);
+  border-color: var(--renk-tehlike);
+}
+.bildirim-bilgi {
+  background: var(--renk-bilgi-zemin);
+}
+
+/* ---------- tablo ---------- */
+.tablo-kap {
+  overflow-x: auto;
+  background: var(--renk-yuzey);
+  border: 1px solid var(--renk-cizgi);
+  border-radius: var(--yaricap);
+}
+.tablo {
+  width: 100%;
+  border-collapse: collapse;
+}
+.tablo th,
+.tablo td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--renk-cizgi);
+  vertical-align: top;
+}
+.tablo th {
+  background: #eef0f4;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.tablo tbody tr:last-child td {
+  border-bottom: 0;
+}
+.tablo .sayisal {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tablo tr.yaklasiyor td {
+  background: var(--renk-uyari-zemin);
+}
+.tablo tr.gecikti td {
+  background: var(--renk-hata-zemin);
+}
+
+/* ---------- diyalog ---------- */
+dialog {
+  border: 1px solid var(--renk-cizgi);
+  border-radius: var(--yaricap);
+  padding: 1.25rem;
+  min-width: min(480px, 92vw);
+  color: var(--renk-metin);
+}
+dialog::backdrop {
+  background: rgb(20 25 40 / 45%);
+}
+dialog h2 {
+  margin-top: 0;
+}
+
+/* ---------- tehlikeli eylem ---------- */
+.btn-tehlike {
+  background: var(--renk-tehlike);
+  border-color: var(--renk-tehlike);
+  color: var(--renk-birincil-yazi);
+}
+.btn-tehlike:hover:not(:disabled) {
+  background: #8f1d17;
+}
+
+/* Yalnız ekran okuyucuya görünen metin */
+.gorunmez {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

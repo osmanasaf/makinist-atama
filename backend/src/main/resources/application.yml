@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: makinist-atama
+  datasource:
+    url: jdbc:postgresql://localhost:${DB_PORT:5434}/${DB_ADI}
+    username: ${DB_KULLANICI}
+    password: ${DB_PAROLA}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 50
+        order_updates: true
+        order_inserts: true
+  flyway:
+    clean-disabled: true
+  servlet:
+    multipart:
+      # Excel yükleme (MK-12): 3.100 satırlık dosya ~200 KB; 5 MB bol bol yeter
+      max-file-size: 5MB
+      max-request-size: 6MB
+  jackson:
+    deserialization:
+      # Kesirli sayı (1.5) tamsayı alana sessizce kesilmesin; 400 DOGRULAMA
+      accept-float-as-int: false
+  mvc:
+    problemdetails:
+      enabled: true
+  web:
+    # Tek dil: doğrulama mesajları tarayıcı dilinden bağımsız Türkçe
+    locale: tr-TR
+    locale-resolver: fixed
+
+server:
+  port: 8081
+  compression:
+    enabled: true
+  tomcat:
+    # Multipart sınırı aşılınca okunmamış gövdeyi bu boyuta kadar yutup 413 yanıtını verir (bağlantı kopmasın)
+    max-swallow-size: 20MB
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${MAKINIST_COOKIE_SECURE:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+makinist:
+  # İlk yönetici tohumu (yalnız kullanıcı tablosu boşken); repoda parola yok, değerler ortamdan gelir
+  baslangic-yonetici:
+    eposta: ${MAKINIST_ADMIN_EPOSTA:}
+    sifre: ${MAKINIST_ADMIN_SIFRE:}

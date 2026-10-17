@@ -1,0 +1,16 @@
+# Docker derleme bağlamı: yalnız kaynak gider. node_modules ve target (OneDrive'da junction) bağlama girmez; imaj içinde yeniden üretilir.
+**/node_modules
+**/target
+**/dist
+**/.git
+.git
+.env
+.env.*
+!.env.example
+.team
+.idea
+.vscode
+ops
+scripts
+*.md
+**/*.log

@@ -1,0 +1,78 @@
+{
+  "kayitlar" : [ {
+    "tur" : "ATAMA",
+    "varlik_tipi" : "ATAMA",
+    "varlik_id" : 1,
+    "makinist_id" : 1,
+    "sefer_id" : 1,
+    "kullanici_adi" : "Ata Maci",
+    "eski" : null,
+    "yeni" : "ASIL:D001",
+    "neden" : null,
+    "neden_notu" : null,
+    "ayrinti" : "{\"kontrolEdilenKodlar\":[\"K-01\",\"K-02\",\"K-03\",\"K-04\",\"K-05\",\"K-06\",\"K-07\",\"K-08\",\"K-09\",\"K-10\",\"K-11\",\"K-12\",\"K-13\",\"K-15\",\"K-16\",\"K-17\",\"K-18\",\"K-19\",\"K-20\",\"K-22\",\"K-23\"],\"sonuc\":\"UYGUN\",\"ihlaller\":[],\"gerekce\":null,\"belgeBitis\":{\"ehliyetBitis\":\"2030-01-01\",\"saglikBitis\":\"2030-01-01\",\"psikoteknikBitis\":\"2030-01-01\",\"aracTipleri\":{\"YHT\":\"2029-01-01\"},\"hatlar\":{\"Ankara–Eskişehir\":\"2029-01-01\"}},\"parametreler\":{\"adalet.olcut\":\"SAAT\",\"belge.sinav_gecerlilik_ay\":\"60\",\"belge.uyari_gun\":\"30\",\"brove.surus_ara_max_ay\":\"18\",\"dinlenme.dis_merkez_saat\":\"11\",\"dinlenme.ev_saat\":\"11\",\"gece.ard_hafta_max\":\"1\",\"gece.baslangic\":\"20:00\",\"gece.bitis\":\"06:00\",\"gece.gorev_orani\":\"0.5\",\"gece.hafta_min_gorev\":\"1\",\"gece.max_saat\":\"7.5\",\"gorev.alikoyma_dk\":\"0\",\"gorev.hazirlik_dk\":\"0\",\"gunluk.max_saat\":\"11\",\"hafta_tatili.min_saat\":\"24\",\"haftalik.max_saat\":\"45\",\"haftalik.normal_saat\":\"45\",\"hat.ara_max_ay\":\"18\",\"nobet.asgari_aktarma_dk\":\"20\",\"nobet.ayirma_saat\":\"4\",\"nobet.bekleme_sayilir\":\"0\",\"puantaj.asgari_gunluk_saat\":\"7.5\",\"puantaj.fazla_mesai_carpani\":\"1.5\",\"puantaj.gece_bitis\":\"07:00\",\"puantaj.gece_tazminat_orani\":\"0.15\",\"puantaj.km_birim_tutari\":\"\",\"puantaj.saat_ucreti\":\"\",\"sefer.max_saat\":\"9\",\"yedek.min\":\"1\",\"yedek.oran\":\"0.10\",\"yillik.fazla_mesai_max_saat\":\"270\"},\"siddetler\":{\"K-01\":\"ENGEL\",\"K-02\":\"ENGEL\",\"K-03\":\"ENGEL\",\"K-04\":\"ENGEL\",\"K-05\":\"ENGEL\",\"K-06\":\"ENGEL\",\"K-07\":\"ENGEL\",\"K-08\":\"ENGEL\",\"K-09\":\"ENGEL\",\"K-11\":\"ENGEL\",\"K-12\":\"ENGEL\",\"K-13\":\"ENGEL\",\"K-14\":\"KAPALI\",\"K-15\":\"ENGEL\",\"K-16\":\"ENGEL\",\"K-17\":\"ENGEL\",\"K-18\":\"ENGEL\",\"K-19\":\"ENGEL\",\"K-20\":\"UYARI\",\"K-21\":\"KAPALI\",\"K-22\":\"UYARI\",\"K-23\":\"ENGEL\"}}"
+  }, {
+    "tur" : "ATAMA_DEGISTIR",
+    "varlik_tipi" : "ATAMA",
+    "varlik_id" : 2,
+    "makinist_id" : 2,
+    "sefer_id" : 1,
+    "kullanici_adi" : "Ata Maci",
+    "eski" : "ASIL:D001",
+    "yeni" : "ASIL:D002",
+    "neden" : "IZIN",
+    "neden_notu" : "aile",
+    "ayrinti" : "{\"kontrolEdilenKodlar\":[\"K-01\",\"K-02\",\"K-03\",\"K-04\",\"K-05\",\"K-06\",\"K-07\",\"K-08\",\"K-09\",\"K-10\",\"K-11\",\"K-12\",\"K-13\",\"K-15\",\"K-16\",\"K-17\",\"K-18\",\"K-19\",\"K-20\",\"K-22\",\"K-23\"],\"sonuc\":\"UYGUN\",\"ihlaller\":[],\"gerekce\":null,\"belgeBitis\":{\"ehliyetBitis\":\"2030-01-01\",\"saglikBitis\":\"2030-01-01\",\"psikoteknikBitis\":\"2030-01-01\",\"aracTipleri\":{\"YHT\":\"2029-01-01\"},\"hatlar\":{\"Ankara–Eskişehir\":\"2029-01-01\"}},\"parametreler\":{\"adalet.olcut\":\"SAAT\",\"belge.sinav_gecerlilik_ay\":\"60\",\"belge.uyari_gun\":\"30\",\"brove.surus_ara_max_ay\":\"18\",\"dinlenme.dis_merkez_saat\":\"11\",\"dinlenme.ev_saat\":\"11\",\"gece.ard_hafta_max\":\"1\",\"gece.baslangic\":\"20:00\",\"gece.bitis\":\"06:00\",\"gece.gorev_orani\":\"0.5\",\"gece.hafta_min_gorev\":\"1\",\"gece.max_saat\":\"7.5\",\"gorev.alikoyma_dk\":\"0\",\"gorev.hazirlik_dk\":\"0\",\"gunluk.max_saat\":\"11\",\"hafta_tatili.min_saat\":\"24\",\"haftalik.max_saat\":\"45\",\"haftalik.normal_saat\":\"45\",\"hat.ara_max_ay\":\"18\",\"nobet.asgari_aktarma_dk\":\"20\",\"nobet.ayirma_saat\":\"4\",\"nobet.bekleme_sayilir\":\"0\",\"puantaj.asgari_gunluk_saat\":\"7.5\",\"puantaj.fazla_mesai_carpani\":\"1.5\",\"puantaj.gece_bitis\":\"07:00\",\"puantaj.gece_tazminat_orani\":\"0.15\",\"puantaj.km_birim_tutari\":\"\",\"puantaj.saat_ucreti\":\"\",\"sefer.max_saat\":\"9\",\"yedek.min\":\"1\",\"yedek.oran\":\"0.10\",\"yillik.fazla_mesai_max_saat\":\"270\"},\"siddetler\":{\"K-01\":\"ENGEL\",\"K-02\":\"ENGEL\",\"K-03\":\"ENGEL\",\"K-04\":\"ENGEL\",\"K-05\":\"ENGEL\",\"K-06\":\"ENGEL\",\"K-07\":\"ENGEL\",\"K-08\":\"ENGEL\",\"K-09\":\"ENGEL\",\"K-11\":\"ENGEL\",\"K-12\":\"ENGEL\",\"K-13\":\"ENGEL\",\"K-14\":\"KAPALI\",\"K-15\":\"ENGEL\",\"K-16\":\"ENGEL\",\"K-17\":\"ENGEL\",\"K-18\":\"ENGEL\",\"K-19\":\"ENGEL\",\"K-20\":\"UYARI\",\"K-21\":\"KAPALI\",\"K-22\":\"UYARI\",\"K-23\":\"ENGEL\"}}"
+  }, {
+    "tur" : "ATAMA",
+    "varlik_tipi" : "ATAMA",
+    "varlik_id" : 3,
+    "makinist_id" : 3,
+    "sefer_id" : 2,
+    "kullanici_adi" : "Ata Maci",
+    "eski" : null,
+    "yeni" : "ASIL:D003",
+    "neden" : null,
+    "neden_notu" : null,
+    "ayrinti" : "{\"kontrolEdilenKodlar\":[\"K-01\",\"K-02\",\"K-03\",\"K-04\",\"K-05\",\"K-06\",\"K-07\",\"K-08\",\"K-09\",\"K-10\",\"K-11\",\"K-12\",\"K-13\",\"K-15\",\"K-16\",\"K-17\",\"K-18\",\"K-19\",\"K-20\",\"K-22\",\"K-23\"],\"sonuc\":\"UYARI\",\"ihlaller\":[{\"kod\":\"K-22\",\"siddet\":\"UYARI\",\"olculen\":0.0,\"esik\":0.0,\"birim\":\"\",\"metin\":\"Sefer 9 Eki 10:00'da bitti; geçmiş tarihli sefere atama\"}],\"gerekce\":\"kayıt düzeltmesi\",\"belgeBitis\":{\"ehliyetBitis\":\"2030-01-01\",\"saglikBitis\":\"2030-01-01\",\"psikoteknikBitis\":\"2030-01-01\",\"aracTipleri\":{\"YHT\":\"2029-01-01\"},\"hatlar\":{\"Ankara–Eskişehir\":\"2029-01-01\"}},\"parametreler\":{\"adalet.olcut\":\"SAAT\",\"belge.sinav_gecerlilik_ay\":\"60\",\"belge.uyari_gun\":\"30\",\"brove.surus_ara_max_ay\":\"18\",\"dinlenme.dis_merkez_saat\":\"11\",\"dinlenme.ev_saat\":\"11\",\"gece.ard_hafta_max\":\"1\",\"gece.baslangic\":\"20:00\",\"gece.bitis\":\"06:00\",\"gece.gorev_orani\":\"0.5\",\"gece.hafta_min_gorev\":\"1\",\"gece.max_saat\":\"7.5\",\"gorev.alikoyma_dk\":\"0\",\"gorev.hazirlik_dk\":\"0\",\"gunluk.max_saat\":\"11\",\"hafta_tatili.min_saat\":\"24\",\"haftalik.max_saat\":\"45\",\"haftalik.normal_saat\":\"45\",\"hat.ara_max_ay\":\"18\",\"nobet.asgari_aktarma_dk\":\"20\",\"nobet.ayirma_saat\":\"4\",\"nobet.bekleme_sayilir\":\"0\",\"puantaj.asgari_gunluk_saat\":\"7.5\",\"puantaj.fazla_mesai_carpani\":\"1.5\",\"puantaj.gece_bitis\":\"07:00\",\"puantaj.gece_tazminat_orani\":\"0.15\",\"puantaj.km_birim_tutari\":\"\",\"puantaj.saat_ucreti\":\"\",\"sefer.max_saat\":\"9\",\"yedek.min\":\"1\",\"yedek.oran\":\"0.10\",\"yillik.fazla_mesai_max_saat\":\"270\"},\"siddetler\":{\"K-01\":\"ENGEL\",\"K-02\":\"ENGEL\",\"K-03\":\"ENGEL\",\"K-04\":\"ENGEL\",\"K-05\":\"ENGEL\",\"K-06\":\"ENGEL\",\"K-07\":\"ENGEL\",\"K-08\":\"ENGEL\",\"K-09\":\"ENGEL\",\"K-11\":\"ENGEL\",\"K-12\":\"ENGEL\",\"K-13\":\"ENGEL\",\"K-14\":\"KAPALI\",\"K-15\":\"ENGEL\",\"K-16\":\"ENGEL\",\"K-17\":\"ENGEL\",\"K-18\":\"ENGEL\",\"K-19\":\"ENGEL\",\"K-20\":\"UYARI\",\"K-21\":\"KAPALI\",\"K-22\":\"UYARI\",\"K-23\":\"ENGEL\"}}"
+  }, {
+    "tur" : "ATAMA",
+    "varlik_tipi" : "ATAMA",
+    "varlik_id" : 4,
+    "makinist_id" : 4,
+    "sefer_id" : 3,
+    "kullanici_adi" : "Ata Maci",
+    "eski" : null,
+    "yeni" : "YOLCU:D004",
+    "neden" : null,
+    "neden_notu" : null,
+    "ayrinti" : "{\"kontrolEdilenKodlar\":[\"K-01\",\"K-02\",\"K-03\",\"K-04\",\"K-05\",\"K-06\",\"K-07\",\"K-08\",\"K-09\",\"K-10\",\"K-11\",\"K-12\",\"K-13\",\"K-15\",\"K-16\",\"K-17\",\"K-18\",\"K-19\",\"K-20\",\"K-22\",\"K-23\"],\"sonuc\":\"UYGUN\",\"ihlaller\":[],\"gerekce\":null,\"yolculuk\":true,\"belgeBitis\":{\"ehliyetBitis\":\"2030-01-01\",\"saglikBitis\":\"2030-01-01\",\"psikoteknikBitis\":\"2030-01-01\",\"aracTipleri\":{\"YHT\":\"2029-01-01\"},\"hatlar\":{\"Ankara–Eskişehir\":\"2029-01-01\"}},\"parametreler\":{\"adalet.olcut\":\"SAAT\",\"belge.sinav_gecerlilik_ay\":\"60\",\"belge.uyari_gun\":\"30\",\"brove.surus_ara_max_ay\":\"18\",\"dinlenme.dis_merkez_saat\":\"11\",\"dinlenme.ev_saat\":\"11\",\"gece.ard_hafta_max\":\"1\",\"gece.baslangic\":\"20:00\",\"gece.bitis\":\"06:00\",\"gece.gorev_orani\":\"0.5\",\"gece.hafta_min_gorev\":\"1\",\"gece.max_saat\":\"7.5\",\"gorev.alikoyma_dk\":\"0\",\"gorev.hazirlik_dk\":\"0\",\"gunluk.max_saat\":\"11\",\"hafta_tatili.min_saat\":\"24\",\"haftalik.max_saat\":\"45\",\"haftalik.normal_saat\":\"45\",\"hat.ara_max_ay\":\"18\",\"nobet.asgari_aktarma_dk\":\"20\",\"nobet.ayirma_saat\":\"4\",\"nobet.bekleme_sayilir\":\"0\",\"puantaj.asgari_gunluk_saat\":\"7.5\",\"puantaj.fazla_mesai_carpani\":\"1.5\",\"puantaj.gece_bitis\":\"07:00\",\"puantaj.gece_tazminat_orani\":\"0.15\",\"puantaj.km_birim_tutari\":\"\",\"puantaj.saat_ucreti\":\"\",\"sefer.max_saat\":\"9\",\"yedek.min\":\"1\",\"yedek.oran\":\"0.10\",\"yillik.fazla_mesai_max_saat\":\"270\"},\"siddetler\":{\"K-01\":\"ENGEL\",\"K-02\":\"ENGEL\",\"K-03\":\"ENGEL\",\"K-04\":\"ENGEL\",\"K-05\":\"ENGEL\",\"K-06\":\"ENGEL\",\"K-07\":\"ENGEL\",\"K-08\":\"ENGEL\",\"K-09\":\"ENGEL\",\"K-11\":\"ENGEL\",\"K-12\":\"ENGEL\",\"K-13\":\"ENGEL\",\"K-14\":\"KAPALI\",\"K-15\":\"ENGEL\",\"K-16\":\"ENGEL\",\"K-17\":\"ENGEL\",\"K-18\":\"ENGEL\",\"K-19\":\"ENGEL\",\"K-20\":\"UYARI\",\"K-21\":\"KAPALI\",\"K-22\":\"UYARI\",\"K-23\":\"ENGEL\"}}"
+  }, {
+    "tur" : "ATAMA_KALDIR",
+    "varlik_tipi" : "ATAMA",
+    "varlik_id" : 2,
+    "makinist_id" : 2,
+    "sefer_id" : 1,
+    "kullanici_adi" : "Ata Maci",
+    "eski" : "ASIL:D002",
+    "yeni" : null,
+    "neden" : "HASTALIK",
+    "neden_notu" : "ates",
+    "ayrinti" : null
+  } ],
+  "olaylar" : [ {
+    "makinist_id" : 1,
+    "sefer_id" : 1,
+    "tur" : "DEGISTI_BASKASINA",
+    "ozet" : "Asıl · Ankara 12.10 08:00 → Eskişehir 12.10 10:00",
+    "neden_etiketi" : "IZIN",
+    "kapatildi_zaman" : null
+  }, {
+    "makinist_id" : 2,
+    "sefer_id" : 1,
+    "tur" : "KALDIRILDI",
+    "ozet" : "Asıl · Ankara 12.10 08:00 → Eskişehir 12.10 10:00",
+    "neden_etiketi" : "HASTALIK",
+    "kapatildi_zaman" : null
+  } ]
+}

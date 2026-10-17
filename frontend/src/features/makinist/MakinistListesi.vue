@@ -1,0 +1,104 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import { ApiHata } from '@/api/istemci'
+import { tarihBicimle } from '@/lib/tarih'
+import {
+  DURUM_ETIKETLERI,
+  TUR_ETIKETLERI,
+  makinistApi,
+  type MakinistDurumu,
+  type MakinistOzet,
+  type PersonelTuru,
+} from './makinistApi'
+
+const arama = ref('')
+const durum = ref<MakinistDurumu | ''>('')
+const tur = ref<PersonelTuru | ''>('')
+const liste = ref<MakinistOzet[]>([])
+const hata = ref('')
+const yukleniyor = ref(false)
+
+async function yukle() {
+  yukleniyor.value = true
+  hata.value = ''
+  try {
+    liste.value = await makinistApi.liste(arama.value, durum.value, tur.value)
+  } catch (e) {
+    liste.value = []
+    hata.value = e instanceof ApiHata ? e.detail : 'Liste yüklenemedi.'
+  } finally {
+    yukleniyor.value = false
+  }
+}
+
+onMounted(yukle)
+</script>
+
+<template>
+  <section>
+    <div class="sayfa-baslik">
+      <h1>Personel</h1>
+      <RouterLink class="btn btn-birincil" :to="{ name: 'makinist-yeni' }"
+        >Yeni personel</RouterLink
+      >
+    </div>
+    <form class="arac-cubugu" @submit.prevent="yukle">
+      <div class="alan">
+        <label for="arama">Sicil veya ad</label>
+        <input id="arama" v-model="arama" type="search" />
+      </div>
+      <div class="alan">
+        <label for="durum">Durum</label>
+        <select id="durum" v-model="durum" @change="yukle">
+          <option value="">Tümü</option>
+          <option v-for="(etiket, k) in DURUM_ETIKETLERI" :key="k" :value="k">{{ etiket }}</option>
+        </select>
+      </div>
+      <div class="alan">
+        <label for="tur">Tür</label>
+        <select id="tur" v-model="tur" @change="yukle">
+          <option value="">Tümü</option>
+          <option v-for="(etiket, k) in TUR_ETIKETLERI" :key="k" :value="k">{{ etiket }}</option>
+        </select>
+      </div>
+      <button type="submit" class="btn" :disabled="yukleniyor">Ara</button>
+    </form>
+    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
+    <div class="tablo-kap">
+      <table class="tablo">
+        <thead>
+          <tr>
+            <th>Sicil</th>
+            <th>Ad soyad</th>
+            <th>Tür</th>
+            <th>Bağlı gar</th>
+            <th>Durum</th>
+            <th>Ehliyet / belge bitişi</th>
+            <th>Sağlık bitişi</th>
+            <th>Psikoteknik bitişi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="m in liste" :key="m.id">
+            <td>
+              <RouterLink :to="{ name: 'makinist-kart', params: { id: m.id } }">{{
+                m.sicil
+              }}</RouterLink>
+            </td>
+            <td>{{ m.adSoyad }}</td>
+            <td>{{ TUR_ETIKETLERI[m.tur ?? 'MAKINIST'] }}</td>
+            <td>{{ m.bagliGar }}</td>
+            <td>{{ DURUM_ETIKETLERI[m.durum] }}</td>
+            <td>{{ tarihBicimle(m.ehliyetBitis) }}</td>
+            <td>{{ tarihBicimle(m.saglikBitis) }}</td>
+            <td>{{ tarihBicimle(m.psikoteknikBitis) }}</td>
+          </tr>
+          <tr v-if="!yukleniyor && liste.length === 0">
+            <td colspan="8" class="bos-durum">Kayıt bulunamadı.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</template>

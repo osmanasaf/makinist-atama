@@ -1,0 +1,421 @@
+[ {
+  "tohum" : 1,
+  "yolculuk" : false,
+  "atanan" : 9,
+  "bos" : 3,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "e2f1c85bd1f1131b"
+}, {
+  "tohum" : 1,
+  "yolculuk" : true,
+  "atanan" : 9,
+  "bos" : 3,
+  "yolculukAramaSayisi" : 16,
+  "ozet" : "91a482c9a93da05f"
+}, {
+  "tohum" : 2,
+  "yolculuk" : false,
+  "atanan" : 9,
+  "bos" : 0,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "3959b9856ad3daf2"
+}, {
+  "tohum" : 2,
+  "yolculuk" : true,
+  "atanan" : 9,
+  "bos" : 0,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "3959b9856ad3daf2"
+}, {
+  "tohum" : 3,
+  "yolculuk" : false,
+  "atanan" : 17,
+  "bos" : 6,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "6a80adcc82e15639"
+}, {
+  "tohum" : 3,
+  "yolculuk" : true,
+  "atanan" : 20,
+  "bos" : 3,
+  "yolculukAramaSayisi" : 36,
+  "ozet" : "3909cf966b1383cf"
+}, {
+  "tohum" : 4,
+  "yolculuk" : false,
+  "atanan" : 15,
+  "bos" : 4,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "cdb4f7c82679d287"
+}, {
+  "tohum" : 4,
+  "yolculuk" : true,
+  "atanan" : 15,
+  "bos" : 4,
+  "yolculukAramaSayisi" : 44,
+  "ozet" : "ccbe06d48f507adf"
+}, {
+  "tohum" : 5,
+  "yolculuk" : false,
+  "atanan" : 11,
+  "bos" : 5,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "8d524c54ce841ed4"
+}, {
+  "tohum" : 5,
+  "yolculuk" : true,
+  "atanan" : 11,
+  "bos" : 5,
+  "yolculukAramaSayisi" : 18,
+  "ozet" : "114dec65411791cf"
+}, {
+  "tohum" : 6,
+  "yolculuk" : false,
+  "atanan" : 6,
+  "bos" : 9,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "4aaf66afe9893bd1"
+}, {
+  "tohum" : 6,
+  "yolculuk" : true,
+  "atanan" : 7,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 25,
+  "ozet" : "ad9267007bd67426"
+}, {
+  "tohum" : 7,
+  "yolculuk" : false,
+  "atanan" : 15,
+  "bos" : 12,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "7eb7d521030301ea"
+}, {
+  "tohum" : 7,
+  "yolculuk" : true,
+  "atanan" : 18,
+  "bos" : 9,
+  "yolculukAramaSayisi" : 85,
+  "ozet" : "a930bca61ba783a1"
+}, {
+  "tohum" : 8,
+  "yolculuk" : false,
+  "atanan" : 15,
+  "bos" : 9,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "b2ab98dce02b525e"
+}, {
+  "tohum" : 8,
+  "yolculuk" : true,
+  "atanan" : 16,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 44,
+  "ozet" : "e97a1114b51d2d75"
+}, {
+  "tohum" : 9,
+  "yolculuk" : false,
+  "atanan" : 7,
+  "bos" : 5,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "b9fe487a0845e72b"
+}, {
+  "tohum" : 9,
+  "yolculuk" : true,
+  "atanan" : 9,
+  "bos" : 3,
+  "yolculukAramaSayisi" : 33,
+  "ozet" : "6f9f628d2c56b8f8"
+}, {
+  "tohum" : 10,
+  "yolculuk" : false,
+  "atanan" : 10,
+  "bos" : 15,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "61f54fa4b9311b52"
+}, {
+  "tohum" : 10,
+  "yolculuk" : true,
+  "atanan" : 10,
+  "bos" : 15,
+  "yolculukAramaSayisi" : 37,
+  "ozet" : "4ebf6ed1ca4a5f02"
+}, {
+  "tohum" : 11,
+  "yolculuk" : false,
+  "atanan" : 3,
+  "bos" : 6,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "3a76d803323f3813"
+}, {
+  "tohum" : 11,
+  "yolculuk" : true,
+  "atanan" : 3,
+  "bos" : 6,
+  "yolculukAramaSayisi" : 4,
+  "ozet" : "489ef09991b74f00"
+}, {
+  "tohum" : 12,
+  "yolculuk" : false,
+  "atanan" : 12,
+  "bos" : 0,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "545cd5d882672837"
+}, {
+  "tohum" : 12,
+  "yolculuk" : true,
+  "atanan" : 12,
+  "bos" : 0,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "545cd5d882672837"
+}, {
+  "tohum" : 13,
+  "yolculuk" : false,
+  "atanan" : 22,
+  "bos" : 3,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "c0c8cc3e3722261a"
+}, {
+  "tohum" : 13,
+  "yolculuk" : true,
+  "atanan" : 22,
+  "bos" : 3,
+  "yolculukAramaSayisi" : 19,
+  "ozet" : "5a2381ef821139a7"
+}, {
+  "tohum" : 14,
+  "yolculuk" : false,
+  "atanan" : 8,
+  "bos" : 0,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "d9b2ca128c7e82df"
+}, {
+  "tohum" : 14,
+  "yolculuk" : true,
+  "atanan" : 8,
+  "bos" : 0,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "d9b2ca128c7e82df"
+}, {
+  "tohum" : 15,
+  "yolculuk" : false,
+  "atanan" : 8,
+  "bos" : 3,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "a7adbb39e7a6c20a"
+}, {
+  "tohum" : 15,
+  "yolculuk" : true,
+  "atanan" : 8,
+  "bos" : 3,
+  "yolculukAramaSayisi" : 26,
+  "ozet" : "01d475815b1e8c41"
+}, {
+  "tohum" : 16,
+  "yolculuk" : false,
+  "atanan" : 4,
+  "bos" : 13,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "d17d1b110a65dd08"
+}, {
+  "tohum" : 16,
+  "yolculuk" : true,
+  "atanan" : 4,
+  "bos" : 13,
+  "yolculukAramaSayisi" : 19,
+  "ozet" : "3110a948c0d8a7af"
+}, {
+  "tohum" : 17,
+  "yolculuk" : false,
+  "atanan" : 16,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "0e869c2b6c9e4fc5"
+}, {
+  "tohum" : 17,
+  "yolculuk" : true,
+  "atanan" : 16,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 37,
+  "ozet" : "5fa6a08e135ee823"
+}, {
+  "tohum" : 18,
+  "yolculuk" : false,
+  "atanan" : 12,
+  "bos" : 11,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "05a4b494f585df35"
+}, {
+  "tohum" : 18,
+  "yolculuk" : true,
+  "atanan" : 13,
+  "bos" : 10,
+  "yolculukAramaSayisi" : 25,
+  "ozet" : "84d6a619f4ba2429"
+}, {
+  "tohum" : 19,
+  "yolculuk" : false,
+  "atanan" : 9,
+  "bos" : 16,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "966c45078ace97af"
+}, {
+  "tohum" : 19,
+  "yolculuk" : true,
+  "atanan" : 11,
+  "bos" : 14,
+  "yolculukAramaSayisi" : 29,
+  "ozet" : "2157c083492210a3"
+}, {
+  "tohum" : 20,
+  "yolculuk" : false,
+  "atanan" : 10,
+  "bos" : 7,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "0806e65f9518dfe3"
+}, {
+  "tohum" : 20,
+  "yolculuk" : true,
+  "atanan" : 10,
+  "bos" : 7,
+  "yolculukAramaSayisi" : 7,
+  "ozet" : "efb9e4572b245389"
+}, {
+  "tohum" : 21,
+  "yolculuk" : false,
+  "atanan" : 8,
+  "bos" : 0,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "a99acc326a545202"
+}, {
+  "tohum" : 21,
+  "yolculuk" : true,
+  "atanan" : 8,
+  "bos" : 0,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "a99acc326a545202"
+}, {
+  "tohum" : 22,
+  "yolculuk" : false,
+  "atanan" : 21,
+  "bos" : 4,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "6f586b60283b7378"
+}, {
+  "tohum" : 22,
+  "yolculuk" : true,
+  "atanan" : 21,
+  "bos" : 4,
+  "yolculukAramaSayisi" : 31,
+  "ozet" : "6eacaade117645b4"
+}, {
+  "tohum" : 23,
+  "yolculuk" : false,
+  "atanan" : 5,
+  "bos" : 10,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "03edecf5a586cf2b"
+}, {
+  "tohum" : 23,
+  "yolculuk" : true,
+  "atanan" : 5,
+  "bos" : 10,
+  "yolculukAramaSayisi" : 55,
+  "ozet" : "b611079380e06d2e"
+}, {
+  "tohum" : 24,
+  "yolculuk" : false,
+  "atanan" : 15,
+  "bos" : 6,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "55cacb3fa9a12e82"
+}, {
+  "tohum" : 24,
+  "yolculuk" : true,
+  "atanan" : 15,
+  "bos" : 6,
+  "yolculukAramaSayisi" : 17,
+  "ozet" : "f71995a0ee5191a1"
+}, {
+  "tohum" : 25,
+  "yolculuk" : false,
+  "atanan" : 7,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "3aa5f041c974cbc8"
+}, {
+  "tohum" : 25,
+  "yolculuk" : true,
+  "atanan" : 7,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 10,
+  "ozet" : "6108ad6654cb3f93"
+}, {
+  "tohum" : 26,
+  "yolculuk" : false,
+  "atanan" : 7,
+  "bos" : 9,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "ba8a88a6e995f9c1"
+}, {
+  "tohum" : 26,
+  "yolculuk" : true,
+  "atanan" : 10,
+  "bos" : 6,
+  "yolculukAramaSayisi" : 55,
+  "ozet" : "eeed23eab628b915"
+}, {
+  "tohum" : 27,
+  "yolculuk" : false,
+  "atanan" : 7,
+  "bos" : 1,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "5a306f22920ded96"
+}, {
+  "tohum" : 27,
+  "yolculuk" : true,
+  "atanan" : 7,
+  "bos" : 1,
+  "yolculukAramaSayisi" : 6,
+  "ozet" : "2980bd2cdd7d4b17"
+}, {
+  "tohum" : 28,
+  "yolculuk" : false,
+  "atanan" : 10,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "35cee59c6edeb806"
+}, {
+  "tohum" : 28,
+  "yolculuk" : true,
+  "atanan" : 10,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 76,
+  "ozet" : "b2bed6bfd9b1afa3"
+}, {
+  "tohum" : 29,
+  "yolculuk" : false,
+  "atanan" : 6,
+  "bos" : 11,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "9e6cbfd20e776409"
+}, {
+  "tohum" : 29,
+  "yolculuk" : true,
+  "atanan" : 6,
+  "bos" : 11,
+  "yolculukAramaSayisi" : 33,
+  "ozet" : "e72614fd81a6480e"
+}, {
+  "tohum" : 30,
+  "yolculuk" : false,
+  "atanan" : 13,
+  "bos" : 8,
+  "yolculukAramaSayisi" : 0,
+  "ozet" : "56357a280e2e9ad2"
+}, {
+  "tohum" : 30,
+  "yolculuk" : true,
+  "atanan" : 15,
+  "bos" : 6,
+  "yolculukAramaSayisi" : 42,
+  "ozet" : "5f4aae3bf2133bdf"
+} ]

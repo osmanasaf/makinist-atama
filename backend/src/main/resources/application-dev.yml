@@ -1,0 +1,12 @@
+# Geliştirme profili: kökteki .env'i okur (gerçek ortam değişkenleri .env'den önceliklidir).
+# spring-boot:run çalışma dizini backend/ olduğundan ../.env; IDE'den kökten çalışırsa ./.env.
+# Not: .env "properties" olarak okunur: Windows yollarında ters eğik çizgi yerine "/" kullanın.
+spring:
+  config:
+    import:
+      - optional:file:../.env[.properties]
+      - optional:file:./.env[.properties]
+
+logging:
+  level:
+    com.makinistatama: DEBUG

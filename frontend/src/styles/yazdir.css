@@ -1,0 +1,77 @@
+/* Yazdırma sayfaları (route meta.yazdir): ekranda kâğıt görünümü, yazdırmada renksiz/siyah-beyaz. Anlam renge değil metne bağlıdır. */
+.yazdir-sayfa {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  background: #fff;
+}
+.yazdir-araclar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.yazdir-filtre {
+  margin: 0 0 0.75rem;
+}
+/* Dar ekranda tablo sayfayı taşırmasın; kaydırma yalnız ekranda, yazdırmada kapsayıcı görünmez. */
+.yazdir-tablo-kap {
+  overflow-x: auto;
+}
+.yazdir-tablo {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.yazdir-tablo th,
+.yazdir-tablo td {
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+  border: 1px solid #000;
+}
+.yazdir-altbilgi {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  .no-print {
+    display: none;
+  }
+  body {
+    background: #fff;
+    color: #000;
+    font-size: 10pt;
+  }
+  .yazdir-sayfa {
+    max-width: none;
+    padding: 0;
+  }
+  .yazdir-tablo-kap {
+    overflow: visible;
+  }
+  /* 100 sefer en çok 3 A4 sayfaya sığsın: sıkı hücre, tek satır */
+  .yazdir-tablo {
+    font-size: 8.5pt;
+    line-height: 1.15;
+  }
+  .yazdir-tablo th,
+  .yazdir-tablo td {
+    padding: 1px 4px;
+    white-space: nowrap;
+  }
+  /* Denetim raporu: uzun metin sütunları sarılır (diğer hücreler tek satır kalır) */
+  .yazdir-tablo td.sarar {
+    white-space: normal;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    break-inside: avoid;
+  }
+}

@@ -1,0 +1,19 @@
+# Derleme çıktıları. Sondaki "/" YOK.
+target
+node_modules
+dist
+
+# Gizli bilgi: yalnız .env.example repoda
+.env
+.env.*
+!.env.example
+
+# IDE / işletim sistemi
+.idea
+.vscode
+*.iml
+.DS_Store
+Thumbs.db
+
+# Günlükler
+*.log

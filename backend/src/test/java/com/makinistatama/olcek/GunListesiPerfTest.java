@@ -1,0 +1,95 @@
+package com.makinistatama.olcek;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import org.hibernate.SessionFactory;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.TestPropertySource;
+
+import com.makinistatama.Tarayici;
+import com.makinistatama.TestVeritabani;
+import com.makinistatama.atama.AtamaVeri;
+import com.makinistatama.ortak.ZamanAyari;
+
+import jakarta.persistence.EntityManagerFactory;
+
+/**
+ * NFR-M06 / T6.5: gün listesine "gördü" bilgisi eklenince N+1 yok. Sorgu sayısı atama sayısından bağımsız olmalı (10 atama ile 300 atama aynı sayıda SQL), ve 300 atamalı gün
+ * listesi hâlâ hızlı. Çalıştırma: {@code mvnw test -Pyavas "-Dtest=GunListesiPerfTest"}.
+ */
+@Tag("yavas")
+@TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
+class GunListesiPerfTest extends TestVeritabani {
+
+    @Autowired
+    EntityManagerFactory emf;
+
+    private void doldur(int adet, String onEk, LocalDate gun) {
+        var v = new AtamaVeri(jdbc);
+        for (int i = 0; i < adet; i++) {
+            long m = v.makinist(String.format("%s%03d", onEk, i));
+            kullanicilar.makinistHesabiAc(m, String.format("%s%03d", onEk, i), "Demo Makinist " + onEk + i, Tarayici.PAROLA);
+            int dk = (i * 4) % (22 * 60);
+            v.atama(v.sefer(onEk + i, gun, LocalTime.of(dk / 60, dk % 60).toString(), LocalTime.of(dk / 60, dk % 60).plusMinutes(30).toString()), m, "ASIL");
+        }
+    }
+
+    private long sorgu(Tarayici t, LocalDate gun) throws Exception {
+        var istatistik = emf.unwrap(SessionFactory.class).getStatistics();
+        istatistik.clear();
+        t.get("/api/atama/gun?tarih=" + gun).andExpect(status().isOk());
+        return istatistik.getPrepareStatementCount();
+    }
+
+    @Test
+    void gunListesi_sorguSayisiAtamaSayisindanBagimsiz() throws Exception {
+        LocalDate gun = LocalDate.now(ZamanAyari.BOLGE).plusDays(5);
+        Tarayici t = atamaci();
+        doldur(10, "A", gun);
+        sorgu(t, gun); // ısınma
+        long az = sorgu(t, gun);
+        assertThat(az).as("istatistik açık olmalı").isGreaterThan(3);
+
+        doldur(290, "B", gun);
+        long cok = sorgu(t, gun);
+
+        assertThat(cok).as("10 atamada %s, 300 atamada %s sorgu", az, cok).isEqualTo(az);
+        long bas = System.nanoTime();
+        sorgu(t, gun);
+        assertThat((System.nanoTime() - bas) / 1_000_000).as("300 atamalı gün listesi ms").isLessThan(3000);
+    }
+
+    /** F2b: her sefere bir de YOLCU satırı eklenince de sorgu sayısı atama sayısından bağımsızdır (yolculuk ayarı yükleme başına en çok bir kez okunur). */
+    @Test
+    void gunListesi_yolcuSatirlariylaDa_sorguSayisiAtamaSayisindanBagimsiz() throws Exception {
+        LocalDate gun = LocalDate.now(ZamanAyari.BOLGE).plusDays(5);
+        Tarayici t = atamaci();
+        yolcuIleDoldur(10, "A", gun);
+        sorgu(t, gun); // ısınma
+        long az = sorgu(t, gun);
+
+        yolcuIleDoldur(290, "B", gun);
+        long cok = sorgu(t, gun);
+
+        assertThat(cok).as("20 satırda %s, 600 satırda %s sorgu", az, cok).isEqualTo(az);
+    }
+
+    /** Her sefere bir ASIL ve bir YOLCU makinist. */
+    private void yolcuIleDoldur(int adet, String onEk, LocalDate gun) {
+        var v = new AtamaVeri(jdbc);
+        for (int i = 0; i < adet; i++) {
+            long asil = v.makinist(String.format("%s%03d", onEk, i));
+            long yolcu = v.makinist(String.format("%sY%03d", onEk, i));
+            int dk = (i * 4) % (22 * 60);
+            long sefer = v.sefer(onEk + i, gun, LocalTime.of(dk / 60, dk % 60).toString(), LocalTime.of(dk / 60, dk % 60).plusMinutes(30).toString());
+            v.atama(sefer, asil, "ASIL");
+            v.atama(sefer, yolcu, "YOLCU");
+        }
+    }
+}
