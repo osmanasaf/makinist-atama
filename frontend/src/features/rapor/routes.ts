@@ -5,25 +5,35 @@ const routes: RouteRecordRaw[] = [
     path: '/rapor/adalet',
     name: 'rapor-adalet',
     component: () => import('./AdaletRaporu.vue'),
-    meta: { menu: { ad: 'Adalet Raporu', sira: 42 }, baslik: 'Adalet raporu' },
+    meta: {
+      menu: { ad: 'Adalet Raporu', sira: 42, grup: 'Raporlar', simge: 'rapor' },
+      baslik: 'Adalet raporu',
+    },
   },
   {
     path: '/rapor/yedek',
     name: 'rapor-yedek',
     component: () => import('./YedekTakvimi.vue'),
-    meta: { menu: { ad: 'Yedek Planı', sira: 44 }, baslik: 'Yedek planı' },
+    meta: {
+      menu: { ad: 'Yedek Planı', sira: 44, grup: 'Raporlar', simge: 'saat' },
+      baslik: 'Yedek planı',
+    },
   },
   {
     path: '/rapor/kadro',
     name: 'rapor-kadro',
     component: () => import('./KadroTahmini.vue'),
-    meta: { menu: { ad: 'Kadro İhtiyacı', sira: 49 }, baslik: 'Kadro ihtiyacı tahmini', rol: 'Y' },
+    meta: {
+      menu: { ad: 'Kadro İhtiyacı', sira: 49, grup: 'Raporlar', simge: 'kadro' },
+      baslik: 'Kadro ihtiyacı tahmini',
+      rol: 'Y',
+    },
   },
   {
     path: '/izin',
     name: 'izin',
     component: () => import('./IzinSayfasi.vue'),
-    meta: { menu: { ad: 'İzinler', sira: 46 }, baslik: 'İzinler' },
+    meta: { menu: { ad: 'İzinler', sira: 46, grup: 'Personel', simge: 'izin' }, baslik: 'İzinler' },
   },
   {
     path: '/yazdir/adalet',

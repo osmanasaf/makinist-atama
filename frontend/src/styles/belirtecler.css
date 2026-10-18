@@ -1,0 +1,138 @@
+/*
+ * Tasarım belirteçleri (MK-130). Ham renk YALNIZ bu dosyada (ve yazdir.css'te) bulunabilir; bileşenler anlamsal adları kullanır.
+ * Kontrast çiftleri belirtecler.test.ts'te doğrulanır (WCAG 2.1 AA: metin 4,5:1, UI bileşeni 3:1).
+ * Eski adlar (--renk-zemin, --renk-metin ...) anlamsal takma ad olarak kalır; kullanılmayan eski takma adlar H4'te silindi.
+ */
+:root {
+  /* ---- ham skala: nötr ---- */
+  --renk-n-0: #ffffff;
+  --renk-n-50: #f6f7f9;
+  --renk-n-100: #eceff3;
+  --renk-n-200: #dde2e9;
+  --renk-n-300: #c3cad5;
+  --renk-n-400: #7b8799;
+  --renk-n-500: #5b6678;
+  --renk-n-700: #364152;
+  --renk-n-900: #151b26;
+
+  /* ---- ham skala: birincil (kurumsal lacivert/mavi) ---- */
+  --renk-p-900: #0f2742;
+  --renk-p-800: #1b3b63;
+  --renk-p-700: #174a96;
+  --renk-p-600: #1f5fbf;
+  --renk-p-50: #e6f0fd;
+
+  /* ---- yan menü, odak ---- */
+  --renk-menu-metin: #c9d6e8;
+  --renk-menu-baslik: #9fb4d0;
+  --renk-odak: #0b57d0;
+  --renk-odak-koyu: #8ab4ff;
+
+  /* ---- anlamsal tonlar ---- */
+  --renk-basari-zemin: #e4f3e7;
+  --renk-basari-metin: #1b6e2f;
+  --renk-uyari-zemin: #fff4d6;
+  --renk-uyari-metin: #7a4f00;
+  --renk-uyari-cizgi: #b07d00;
+  --renk-uyari-dolu: #f2b705;
+  --renk-engel-zemin: #fde8e6;
+  --renk-engel-metin: #a3201a;
+  --renk-engel-dolu: #b3261e;
+  --renk-bilgi-zemin: #e6f0fd;
+  --renk-bilgi-metin: #174a96;
+  --renk-gece-zemin: #ecebfa;
+  --renk-gece-metin: #3d3a8c;
+
+  /* ---- roller ---- */
+  --renk-rol-asil-metin: #174a96;
+  --renk-rol-asil-zemin: #e6f0fd;
+  --renk-rol-yardimci-metin: #0b5f5f;
+  --renk-rol-yardimci-zemin: #e0f2f1;
+  --renk-rol-konduktor-metin: #5b3190;
+  --renk-rol-konduktor-zemin: #f0e9fa;
+  --renk-rol-yolcu-metin: #4a5568;
+  --renk-rol-yolcu-zemin: #eef0f4;
+
+  /* ---- anlamsal takma adlar (bileşenlerin kullandığı) ---- */
+  --renk-zemin: var(--renk-n-50);
+  --renk-yuzey: var(--renk-n-0);
+  --renk-metin: var(--renk-n-900);
+  --renk-metin-ikincil: var(--renk-n-700);
+  --renk-metin-soluk: var(--renk-n-500);
+  --renk-cizgi: var(--renk-n-200);
+  --renk-kontrol-kenar: var(--renk-n-400);
+  --renk-birincil: var(--renk-p-600);
+  --renk-birincil-koyu: var(--renk-p-700);
+  --renk-birincil-yazi: var(--renk-n-0);
+  --renk-tehlike: var(--renk-engel-dolu);
+  --renk-tehlike-koyu: #8f1d17;
+  --renk-hata-zemin: var(--renk-engel-zemin);
+  --renk-menu-zemin: var(--renk-p-900);
+  --renk-menu-hover: var(--renk-p-800);
+  --renk-menu-aktif: var(--renk-p-700);
+
+  /* ---- tipografi ---- */
+  --yazi-ailesi: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --yazi-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --yazi-xs: 0.75rem;
+  --yazi-sm: 0.8125rem;
+  --yazi-md: 0.875rem;
+  --yazi-lg: 1rem;
+  --yazi-xl: 1.125rem;
+  --yazi-2xl: 1.375rem;
+  --yazi-3xl: 2rem;
+  --yazi-agirlik-normal: 400;
+  --yazi-agirlik-orta: 600;
+  --yazi-agirlik-kalin: 700;
+  --satir-govde: 1.45;
+  --satir-baslik: 1.25;
+
+  /* ---- aralık (4 px tabanı) ---- */
+  --aralik-1: 0.125rem;
+  --aralik-2: 0.25rem;
+  --aralik-3: 0.5rem;
+  --aralik-4: 0.75rem;
+  --aralik-5: 1rem;
+  --aralik-6: 1.5rem;
+  --aralik-7: 2rem;
+
+  /* ---- köşe, gölge, hareket ---- */
+  --yaricap-sm: 4px;
+  --yaricap: 6px;
+  --yaricap-pill: 999px;
+  --golge-1: 0 1px 2px rgb(21 27 38 / 8%);
+  --golge-2: 0 8px 24px rgb(21 27 38 / 18%);
+  --perde: rgb(21 27 38 / 50%);
+  --sure-hizli: 120ms;
+
+  /* ---- düzen ---- */
+  --menu-genislik: 14.5rem;
+  --menu-dar: 3.75rem;
+  --sayfa-azami: 80rem;
+  --ust-yukseklik: 3rem;
+
+  /* ---- yoğunluk (varsayılan: rahat; MK-137) ---- */
+  --hucre-dikey: 0.5rem;
+  --kontrol-yukseklik: 2.25rem;
+  --tablo-yazi: var(--yazi-md);
+  --satir-min: 2.25rem;
+}
+
+[data-yogunluk='yogun'] {
+  --hucre-dikey: 0.25rem;
+  --kontrol-yukseklik: 1.75rem;
+  --tablo-yazi: var(--yazi-sm);
+  --satir-min: 2.25rem;
+}
+
+[data-yogunluk='dokunma'] {
+  --hucre-dikey: 0.75rem;
+  --kontrol-yukseklik: 2.75rem;
+  --tablo-yazi: var(--yazi-lg);
+  --satir-min: 2.75rem;
+}
+
+/* Koyu tema yer tutucusu: aynı adlar, ayrı değerler; şimdilik boş (MK-147). */
+[data-tema='koyu'] {
+  /* boş */
+}

@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { tarihBicimle } from '@/lib/tarih'
 import {
   DURUM_ETIKETLERI,
@@ -37,12 +39,13 @@ onMounted(yukle)
 
 <template>
   <section>
-    <div class="sayfa-baslik">
-      <h1>Personel</h1>
-      <RouterLink class="btn btn-birincil" :to="{ name: 'makinist-yeni' }"
-        >Yeni personel</RouterLink
-      >
-    </div>
+    <SayfaBasligi baslik="Personel">
+      <template #eylemler>
+        <RouterLink class="btn btn-birincil" :to="{ name: 'makinist-yeni' }"
+          >Yeni personel</RouterLink
+        >
+      </template>
+    </SayfaBasligi>
     <form class="arac-cubugu" @submit.prevent="yukle">
       <div class="alan">
         <label for="arama">Sicil veya ad</label>
@@ -64,9 +67,13 @@ onMounted(yukle)
       </div>
       <button type="submit" class="btn" :disabled="yukleniyor">Ara</button>
     </form>
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
+    <VeriDurumu v-if="hata" durum="hata" :metin="hata">
+      <template #eylem>
+        <button type="button" class="btn" @click="yukle">Yeniden dene</button>
+      </template>
+    </VeriDurumu>
     <div class="tablo-kap">
-      <table class="tablo">
+      <table class="tablo" aria-label="Personel listesi">
         <thead>
           <tr>
             <th>Sicil</th>
@@ -94,8 +101,11 @@ onMounted(yukle)
             <td>{{ tarihBicimle(m.saglikBitis) }}</td>
             <td>{{ tarihBicimle(m.psikoteknikBitis) }}</td>
           </tr>
-          <tr v-if="!yukleniyor && liste.length === 0">
-            <td colspan="8" class="bos-durum">Kayıt bulunamadı.</td>
+          <tr v-if="yukleniyor">
+            <td colspan="8"><VeriDurumu durum="yukleniyor" metin="Yükleniyor…" /></td>
+          </tr>
+          <tr v-else-if="liste.length === 0 && !hata">
+            <td colspan="8"><VeriDurumu durum="bos" metin="Kayıt bulunamadı." /></td>
           </tr>
         </tbody>
       </table>

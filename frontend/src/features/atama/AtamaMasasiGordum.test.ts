@@ -99,20 +99,22 @@ describe('AtamaMasasi: gördüm görünürlüğü', () => {
     vi.mocked(atamaApi.gordumOzeti).mockResolvedValue(ozet)
   })
 
-  it('her görevlide gördü ✓ saat / görmedi / hesap yok (metin + simge); geçmiş görevde bilgi yok', async () => {
+  it('her görevlide gördü saat (onay simgesi) / görmedi / hesap yok (metin + simge); geçmiş görevde bilgi yok', async () => {
     const w = await kur()
     const kartlar = w.findAll('tr.sefer-satiri')
-    expect(kartlar[0]!.get('[data-test=gordu]').text()).toBe('✓ gördü 09:14')
+    expect(kartlar[0]!.get('[data-test=gordu]').text()).toBe('gördü 09:14')
+    expect(kartlar[0]!.find('[data-test=gordu] svg[data-simge="basari"]').exists()).toBe(true)
     expect(kartlar[1]!.get('[data-test=gormedi]').text()).toContain('görmedi')
     expect(kartlar[3]!.get('[data-test=hesap-yok]').text()).toContain('hesap yok')
     expect(kartlar[4]!.find('.gordum').exists()).toBe(false)
   })
 
-  it('kalkışa yakın görmeyen satır vurgulanır (renkten bağımsız ⚠ ve kalın metin); diğerleri vurgusuz', async () => {
+  it('kalkışa yakın görmeyen satır vurgulanır (renkten bağımsız uyarı simgesi ve kalın metin); diğerleri vurgusuz', async () => {
     const w = await kur()
     const kartlar = w.findAll('tr.sefer-satiri')
     expect(kartlar[2]!.find('.gorevli.gordum-uyarili').exists()).toBe(true)
-    expect(kartlar[2]!.get('[data-test=gormedi]').text()).toContain('⚠')
+    expect(kartlar[2]!.get('[data-test=gormedi]').text()).toContain('görmedi')
+    expect(kartlar[2]!.find('[data-test=gormedi] svg[data-simge="uyari"]').exists()).toBe(true)
     expect(kartlar[1]!.find('.gordum-uyarili').exists()).toBe(false)
   })
 

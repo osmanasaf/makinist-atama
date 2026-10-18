@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { bugun } from '@/lib/tarih'
 import { benimApi, type BenimOzet } from './benimApi'
 import { rozetYaz } from './rozet'
@@ -54,18 +56,19 @@ const fark = computed(() => {
 
 <template>
   <section>
-    <h1>Aylık özetim</h1>
+    <SayfaBasligi baslik="Aylık özetim" />
     <div class="alan">
       <label for="ozet-ay">Ay</label>
       <select id="ozet-ay" v-model="ay" @change="yukle">
         <option v-for="a in aylar" :key="a.deger" :value="a.deger">{{ a.ad }}</option>
       </select>
     </div>
-    <p v-if="yukleniyor" role="status">Yükleniyor…</p>
-    <div v-else-if="hata" class="bildirim bildirim-hata" role="alert">
-      <p>{{ hata }}</p>
-      <button type="button" class="btn" @click="yukle">Yeniden dene</button>
-    </div>
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Yükleniyor…" />
+    <VeriDurumu v-else-if="hata" durum="hata" :metin="hata">
+      <template #eylem>
+        <button type="button" class="btn" @click="yukle">Yeniden dene</button>
+      </template>
+    </VeriDurumu>
     <template v-else-if="veri">
       <p v-if="!veri.adaleteDahil" class="bildirim bildirim-bilgi">
         Bu ay özet dışındasınız (hesabınız aktif değil).
@@ -124,7 +127,7 @@ const fark = computed(() => {
         </template>
       </p>
     </template>
-    <p style="margin-top: 1.5rem">
+    <p class="benim-alt-eylem">
       <RouterLink class="btn" to="/benim/parola">Parolamı değiştir</RouterLink>
     </p>
   </section>

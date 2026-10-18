@@ -5,13 +5,19 @@ const routes: RouteRecordRaw[] = [
     path: '/konaklama',
     name: 'konaklama',
     component: () => import('./KonaklamaSayfasi.vue'),
-    meta: { menu: { ad: 'Konaklama', sira: 47 }, baslik: 'Konaklama' },
+    meta: {
+      menu: { ad: 'Konaklama', sira: 47, grup: 'Atama', simge: 'yatak' },
+      baslik: 'Konaklama',
+    },
   },
   {
     path: '/konaklama/rapor',
     name: 'konaklama-rapor',
     component: () => import('./KonaklamaRaporu.vue'),
-    meta: { menu: { ad: 'Konaklama Raporu', sira: 48 }, baslik: 'Konaklama raporu' },
+    meta: {
+      menu: { ad: 'Konaklama Raporu', sira: 48, grup: 'Raporlar', simge: 'ay' },
+      baslik: 'Konaklama raporu',
+    },
   },
 ]
 

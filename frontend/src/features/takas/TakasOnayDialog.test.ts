@@ -62,10 +62,17 @@ describe('TakasOnayDialog', () => {
     expect(w.text()).toContain('D002 (Ayşe Kaya)')
     expect(w.text()).toContain('düğün')
     expect(w.text()).toContain('ihlal yok')
-    expect(w.findAll('button').map((b) => b.text())).toEqual(['Onayla', 'Reddet', 'Kapat'])
+    // durum satırı: simge (ATAMACI_ONAYI_BEKLIYOR = saat) + metin
+    expect(w.text()).toContain('Atamacı onayı bekleniyor')
+    expect(w.find('svg[data-simge="saat"]').exists()).toBe(true)
+    expect(w.findAll('button:not([aria-label="Kapat"])').map((b) => b.text())).toEqual([
+      'Onayla',
+      'Reddet',
+      'Kapat',
+    ])
   })
 
-  it('ihlal ayrıntısı hangi makinist hangi kural olarak gösterilir (ENGEL ⛔ / UYARI ⚠, metinle)', async () => {
+  it('ihlal ayrıntısı hangi makinist hangi kural olarak gösterilir (ENGEL engel simgesi / UYARI uyarı simgesi, metinle)', async () => {
     const w = await kur(
       detay({
         ihlaller: [
@@ -79,6 +86,8 @@ describe('TakasOnayDialog', () => {
     expect(liste).toContain('Dinlenme 10,98 saat')
     expect(liste).toContain('D002')
     expect(liste).toContain('Belge yaklaşıyor')
+    expect(w.find('ul.ihlal-listesi svg[data-simge="engel"]').exists()).toBe(true)
+    expect(w.find('ul.ihlal-listesi svg[data-simge="uyari"]').exists()).toBe(true)
     expect(w.text()).toContain('ENGEL varken onaylanamaz')
     expect(dugme(w, 'Onayla').attributes('disabled')).toBeDefined()
   })
@@ -115,7 +124,10 @@ describe('TakasOnayDialog', () => {
 
   it('etkin durumu BAYAT olan ama kapanışı yazılmamış talep reddedilerek kapatılabilir (zincirleme talep)', async () => {
     const w = await kur(detay({ talep: satir({ durum: 'BAYAT' }) }))
-    expect(w.findAll('button').map((b) => b.text())).toEqual(['Reddet', 'Kapat'])
+    expect(w.findAll('button:not([aria-label="Kapat"])').map((b) => b.text())).toEqual([
+      'Reddet',
+      'Kapat',
+    ])
     vi.mocked(takasApi.red).mockResolvedValue(satir({ durum: 'REDDEDILDI' }))
     await dugme(w, 'Reddet').trigger('click')
     await flushPromises()
@@ -125,7 +137,7 @@ describe('TakasOnayDialog', () => {
 
   it('kapanışı yazılmış bayat talepte Reddet yok', async () => {
     const w = await kur(detay({ talep: satir({ durum: 'BAYAT', kayitliDurum: 'BAYAT' }) }))
-    expect(w.findAll('button').map((b) => b.text())).toEqual(['Kapat'])
+    expect(w.findAll('button:not([aria-label="Kapat"])').map((b) => b.text())).toEqual(['Kapat'])
   })
 
   it('UYARI varken gerekçe zorunlu: boşken istek gitmez, alanla ilişkili hata; yazılınca gider', async () => {
@@ -271,5 +283,19 @@ describe('TakasOnayDialog', () => {
     expect(w.get('[role="alert"]').text()).toContain('Talep bulunamadı.')
     await dugme(w, 'Kapat').trigger('click')
     expect(w.emitted('kapat')).toHaveLength(1)
+  })
+
+  it('W3: onay isteği sürerken × (ve Esc) diyaloğu kapatmaz; sökülen bileşenden tamam yayılmaz', async () => {
+    let bitir: () => void = () => {}
+    vi.mocked(takasApi.onay).mockReturnValue(new Promise<void>((c) => (bitir = c)) as never)
+    const w = await kur(detay())
+    await dugme(w, 'Onayla').trigger('click')
+    await flushPromises()
+    await w.get('button[aria-label="Kapat"]').trigger('click')
+    w.get('dialog').element.dispatchEvent(new Event('cancel', { cancelable: true }))
+    expect(w.emitted('kapat')).toBeUndefined()
+    bitir()
+    await flushPromises()
+    expect(w.emitted('tamam')).toHaveLength(1)
   })
 })

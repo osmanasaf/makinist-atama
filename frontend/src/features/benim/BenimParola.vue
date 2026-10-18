@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import { reactive, ref } from 'vue'
+import { ilkHataliyaOdaklan } from '@/lib/odak'
 import { useRouter } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
 import { kullanici, oturumuTemizle } from '@/composables/oturum'
 import { benimApi } from './benimApi'
 
@@ -10,6 +13,7 @@ const form = reactive({ eski: '', yeni: '', tekrar: '' })
 const alanHatalari = ref<Record<string, string>>({})
 const hata = ref('')
 const mesgul = ref(false)
+const formKok = ref<HTMLElement | null>(null)
 
 async function gonder() {
   if (mesgul.value) return
@@ -20,7 +24,7 @@ async function gonder() {
   else if (form.yeni === form.eski) h.yeniParola = 'Yeni parola eskisiyle aynı olamaz.'
   if (form.tekrar !== form.yeni) h.tekrar = 'Parolalar aynı değil.'
   alanHatalari.value = h
-  if (Object.keys(h).length > 0) return
+  if (Object.keys(h).length > 0) return ilkHataliyaOdaklan(formKok.value)
   mesgul.value = true
   try {
     await benimApi.parolaDegistir(form.eski, form.yeni)
@@ -36,6 +40,7 @@ async function gonder() {
     }
     // yalnız eski parola yanlışsa alan boşalır; başka bir hatada (yeni parola kuralı vb.) yeniden yazdırılmaz
     if (alanHatalari.value.eskiParola) form.eski = ''
+    await ilkHataliyaOdaklan(formKok.value)
   } finally {
     mesgul.value = false
   }
@@ -44,13 +49,13 @@ async function gonder() {
 
 <template>
   <section>
-    <h1>Parolam</h1>
+    <SayfaBasligi baslik="Parolam" />
     <p v-if="kullanici?.parolaDegistirmeli" class="bildirim bildirim-uyari" role="status">
       Atamacının verdiği geçici parolayı kullanıyorsunuz. Devam etmek için kendi parolanızı
       belirleyin.
     </p>
     <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
-    <form class="kart" novalidate @submit.prevent="gonder">
+    <form ref="formKok" class="kart" novalidate @submit.prevent="gonder">
       <div class="alan">
         <label for="eski-parola">Eski (geçici) parola</label>
         <input
@@ -61,9 +66,7 @@ async function gonder() {
           :aria-invalid="!!alanHatalari.eskiParola"
           :aria-describedby="alanHatalari.eskiParola ? 'eski-parola-hata' : undefined"
         />
-        <p v-if="alanHatalari.eskiParola" id="eski-parola-hata" class="alan-hata">
-          {{ alanHatalari.eskiParola }}
-        </p>
+        <AlanHatasi id="eski-parola-hata" :metin="alanHatalari.eskiParola" />
       </div>
       <div class="alan">
         <label for="yeni-parola">Yeni parola (en az 10 karakter)</label>
@@ -75,9 +78,7 @@ async function gonder() {
           :aria-invalid="!!alanHatalari.yeniParola"
           :aria-describedby="alanHatalari.yeniParola ? 'yeni-parola-hata' : undefined"
         />
-        <p v-if="alanHatalari.yeniParola" id="yeni-parola-hata" class="alan-hata">
-          {{ alanHatalari.yeniParola }}
-        </p>
+        <AlanHatasi id="yeni-parola-hata" :metin="alanHatalari.yeniParola" />
       </div>
       <div class="alan">
         <label for="tekrar-parola">Yeni parola (tekrar)</label>
@@ -89,14 +90,12 @@ async function gonder() {
           :aria-invalid="!!alanHatalari.tekrar"
           :aria-describedby="alanHatalari.tekrar ? 'tekrar-parola-hata' : undefined"
         />
-        <p v-if="alanHatalari.tekrar" id="tekrar-parola-hata" class="alan-hata">
-          {{ alanHatalari.tekrar }}
-        </p>
+        <AlanHatasi id="tekrar-parola-hata" :metin="alanHatalari.tekrar" />
       </div>
       <p class="soluk">
         Parolanız sicilinizi içeremez. Değiştirince yeni parolanızla yeniden giriş yaparsınız.
       </p>
-      <button type="submit" class="btn btn-birincil" :disabled="mesgul">
+      <button type="submit" class="btn btn-birincil benim-tam" :disabled="mesgul">
         {{ mesgul ? 'Kaydediliyor…' : 'Parolayı değiştir' }}
       </button>
     </form>

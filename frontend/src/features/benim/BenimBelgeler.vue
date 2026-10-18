@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import { durumOzellikleri, type Ton } from '@/bilesenler/durum'
+import type { SimgeAdi } from '@/bilesenler/simgeler'
 import type { BelgeDto, BelgeDurumu } from '@/features/belge/belgeApi'
 import { tarihBicimle } from '@/lib/tarih'
 import { benimApi, type BenimBelgeler } from './benimApi'
@@ -10,11 +15,12 @@ const veri = ref<BenimBelgeler | null>(null)
 const yukleniyor = ref(true)
 const hata = ref('')
 
-const DURUM_ETIKETLERI: Record<BelgeDurumu, string> = {
-  DOLDU: '⛔ Süresi doldu',
-  YAKLASIYOR: '⚠ Yaklaşıyor',
-  GECERLI: '✓ Geçerli',
-  GIRILMEMIS: '— Girilmemiş',
+/** Belge durumu → rozet (ton + simge `durum.ts` tek kaynağından, metin belgeye özgü). */
+const DURUM_ROZETLERI: Record<BelgeDurumu, { ton: Ton; simge: SimgeAdi; metin: string }> = {
+  DOLDU: { ...durumOzellikleri('ENGEL'), metin: 'Süresi doldu' },
+  YAKLASIYOR: { ...durumOzellikleri('UYARI'), metin: 'Yaklaşıyor' },
+  GECERLI: { ...durumOzellikleri('GECERLI'), metin: 'Geçerli' },
+  GIRILMEMIS: { ton: 'notr', simge: 'daire', metin: 'Girilmemiş' },
 }
 
 async function yukle() {
@@ -46,28 +52,32 @@ function kalanMetni(b: BelgeDto): string {
 
 <template>
   <section>
-    <h1>Belgelerim</h1>
-    <p v-if="yukleniyor" role="status">Yükleniyor…</p>
-    <div v-else-if="hata" class="bildirim bildirim-hata" role="alert">
-      <p>{{ hata }}</p>
-      <button type="button" class="btn" @click="yukle">Yeniden dene</button>
-    </div>
+    <SayfaBasligi baslik="Belgelerim" />
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Yükleniyor…" />
+    <VeriDurumu v-else-if="hata" durum="hata" :metin="hata">
+      <template #eylem>
+        <button type="button" class="btn" @click="yukle">Yeniden dene</button>
+      </template>
+    </VeriDurumu>
     <template v-else-if="veri">
-      <p v-if="veri.belgeler.length === 0" class="benim-bos">Kayıtlı belgeniz yok.</p>
+      <VeriDurumu v-if="veri.belgeler.length === 0" durum="bos" metin="Kayıtlı belgeniz yok." />
       <ul v-else class="benim-liste">
         <li
           v-for="b in veri.belgeler"
           :key="b.tur + b.ad"
+          class="kart"
           :class="{ yaklasiyor: b.durum === 'YAKLASIYOR', doldu: b.durum === 'DOLDU' }"
         >
           <strong>{{ b.ad }}</strong>
-          <br />
-          {{ DURUM_ETIKETLERI[b.durum] }}
-          <template v-if="b.bitis"> · {{ tarihBicimle(b.bitis) }} · {{ kalanMetni(b) }} </template>
-          <template v-if="b.durum === 'DOLDU' || b.durum === 'YAKLASIYOR'">
-            <br />
-            <small>Yenileme için atamacınıza ya da eğitim birimine başvurun.</small>
-          </template>
+          <span class="benim-satir">
+            <Rozet v-bind="DURUM_ROZETLERI[b.durum]" />
+            <template v-if="b.bitis">
+              · {{ tarihBicimle(b.bitis) }} · {{ kalanMetni(b) }}
+            </template>
+          </span>
+          <small v-if="b.durum === 'DOLDU' || b.durum === 'YAKLASIYOR'" class="benim-not">
+            Yenileme için atamacınıza ya da eğitim birimine başvurun.
+          </small>
         </li>
       </ul>
     </template>

@@ -74,7 +74,7 @@ describe('YedekTakvimi', () => {
     )
   })
 
-  it('gün satırları: açıklı gün "⚠ N eksik" (metin + simge), açıksız "Yeterli"', async () => {
+  it('gün satırları: açıklı gün "N eksik" (metin + uyarı simgesi), açıksız "Yeterli" (metin + başarı simgesi)', async () => {
     const w = mount(YedekTakvimi)
     await getir(w)
     expect(w.get('table').attributes('aria-label')).toBe('Günlük yedek planı')
@@ -83,7 +83,9 @@ describe('YedekTakvimi', () => {
     expect(satirlar[0]!.text()).toContain('12.10.2026')
     expect(satirlar[0]!.text()).toContain('Yeterli')
     expect(satirlar[0]!.classes()).not.toContain('eksik')
-    expect(satirlar[1]!.text().replace(/\s+/g, ' ')).toContain('⚠ 3 eksik')
+    expect(satirlar[0]!.find('.rozet-basari svg[data-simge="basari"]').exists()).toBe(true)
+    expect(satirlar[1]!.text().replace(/\s+/g, ' ')).toContain('3 eksik')
+    expect(satirlar[1]!.find('.rozet-uyari svg[data-simge="uyari"]').exists()).toBe(true)
     expect(satirlar[1]!.classes()).toContain('eksik')
   })
 

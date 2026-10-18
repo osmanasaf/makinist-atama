@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { computed, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import { atamaApi, NEDEN_ETIKETLERI, type AtamaNedeni } from './atamaApi'
 
 /**
@@ -60,8 +63,16 @@ const gecerli = computed(
       (dakikaGecerli(kalkis.value) && (varis.value === '' || dakikaGecerli(varis.value)))),
 )
 
-const dialog = ref<HTMLDialogElement | null>(null)
-onMounted(() => dialog.value?.showModal())
+// Birincil eylem kapalıyken nedeni söylenir (Diyalog neden slotu); ilk sağlanmayan koşul.
+const nedenMetni = computed(() => {
+  if (neden.value === '') return 'Önce neden seçin.'
+  if (neden.value === 'DIGER' && nedenNotu.value.trim() === '') return 'Neden notu zorunlu.'
+  if (iptalMi) return ''
+  if (!dakikaGecerli(kalkis.value)) return `Kalkış gecikmesi 0–${EN_COK_DK} dk olmalı.`
+  if (varis.value !== '' && !dakikaGecerli(varis.value))
+    return `Varış gecikmesi 0–${EN_COK_DK} dk olmalı.`
+  return ''
+})
 
 function vazgec() {
   if (!mesgul.value) emit('kapat', hataOldu)
@@ -112,106 +123,104 @@ async function onayla() {
 </script>
 
 <template>
-  <dialog ref="dialog" aria-labelledby="sefer-dlg-baslik" @cancel.prevent="vazgec">
-    <form @submit.prevent="onayla">
-      <h2 id="sefer-dlg-baslik">{{ iptalMi ? 'Seferi iptal et' : 'Gecikme gir' }}</h2>
-      <p>{{ seferEtiketi }}</p>
-      <p v-if="iptalMi" class="bildirim bildirim-uyari">
-        <span><span aria-hidden="true">⚠</span> Bu işlem geri alınamaz.</span>
-      </p>
+  <Diyalog
+    :baslik="iptalMi ? 'Seferi iptal et' : 'Gecikme gir'"
+    boyut="orta"
+    form
+    @kapat="vazgec"
+    @gonder="onayla"
+  >
+    <p>{{ seferEtiketi }}</p>
+    <p v-if="iptalMi" class="bildirim bildirim-uyari">
+      <span><Simge ad="uyari" boyut="1em" /> Bu işlem geri alınamaz.</span>
+    </p>
 
-      <template v-if="!iptalMi">
-        <div class="alan">
-          <label for="sefer-kalkis-gecikme">Kalkış gecikmesi (dk, planlanana göre toplam)</label>
-          <input
-            id="sefer-kalkis-gecikme"
-            v-model="kalkis"
-            type="number"
-            min="0"
-            :max="EN_COK_DK"
-            step="1"
-            required
-            :aria-invalid="!!alanHatalari.kalkisGecikmeDk"
-            :aria-describedby="alanHatalari.kalkisGecikmeDk ? 'sefer-kalkis-hata' : undefined"
-          />
-          <p v-if="alanHatalari.kalkisGecikmeDk" id="sefer-kalkis-hata" class="alan-hata">
-            {{ alanHatalari.kalkisGecikmeDk }}
-          </p>
-        </div>
-        <div class="alan">
-          <label for="sefer-varis-gecikme">Varış gecikmesi (dk, boşsa kalkışla aynı)</label>
-          <input
-            id="sefer-varis-gecikme"
-            v-model="varis"
-            type="number"
-            min="0"
-            :max="EN_COK_DK"
-            step="1"
-            :aria-invalid="!!alanHatalari.varisGecikmeDk"
-            :aria-describedby="alanHatalari.varisGecikmeDk ? 'sefer-varis-hata' : undefined"
-          />
-          <p v-if="alanHatalari.varisGecikmeDk" id="sefer-varis-hata" class="alan-hata">
-            {{ alanHatalari.varisGecikmeDk }}
-          </p>
-        </div>
-      </template>
-
-      <div v-if="sonrakiVar" class="alan alan-onay">
-        <label for="sefer-devam">
-          <input id="sefer-devam" v-model="devam" type="checkbox" />
-          {{
-            iptalMi
-              ? 'Bu ve sonraki parçaları da iptal et'
-              : 'Sonraki parçalara da yansıt (yalnız artırır)'
-          }}
-        </label>
-      </div>
-
+    <template v-if="!iptalMi">
       <div class="alan">
-        <label for="sefer-neden">Neden</label>
-        <select
-          id="sefer-neden"
-          v-model="neden"
+        <label for="sefer-kalkis-gecikme">Kalkış gecikmesi (dk, planlanana göre toplam)</label>
+        <input
+          id="sefer-kalkis-gecikme"
+          v-model="kalkis"
+          type="number"
+          min="0"
+          :max="EN_COK_DK"
+          step="1"
           required
-          :aria-invalid="!!alanHatalari.neden"
-          :aria-describedby="alanHatalari.neden ? 'sefer-neden-hata' : undefined"
-        >
-          <option value="">Seçin…</option>
-          <option v-for="[k, etiket] in nedenler" :key="k" :value="k">{{ etiket }}</option>
-        </select>
-        <p v-if="alanHatalari.neden" id="sefer-neden-hata" class="alan-hata">
-          {{ alanHatalari.neden }}
-        </p>
+          :aria-invalid="!!alanHatalari.kalkisGecikmeDk"
+          :aria-describedby="alanHatalari.kalkisGecikmeDk ? 'sefer-kalkis-hata' : undefined"
+        />
+        <AlanHatasi id="sefer-kalkis-hata" :metin="alanHatalari.kalkisGecikmeDk" />
       </div>
-      <div v-if="neden === 'DIGER'" class="alan">
-        <label for="sefer-neden-notu">Neden notu (zorunlu)</label>
-        <textarea
-          id="sefer-neden-notu"
-          v-model="nedenNotu"
-          required
-          :aria-invalid="!!alanHatalari.nedenNotu"
-          :aria-describedby="alanHatalari.nedenNotu ? 'sefer-neden-notu-hata' : undefined"
-        ></textarea>
-        <p v-if="alanHatalari.nedenNotu" id="sefer-neden-notu-hata" class="alan-hata">
-          {{ alanHatalari.nedenNotu }}
-        </p>
+      <div class="alan">
+        <label for="sefer-varis-gecikme">Varış gecikmesi (dk, boşsa kalkışla aynı)</label>
+        <input
+          id="sefer-varis-gecikme"
+          v-model="varis"
+          type="number"
+          min="0"
+          :max="EN_COK_DK"
+          step="1"
+          :aria-invalid="!!alanHatalari.varisGecikmeDk"
+          :aria-describedby="alanHatalari.varisGecikmeDk ? 'sefer-varis-hata' : undefined"
+        />
+        <AlanHatasi id="sefer-varis-hata" :metin="alanHatalari.varisGecikmeDk" />
       </div>
+    </template>
 
-      <div role="alert">
-        <p v-if="genelHata" class="hata-mesaji">{{ genelHata }}</p>
-      </div>
+    <div v-if="sonrakiVar" class="alan alan-onay">
+      <label for="sefer-devam">
+        <input id="sefer-devam" v-model="devam" type="checkbox" />
+        {{
+          iptalMi
+            ? 'Bu ve sonraki parçaları da iptal et'
+            : 'Sonraki parçalara da yansıt (yalnız artırır)'
+        }}
+      </label>
+    </div>
 
-      <div class="eylemler">
-        <button
-          type="submit"
-          class="btn"
-          :class="iptalMi ? 'btn-tehlike' : 'btn-birincil'"
-          :disabled="!gecerli || mesgul"
-        >
-          {{ iptalMi ? 'Seferi iptal et' : 'Kaydet' }}
-        </button>
-        <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
+    <div class="alan">
+      <label for="sefer-neden">Neden</label>
+      <select
+        id="sefer-neden"
+        v-model="neden"
+        required
+        :aria-invalid="!!alanHatalari.neden"
+        :aria-describedby="alanHatalari.neden ? 'sefer-neden-hata' : undefined"
+      >
+        <option value="">Seçin…</option>
+        <option v-for="[k, etiket] in nedenler" :key="k" :value="k">{{ etiket }}</option>
+      </select>
+      <AlanHatasi id="sefer-neden-hata" :metin="alanHatalari.neden" />
+    </div>
+    <div v-if="neden === 'DIGER'" class="alan">
+      <label for="sefer-neden-notu">Neden notu (zorunlu)</label>
+      <textarea
+        id="sefer-neden-notu"
+        v-model="nedenNotu"
+        required
+        :aria-invalid="!!alanHatalari.nedenNotu"
+        :aria-describedby="alanHatalari.nedenNotu ? 'sefer-neden-notu-hata' : undefined"
+      ></textarea>
+      <AlanHatasi id="sefer-neden-notu-hata" :metin="alanHatalari.nedenNotu" />
+    </div>
+
+    <div role="alert">
+      <div v-if="genelHata" class="bildirim bildirim-hata">
+        <p>{{ genelHata }}</p>
       </div>
-    </form>
-  </dialog>
+    </div>
+
+    <template v-if="nedenMetni" #neden>{{ nedenMetni }}</template>
+    <template #eylemler>
+      <button
+        type="submit"
+        class="btn"
+        :class="iptalMi ? 'btn-tehlike' : 'btn-birincil'"
+        :disabled="!gecerli || mesgul"
+      >
+        {{ iptalMi ? 'Seferi iptal et' : 'Kaydet' }}
+      </button>
+      <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
+    </template>
+  </Diyalog>
 </template>

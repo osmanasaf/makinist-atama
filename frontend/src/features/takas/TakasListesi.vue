@@ -1,11 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import type { Ton } from '@/bilesenler/durum'
 import { NEDEN_ETIKETLERI } from '@/features/atama/atamaApi'
+import { odakYedegi } from '@/lib/odak'
 import { zamanBicimle } from '@/lib/tarih'
 import { takasApi, type TakasListe, type TakasSatiri } from './takasApi'
 import TakasOnayDialog from './TakasOnayDialog.vue'
-import { TAKAS_DURUM_ETIKETLERI, TAKAS_TUR_ETIKETLERI } from './takasTipleri'
+import { TAKAS_DURUM_ETIKETLERI, TAKAS_TUR_ETIKETLERI, type TakasDurumu } from './takasTipleri'
+
+/** Rozet tonu: onay bekleyen uyarı, kapanan olumlu/olumsuz ayrı; anlam yine simge + metinle taşınır. */
+const DURUM_TONLARI: Record<TakasDurumu, Ton> = {
+  KARSI_ONAY_BEKLIYOR: 'bilgi',
+  ATAMACI_ONAYI_BEKLIYOR: 'uyari',
+  ONAYLANDI: 'basari',
+  REDDEDILDI: 'engel',
+  IPTAL: 'notr',
+  SURESI_DOLDU: 'notr',
+  BAYAT: 'notr',
+}
 
 /** Atamacı: açık ve son 7 günde kapanan takas / bırakma talepleri. Onay bekleyenler üstte vurgulanır; ihlal ayrıntısı yalnız onay ekranındadır. */
 const veri = ref<TakasListe | null>(null)
@@ -39,16 +55,18 @@ const siraliTalepler = computed(() =>
 const taraf = (s: TakasSatiri) =>
   s.tur === 'TAKAS' ? `${s.kaynakSicil} ⇄ ${s.hedefSicil}` : `${s.kaynakSicil} bırakıyor`
 
-function tamam(mesaj: string) {
+async function tamam(mesaj: string) {
   acik.value = null
   bilgi.value = mesaj
-  void yukle()
+  await yukle()
+  await nextTick()
+  odakYedegi() // işlenen talep satırı listeden düşmüş olabilir (QA YENİ-1)
 }
 </script>
 
 <template>
   <section>
-    <h1>Takas talepleri</h1>
+    <SayfaBasligi baslik="Takas talepleri" />
     <p class="soluk">
       Karşılıklı takasta önce karşı personel kabul eder; kurallar onay anında iki yönlü yeniden
       denetlenir. Bırakma talebi onaylanırsa yerine biri atanır ya da görev boş kalır.
@@ -56,16 +74,21 @@ function tamam(mesaj: string) {
     <div role="status">
       <p v-if="bilgi" class="bildirim bildirim-bilgi">{{ bilgi }}</p>
     </div>
-    <p v-if="yukleniyor" role="status">Yükleniyor…</p>
-    <div v-else-if="hata" class="bildirim bildirim-hata" role="alert">
-      <p>{{ hata }}</p>
-      <button type="button" class="btn" @click="yukle">Yeniden dene</button>
-    </div>
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Yükleniyor…" />
+    <VeriDurumu v-else-if="hata" durum="hata" :metin="hata">
+      <template #eylem>
+        <button type="button" class="btn" @click="yukle">Yeniden dene</button>
+      </template>
+    </VeriDurumu>
     <template v-else-if="veri">
       <p data-test="takas-bekleyen">
         Onay bekleyen: <strong>{{ veri.bekleyen }}</strong>
       </p>
-      <p v-if="veri.talepler.length === 0" class="soluk">Takas ya da bırakma talebi yok.</p>
+      <VeriDurumu
+        v-if="veri.talepler.length === 0"
+        durum="bos"
+        metin="Takas ya da bırakma talebi yok."
+      />
       <div v-else class="tablo-kap">
         <table class="tablo" aria-label="Takas talepleri">
           <thead>
@@ -99,8 +122,11 @@ function tamam(mesaj: string) {
                 >
               </td>
               <td>
-                <span aria-hidden="true">{{ TAKAS_DURUM_ETIKETLERI[s.durum].simge }}</span>
-                {{ TAKAS_DURUM_ETIKETLERI[s.durum].ad }}
+                <Rozet
+                  :ton="DURUM_TONLARI[s.durum]"
+                  :simge="TAKAS_DURUM_ETIKETLERI[s.durum].simge"
+                  :metin="TAKAS_DURUM_ETIKETLERI[s.durum].ad"
+                />
               </td>
               <td>{{ zamanBicimle(s.olusturma) }}</td>
               <td>

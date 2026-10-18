@@ -162,4 +162,62 @@ describe('GarSureleri (İ-2, MK-109)', () => {
     expect(tanimApi.intikalSuresiSil).toHaveBeenCalledWith(1, 2)
     expect(w.text()).toContain('Süre silindi.')
   })
+
+  it('süre sütunu sağa hizalı + tabular rakamlı (sayısal), tablo kendi kabında kayar', async () => {
+    girisYap('ATAMACI')
+    const w = await kur()
+    expect(w.get('thead th.sayisal').text()).toBe('Süre')
+    expect(w.get('[data-test="sure-satiri"] td.sayisal').text()).toBe('90 dk')
+    expect(w.get('.tablo-kap').classes()).toContain('sure-kap') // sabit başlık kabı
+  })
+
+  it('formda etiketler, zorunlu işareti ve alan altı hata: süre aralığı ve aynı gar aria ile bağlı', async () => {
+    girisYap('YONETICI')
+    const w = await kur()
+    expect(w.findAll('.alan-zorunlu')).toHaveLength(3)
+    expect(w.findAll('[data-test="sure-formu"] label').map((l) => l.text())).toEqual([
+      'Birinci gar',
+      'İkinci gar',
+      'Süre (dk)',
+    ])
+    expect(w.find('#sure-dk-hata').exists()).toBe(false) // boş form hata göstermez
+    await w.get('#sure-dk').setValue('1441')
+    expect(w.get('#sure-dk').attributes('aria-invalid')).toBe('true')
+    expect(w.get('#sure-dk').attributes('aria-describedby')).toBe('sure-dk-yardim sure-dk-hata')
+    expect(w.get('#sure-dk-hata').text()).toBe('Süre 1 ile 1440 dakika arasında olmalı.')
+    await w.get('#sure-dk').setValue('60')
+    expect(w.find('#sure-dk-hata').exists()).toBe(false)
+    await w.get('#sure-gar-a').setValue('3')
+    await w.get('#sure-gar-b').setValue('3')
+    expect(w.get('#sure-gar-b').attributes('aria-invalid')).toBe('true')
+    expect(w.get('#sure-gar-b').attributes('aria-describedby')).toBe('sure-gar-hata')
+  })
+
+  it('Düzenle süre alanına odak verir ve satırı işaretler; kayıttan sonra odak ilk alana döner', async () => {
+    girisYap('YONETICI')
+    vi.mocked(tanimApi.intikalSuresiYaz).mockResolvedValue(sure({ dakika: 120 }))
+    const w = mount(GarSureleri, { attachTo: document.body })
+    await flushPromises()
+    await w.get('[aria-label="Ankara – Eskişehir süresini düzenle"]').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(w.get('#sure-dk').element)
+    expect(w.get('[data-test="sure-satiri"]').classes()).toContain('duzenlenen')
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(document.activeElement).toBe(w.get('#sure-gar-a').element)
+    w.unmount()
+  })
+
+  it('ilk yüklemede durum bildirimi görünür, sonra kalkar', async () => {
+    girisYap('ATAMACI')
+    let bitir: (l: GarIntikalSuresi[]) => void = () => {}
+    vi.mocked(tanimApi.intikalSureleri).mockReturnValue(new Promise((c) => (bitir = c)))
+    const w = mount(GarSureleri)
+    await flushPromises()
+    expect(w.get('[role="status"]').text()).toContain('yükleniyor')
+    bitir([sure()])
+    await flushPromises()
+    expect(w.find('[role="status"]').exists()).toBe(false)
+    expect(w.find('[data-test="sure-satiri"]').exists()).toBe(true)
+  })
 })

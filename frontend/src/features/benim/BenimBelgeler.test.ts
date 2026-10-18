@@ -43,14 +43,22 @@ describe('BenimBelgeler', () => {
     })
     const w = await kur()
     const satirlar = w.findAll('li').map((li) => li.text())
-    expect(satirlar[0]).toContain('⛔ Süresi doldu')
+    expect(satirlar[0]).toContain('Süresi doldu')
     expect(satirlar[0]).toContain('11.10.2026 · 1 gün geçti')
-    expect(satirlar[1]).toContain('⚠ Yaklaşıyor')
+    expect(satirlar[1]).toContain('Yaklaşıyor')
     expect(satirlar[1]).toContain('20 gün kaldı')
     expect(satirlar[2]).toContain('Bugün son gün')
-    expect(satirlar[3]).toContain('✓ Geçerli')
-    expect(satirlar[4]).toContain('— Girilmemiş')
+    expect(satirlar[3]).toContain('Geçerli')
+    expect(satirlar[4]).toContain('Girilmemiş')
     expect(w.findAll('li')[0]!.classes()).toContain('doldu')
+    // emoji yerine simge: ton + simge + metin (OK-32 K2)
+    expect(w.findAll('li').map((li) => li.find('svg')?.attributes('data-simge'))).toEqual([
+      'engel',
+      'uyari',
+      'uyari',
+      'basari',
+      'daire',
+    ])
   })
 
   it('boş ve hata durumları', async () => {

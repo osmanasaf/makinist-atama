@@ -78,6 +78,9 @@ describe('KonaklamaSayfasi (F2b)', () => {
     expect(satirlar[0]!.text()).toContain('18 s 30 dk')
     expect(satirlar[0]!.find('[data-test="kayitli"]').exists()).toBe(false)
     expect(satirlar[1]!.find('[data-test="kayitli"]').exists()).toBe(true)
+    // kayıtlı göstergesi simge + metin (emoji yerine svg simgesi)
+    expect(satirlar[1]!.get('[data-test="kayitli"]').text()).toBe('Kayıtlı')
+    expect(satirlar[1]!.get('[data-test="kayitli"] svg').attributes('data-simge')).toBe('basari')
     expect(satirlar[1]!.findAll('button')).toHaveLength(0)
 
     await satirlar[0]!.get('button').trigger('click')
@@ -86,6 +89,13 @@ describe('KonaklamaSayfasi (F2b)', () => {
     expect((w.get('#kon-giris').element as HTMLInputElement).value).toBe('2026-10-14T11:30')
     expect((w.get('#kon-cikis').element as HTMLInputElement).value).toBe('2026-10-15T06:00')
     expect(konaklamaApi.ekle).not.toHaveBeenCalled() // öneri yazılmaz
+  })
+
+  it('QA BUG-5 (WCAG 2.5.3): öneri düğmesinin görünür metni erişilebilir adın parçasıdır ve yanıltıcı "Kaydet" demez', async () => {
+    const w = await kur()
+    const dugme = w.findAll('[data-test="oneri"]')[0]!.get('button')
+    expect(dugme.text()).toBe('Forma al')
+    expect(dugme.attributes('aria-label')!.toLowerCase()).toContain(dugme.text().toLowerCase())
   })
 
   it('kaydet: istanbul ofsetli zamanlarla POST eder, sonra listeyi yeniler', async () => {
@@ -145,11 +155,28 @@ describe('KonaklamaSayfasi (F2b)', () => {
     await flushPromises()
     expect(konaklamaApi.ekle).not.toHaveBeenCalled()
     expect(w.text()).toContain('Çıkış, girişten sonra olmalı.')
+    const cikis = w.get('#kon-cikis')
+    expect(cikis.attributes('aria-invalid')).toBe('true')
+    expect(cikis.attributes('aria-describedby')).toBe('kon-cikis-hata')
+    expect(w.get('#kon-cikis-hata').text()).toBe('Çıkış, girişten sonra olmalı.')
 
     await w.get('#kon-cikis').setValue('2026-10-15T06:00')
     await w.get('form.kon-form').trigger('submit')
     await flushPromises()
     expect(w.text()).toContain('kesişen başka bir konaklama kaydı var')
+  })
+
+  it('zorunlu alan işareti; boş gönderimde hatalar alanın altında ve odak ilk hatalı alanda', async () => {
+    const w = mount(KonaklamaSayfasi, { attachTo: document.body })
+    await flushPromises()
+    expect(w.findAll('form.kon-form .alan-zorunlu')).toHaveLength(4)
+    await w.get('form.kon-form').trigger('submit')
+    await flushPromises()
+    expect(konaklamaApi.ekle).not.toHaveBeenCalled()
+    expect(w.get('#kon-makinist').attributes('aria-invalid')).toBe('true')
+    expect(w.get('#kon-makinist-hata').text()).toBe('Makinist seçin.')
+    expect(document.activeElement).toBe(w.get('#kon-makinist').element)
+    w.unmount()
   })
 
   it('düzelt: sürümle PUT eder; sil: onaydan sonra DELETE', async () => {

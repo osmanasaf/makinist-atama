@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { tarihBicimle, zamanBicimle } from '@/lib/tarih'
+import Simge from '@/bilesenler/Simge.vue'
 import {
   NEDEN_ETIKETLERI,
   ROL_ETIKETLERI,
@@ -8,7 +9,7 @@ import {
 } from '@/features/atama/atamaApi'
 import type { DegisiklikYaniti } from './degisiklikApi'
 
-/** Denetim raporunun bölümleri (başlık + sayı + tablo). `yazdir`: renksiz yazdırma tablosu; anlam metinde ("⚠ Uyarılı: ..."). */
+/** Denetim raporunun bölümleri (başlık + sayı + tablo). `yazdir`: renksiz yazdırma tablosu; anlam metinde (simge + "Uyarılı: ..."). */
 defineProps<{ rapor: DegisiklikYaniti; yazdir?: boolean }>()
 
 /** Sunucudaki kodlar ham gösterilmez (UX-12): "GECIKME" -> "Gecikme", "ASIL:D058" -> "D058 (asıl)". Tanınmayan metin olduğu gibi kalır. */
@@ -60,7 +61,7 @@ function degerMetni(v: string | null): string {
               {{ nedenMetni(s.neden) }}
               <template v-if="s.nedenNotu"> ({{ s.nedenNotu }})</template>
               <div v-if="s.uyarili" class="uyarili">
-                <span aria-hidden="true">⚠</span> Uyarılı: {{ s.uyariGerekcesi }}
+                <Simge ad="uyari" boyut="1em" /> Uyarılı: {{ s.uyariGerekcesi }}
                 <ul v-if="s.uyarilar.length > 0" class="uyaranlar">
                   <li v-for="u in s.uyarilar" :key="u">Uyaran kural: {{ u }}</li>
                 </ul>
@@ -75,14 +76,17 @@ function degerMetni(v: string | null): string {
 
 <style scoped>
 .bolum {
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--aralik-5);
 }
 .uyarili {
-  font-weight: 600;
+  font-weight: var(--yazi-agirlik-orta);
+}
+.uyarili .simge {
+  vertical-align: -0.15em;
 }
 .uyaranlar {
   margin: 0;
-  padding-left: 1.25rem;
-  font-weight: 400;
+  padding-left: var(--aralik-6);
+  font-weight: var(--yazi-agirlik-normal);
 }
 </style>

@@ -111,6 +111,31 @@ describe('BenimGorevler: gördüm', () => {
     expect(w.get('article button').text()).toBe('Gördüm')
   })
 
+  it('durum rozetleri ton + simge + metin taşır; kart durum sınıfı alır (emoji yok)', async () => {
+    vi.mocked(benimApi.gorevler).mockResolvedValue(
+      yanit([
+        gorev({ atamaId: 1 }),
+        gorev({ atamaId: 2, gordu: 'DEGISTI', eskiOzet: 'eski', ozet: 'yeni' }),
+        gorev({ atamaId: 3, gordu: 'GORULDU', gorduZamani: '2026-10-12T06:14:00Z' }),
+      ]),
+    )
+    const w = await kur()
+    const kartlar = w.findAll('article')
+    expect(kartlar.map((k) => k.classes().filter((c) => ['yeni', 'degisti'].includes(c)))).toEqual([
+      ['yeni'],
+      ['degisti'],
+      [],
+    ])
+    const yeni = kartlar[0]!.get('.rozet-bilgi')
+    expect(yeni.text()).toBe('YENİ')
+    expect(yeni.get('svg').attributes('data-simge')).toBe('bilgi')
+    const degisti = kartlar[1]!.get('.rozet-uyari')
+    expect(degisti.text()).toContain('DEĞİŞTİ')
+    expect(degisti.get('svg').attributes('data-simge')).toBe('uyari')
+    expect(kartlar[2]!.get('.rozet-basari svg').attributes('data-simge')).toBe('basari')
+    expect(w.text()).not.toMatch(/[🀀-🿿✅✓⛔⚠]/u)
+  })
+
   it('çift tıklama tek istek gönderir (düğme işlem sürerken kapalı)', async () => {
     vi.mocked(benimApi.gorevler).mockResolvedValue(yanit([gorev({})]))
     let bitir!: () => void
@@ -236,5 +261,23 @@ describe('BenimGorevler: yoklama', () => {
     await vi.advanceTimersByTimeAsync(YOKLAMA_MS)
     expect(w.findAll('article')).toHaveLength(1)
     expect(w.find('[role=alert]').exists()).toBe(false)
+  })
+
+  it('QA BUG-8: Gördüm sonrası odak kartta kalır (düğme kalksa da BODY yerine düşmez) ve "Gördünüz" duyurulur', async () => {
+    vi.mocked(benimApi.gorevler).mockResolvedValueOnce(yanit([gorev({})]))
+    const w = mount(BenimGorevler, { attachTo: document.body })
+    kurulan.push(w)
+    await flushPromises()
+    vi.mocked(benimApi.gordum).mockResolvedValue(gorev({}))
+    vi.mocked(benimApi.gorevler).mockResolvedValue(
+      yanit([gorev({ gordu: 'GORULDU', gorduZamani: '2026-10-12T06:14:00Z' })]),
+    )
+    const dugme = w.get('article button').element as HTMLElement
+    dugme.focus()
+    await w.get('article button').trigger('click')
+    await flushPromises()
+    expect(w.find('article button').exists()).toBe(false) // düğme kalktı
+    expect(document.activeElement).toBe(w.get('article').element)
+    expect(rozetMetni.value).toMatch(/^Gördünüz: T1. 1 görev listelendi/)
   })
 })

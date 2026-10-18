@@ -5,7 +5,7 @@ const routes: RouteRecordRaw[] = [
     path: '/belgeler',
     name: 'belgeler',
     component: () => import('./BelgePanosu.vue'),
-    meta: { menu: { ad: 'Belgeler', sira: 28 } },
+    meta: { menu: { ad: 'Belgeler', sira: 28, grup: 'Personel', simge: 'belge' } },
   },
 ]
 

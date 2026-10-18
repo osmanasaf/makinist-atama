@@ -3,6 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import type { Tarih } from '@/api/tipler'
 import { saatBicimle } from '@/lib/tarih'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import NobetNotu from './NobetNotu.vue'
 import { atamaApi, type UygunSefer } from './atamaApi'
 
@@ -18,9 +21,7 @@ const nobetMetinleri = computed(() =>
   (seferler.value ?? []).flatMap((s) => s.uyarilar.map((u) => u.metin)),
 )
 
-const dialog = ref<HTMLDialogElement | null>(null)
 onMounted(async () => {
-  dialog.value?.showModal()
   try {
     seferler.value = await atamaApi.uygunSeferler(props.makinistId, props.gun)
   } catch (e) {
@@ -32,13 +33,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <dialog
-    ref="dialog"
-    class="genis-dialog"
-    aria-labelledby="uygun-dlg-baslik"
-    @cancel.prevent="emit('kapat')"
-  >
-    <h2 id="uygun-dlg-baslik">Uygun seferler</h2>
+  <Diyalog baslik="Uygun seferler" boyut="genis" @kapat="emit('kapat')">
     <p>
       <strong>{{ makinistAdi }}</strong> bu gün şu makinistsiz seferlere atanabilir.
     </p>
@@ -46,12 +41,15 @@ onMounted(async () => {
       İptal seferdeki eski atama olduğu gibi kalır; gerekirse masadaki "Kaldır" düğmesiyle kaldırın.
     </p>
 
-    <p v-if="yukleniyor" class="soluk">Seferler yükleniyor…</p>
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
-    <p v-if="seferler && seferler.length === 0" class="bos-durum">
-      Bu gün için bu makinistin atanabileceği sefer yok: seferlerin tümü dolu ya da kurallar
-      (dinlenme, izin, yetki vb.) uygun görmüyor.
-    </p>
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Seferler yükleniyor…" />
+    <div role="alert">
+      <p v-if="hata" class="bildirim bildirim-hata">{{ hata }}</p>
+    </div>
+    <VeriDurumu
+      v-if="seferler && seferler.length === 0"
+      durum="bos"
+      metin="Bu gün için bu makinistin atanabileceği sefer yok: seferlerin tümü dolu ya da kurallar (dinlenme, izin, yetki vb.) uygun görmüyor."
+    />
 
     <div v-if="seferler && seferler.length > 0" class="tablo-kap">
       <table class="tablo" aria-label="Uygun seferler">
@@ -72,7 +70,7 @@ onMounted(async () => {
             <td>
               <ul v-if="s.uyarilar.length > 0" class="ihlal-listesi">
                 <li v-for="(u, i) in s.uyarilar" :key="i">
-                  <span aria-hidden="true">⚠</span> {{ u.metin }}
+                  <Simge ad="uyari" boyut="1em" /> {{ u.metin }}
                 </li>
               </ul>
             </td>
@@ -92,16 +90,13 @@ onMounted(async () => {
     </div>
     <NobetNotu :metinler="nobetMetinleri" />
 
-    <div class="eylemler">
+    <template #eylemler>
       <button type="button" class="btn" @click="emit('kapat')">Kapat</button>
-    </div>
-  </dialog>
+    </template>
+  </Diyalog>
 </template>
 
 <style scoped>
-.genis-dialog {
-  min-width: min(760px, 94vw);
-}
 .ihlal-listesi {
   margin: 0;
   padding-left: 0;

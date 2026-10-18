@@ -5,7 +5,7 @@ const routes: RouteRecordRaw[] = [
     path: '/seferler',
     name: 'seferler',
     component: () => import('./SeferListesi.vue'),
-    meta: { menu: { ad: 'Seferler', sira: 20 } },
+    meta: { menu: { ad: 'Seferler', sira: 20, grup: 'Atama', simge: 'ray' } },
   },
   {
     path: '/seferler/yukle',

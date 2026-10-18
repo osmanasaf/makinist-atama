@@ -56,7 +56,7 @@ describe('OtomatikAtamaDialog', () => {
     expect(dugme(w, 'Uygula').attributes('disabled')).toBeDefined()
   })
 
-  it('Önizle: uygula=false ile çağırır; özet, atanacaklar ve boş kalacaklar (◌ BOŞ, neden, örnekler) gösterilir', async () => {
+  it('Önizle: uygula=false ile çağırır; özet, atanacaklar ve boş kalacaklar (BOŞ rozeti, neden, örnekler) gösterilir', async () => {
     vi.mocked(atamaApi.otomatik).mockResolvedValue(sonuc(false))
     const w = kur()
     await dugme(w, 'Önizle').trigger('click')
@@ -78,7 +78,9 @@ describe('OtomatikAtamaDialog', () => {
 
     const bos = w.findAll('table[aria-label="Boş kalacak seferler"] tbody tr')
     expect(bos).toHaveLength(1)
-    expect(bos[0]!.text()).toContain('◌ BOŞ')
+    expect(bos[0]!.text()).toContain('BOŞ')
+    expect(bos[0]!.find('.rozet-uyari').exists()).toBe(true)
+    expect(bos[0]!.find('svg[data-simge="daire"]').exists()).toBe(true)
     expect(bos[0]!.get('.bos-neden').text()).toBe('0/3 uygun: hat yetkisi 1, izin 1, dinlenme 1')
     expect(bos[0]!.text()).toContain('Ali Veli: Dinlenme 9 s < 11 s')
 

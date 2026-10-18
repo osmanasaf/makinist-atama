@@ -65,8 +65,45 @@ describe('BelgePanosu', () => {
 
   it('özet sayaçlarını enKotu durumuna göre gösterir', async () => {
     const w = await kur()
-    const sayaclar = w.findAll('.sayaclar li').map((li) => li.text())
-    expect(sayaclar).toEqual(['✖ Dolmuş: 1', '⚠ Yaklaşan: 1', '✔ Geçerli: 1'])
+    const sayaclar = w.findAll('.sayaclar li')
+    expect(sayaclar.map((li) => li.text())).toEqual(['Dolmuş: 1', 'Yaklaşan: 1', 'Geçerli: 1'])
+    // simge anlamı: dolmuş = engel, yaklaşan = uyarı, geçerli = başarı (renk tek başına anlam taşımaz)
+    expect(sayaclar.map((li) => li.get('svg').attributes('data-simge'))).toEqual([
+      'engel',
+      'uyari',
+      'basari',
+    ])
+  })
+
+  it('sorunlu belge rozeti ton + simge + metin taşır; hepsi geçerliyse "Tüm belgeler geçerli" rozeti', async () => {
+    const w = await kur()
+    const ilk = satirlar(w)[0]!
+    const rozet = ilk.get('ul.rozetler .rozet')
+    expect(rozet.classes()).toContain('rozet-engel')
+    expect(rozet.get('svg').attributes('data-simge')).toBe('engel')
+    expect(rozet.text()).toContain('Sağlık')
+    const gecerli = satirlar(w)[2]!.get('.rozet')
+    expect(gecerli.classes()).toContain('rozet-basari')
+    expect(gecerli.text()).toBe('Tüm belgeler geçerli')
+  })
+
+  it('süzgeç düğmeleri aria-pressed taşır; yükleme hatası VeriDurumu ile gösterilir', async () => {
+    const w = await kur()
+    const dugmeler = w.findAll('.suzgec button')
+    expect(dugmeler.map((d) => d.attributes('aria-pressed'))).toEqual([
+      'true',
+      'false',
+      'false',
+      'false',
+    ])
+    await dugmeler[1]!.trigger('click')
+    expect(w.findAll('.suzgec button')[1]!.attributes('aria-pressed')).toBe('true')
+    expect(w.findAll('.suzgec button')[0]!.attributes('aria-pressed')).toBe('false')
+
+    vi.mocked(belgeApi.durum).mockRejectedValue(new Error('x'))
+    const h = await kur()
+    expect(h.get('[role="alert"]').text()).toContain('Belge durumu yüklenemedi.')
+    expect(h.text()).not.toContain('Kayıt bulunamadı.')
   })
 
   it('kalan gün metni: "15 gün kaldı" ve "1 gün geçti (DOLDU)"', async () => {

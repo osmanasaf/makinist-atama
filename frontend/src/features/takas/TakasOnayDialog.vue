@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import { computed, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import { NEDEN_ETIKETLERI } from '@/features/atama/atamaApi'
 import NobetNotu from '@/features/atama/NobetNotu.vue'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import Dugme from '@/bilesenler/Dugme.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import { sayiBicimle } from '@/lib/sayi'
 import { takasApi, type TakasDetay } from './takasApi'
 import {
@@ -19,7 +24,6 @@ import {
 const props = defineProps<{ talepId: number }>()
 const emit = defineEmits<{ kapat: []; tamam: [mesaj: string] }>()
 
-const dialog = ref<HTMLDialogElement | null>(null)
 const detay = ref<TakasDetay | null>(null)
 const yukleniyor = ref(true)
 const yuklemeHatasi = ref('')
@@ -44,7 +48,6 @@ async function yukle() {
   }
 }
 onMounted(() => {
-  dialog.value?.showModal()
   void yukle()
 })
 
@@ -65,6 +68,12 @@ const uyariVar = computed(() =>
 const gorunenIhlaller = computed(() =>
   reddedilenIhlaller.value.length > 0 ? reddedilenIhlaller.value : (detay.value?.ihlaller ?? []),
 )
+/** Kural kontrolü grubunda gösterilen ihlaller; sunucunun reddettikleri hata bandında gösterilir (tek yerde). */
+const kontrolIhlalleri = computed(() =>
+  reddedilenIhlaller.value.length > 0 ? [] : (detay.value?.ihlaller ?? []),
+)
+// yükleme hatası ya da onay/red hatası: tek bantta
+const hataMetni = computed(() => genelHata.value || yuklemeHatasi.value)
 const engelVar = computed(() => gorunenIhlaller.value.some((i) => i.ihlal.siddet === 'ENGEL'))
 const nobetMetinleri = computed(() => gorunenIhlaller.value.map((i) => i.ihlal.metin))
 
@@ -76,6 +85,11 @@ function ihlalleriDuzenle(ham: unknown): TakasIhlali[] {
       ? (x as TakasIhlali)
       : { sicil: secilenOneri.value?.sicil ?? '', ihlal: x as TakasIhlali['ihlal'] },
   )
+}
+
+/** × / Esc istek sürerken kapatmaz (diğer diyaloglarla tutarlı; sökülen bileşenden `tamam` yayılmaz). */
+function vazgec() {
+  if (!mesgul.value) emit('kapat')
 }
 
 async function onayla() {
@@ -128,20 +142,13 @@ async function reddet() {
 </script>
 
 <template>
-  <dialog
-    ref="dialog"
-    class="genis-dialog"
-    aria-labelledby="takas-onay-baslik"
-    @cancel.prevent="emit('kapat')"
-  >
-    <h2 id="takas-onay-baslik">Takas / bırakma talebi</h2>
-    <p v-if="yukleniyor" class="soluk" role="status">Yükleniyor…</p>
-    <p v-if="yuklemeHatasi" class="bildirim bildirim-hata" role="alert">{{ yuklemeHatasi }}</p>
+  <Diyalog baslik="Takas / bırakma talebi" boyut="genis" @kapat="vazgec">
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Yükleniyor…" />
 
     <template v-if="t">
       <p>
         <strong>{{ TAKAS_TUR_ETIKETLERI[t.tur] }}</strong> ·
-        <span aria-hidden="true">{{ TAKAS_DURUM_ETIKETLERI[t.durum].simge }}</span>
+        <Simge :ad="TAKAS_DURUM_ETIKETLERI[t.durum].simge" boyut="1em" />
         {{ TAKAS_DURUM_ETIKETLERI[t.durum].ad }}
       </p>
       <p>{{ t.kaynakSicil }} ({{ t.kaynakAd }}): {{ t.kaynakGorev }}</p>
@@ -155,18 +162,19 @@ async function reddet() {
         Bu talep onaylanamaz: {{ TAKAS_DURUM_ETIKETLERI[t.durum].ad.toLowerCase() }}.
       </p>
 
-      <div v-if="gorunenIhlaller.length > 0" role="group" aria-label="Kural ihlalleri">
+      <div v-if="kontrolIhlalleri.length > 0" role="group" aria-label="Kural ihlalleri">
         <h3>Kural kontrolü</h3>
-        <ul class="ihlal-listesi" :class="{ 'hata-mesaji': reddedilenIhlaller.length > 0 }">
-          <li v-for="(i, n) in gorunenIhlaller" :key="n">
-            <span aria-hidden="true">{{ i.ihlal.siddet === 'ENGEL' ? '⛔' : '⚠' }}</span>
+        <ul class="ihlal-listesi">
+          <li v-for="(i, n) in kontrolIhlalleri" :key="n">
+            <Simge :ad="i.ihlal.siddet === 'ENGEL' ? 'engel' : 'uyari'" boyut="1em" />
             <strong>{{ i.sicil }}</strong
             >: {{ i.ihlal.metin }}
           </li>
         </ul>
-        <p v-if="engelVar" class="soluk">ENGEL varken onaylanamaz; talebi reddedebilirsiniz.</p>
       </div>
-      <p v-else-if="onayAcik && !birakma" class="soluk">İki yönlü kural kontrolünde ihlal yok.</p>
+      <p v-else-if="onayAcik && !birakma && reddedilenIhlaller.length === 0" class="soluk">
+        İki yönlü kural kontrolünde ihlal yok.
+      </p>
       <NobetNotu :metinler="nobetMetinleri" />
 
       <fieldset v-if="birakma && onayAcik" class="takas-secim">
@@ -177,7 +185,7 @@ async function reddet() {
         <label v-for="o in detay?.oneri?.oneriler ?? []" :key="o.makinistId" class="takas-secenek">
           <input v-model="secim" type="radio" name="takas-yeni" :value="String(o.makinistId)" />
           {{ o.sicil }} ({{ o.adSoyad }}) · bu ay {{ sayiBicimle(o.buAySaat) }} saat
-          <span v-if="o.uyarilar.length > 0"> · <span aria-hidden="true">⚠</span> uyarı var</span>
+          <span v-if="o.uyarilar.length > 0"> · <Simge ad="uyari" boyut="1em" /> uyarı var</span>
         </label>
         <label class="takas-secenek">
           <input v-model="secim" type="radio" name="takas-yeni" value="kaldir" />
@@ -193,54 +201,54 @@ async function reddet() {
           :aria-invalid="!!alanHatalari.gerekce"
           :aria-describedby="alanHatalari.gerekce ? 'takas-gerekce-hata' : undefined"
         ></textarea>
-        <p v-if="alanHatalari.gerekce" id="takas-gerekce-hata" class="alan-hata">
-          {{ alanHatalari.gerekce }}
-        </p>
-      </div>
-
-      <div role="alert">
-        <p v-if="genelHata" class="hata-mesaji">{{ genelHata }}</p>
-      </div>
-
-      <div class="eylemler">
-        <button
-          v-if="onayAcik"
-          type="button"
-          class="btn btn-birincil"
-          :disabled="mesgul || (!birakma && engelVar)"
-          @click="onayla"
-        >
-          Onayla
-        </button>
-        <button
-          v-if="ACIK_KAYIT.includes(t.kayitliDurum)"
-          type="button"
-          class="btn btn-tehlike"
-          :disabled="mesgul"
-          @click="reddet"
-        >
-          Reddet
-        </button>
-        <button type="button" class="btn" :disabled="mesgul" @click="emit('kapat')">Kapat</button>
+        <AlanHatasi id="takas-gerekce-hata" :metin="alanHatalari.gerekce" />
       </div>
     </template>
-    <div v-else-if="!yukleniyor" class="eylemler">
-      <button type="button" class="btn" @click="emit('kapat')">Kapat</button>
+
+    <div role="alert">
+      <div v-if="hataMetni || reddedilenIhlaller.length > 0" class="bildirim bildirim-hata">
+        <p v-if="hataMetni">{{ hataMetni }}</p>
+        <ul v-if="reddedilenIhlaller.length > 0" class="ihlal-listesi">
+          <li v-for="(i, n) in reddedilenIhlaller" :key="n">
+            <Simge :ad="i.ihlal.siddet === 'ENGEL' ? 'engel' : 'uyari'" boyut="1em" />
+            <strong>{{ i.sicil }}</strong
+            >: {{ i.ihlal.metin }}
+          </li>
+        </ul>
+      </div>
     </div>
-  </dialog>
+
+    <template #eylemler>
+      <Dugme
+        v-if="onayAcik"
+        varyant="birincil"
+        :disabled="mesgul || (!birakma && engelVar)"
+        @click="onayla"
+      >
+        Onayla
+      </Dugme>
+      <Dugme
+        v-if="t && ACIK_KAYIT.includes(t.kayitliDurum)"
+        varyant="tehlike"
+        :disabled="mesgul"
+        @click="reddet"
+      >
+        Reddet
+      </Dugme>
+      <Dugme v-if="t || !yukleniyor" :disabled="mesgul" @click="vazgec">Kapat</Dugme>
+    </template>
+    <template v-if="engelVar" #neden>ENGEL varken onaylanamaz; talebi reddedebilirsiniz.</template>
+  </Diyalog>
 </template>
 
 <style scoped>
-.genis-dialog {
-  width: min(680px, 94vw);
-}
 .takas-secim {
-  margin: 0.75rem 0;
+  margin: var(--aralik-4) 0;
   border: 1px solid var(--renk-cizgi);
   border-radius: var(--yaricap);
 }
 .takas-secenek {
   display: block;
-  padding: 0.35rem 0;
+  padding: var(--aralik-2) 0;
 }
 </style>

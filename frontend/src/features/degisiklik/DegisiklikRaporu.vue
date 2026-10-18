@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { nextTick, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
 import { bugun, gunKaydir, zamanBicimle } from '@/lib/tarih'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import DegisiklikBolumleri from './DegisiklikBolumleri.vue'
 import {
   degisiklikApi,
@@ -27,17 +30,22 @@ const rapor = ref<DegisiklikYaniti | null>(null)
 /** Görünen raporun süzgeci: form sonradan değişse de Excel/Yazdır bununla çalışır. */
 const uygulanan = ref<DegisiklikSuzgeci | null>(null)
 const hata = ref('')
+const basHata = ref('')
+const bitHata = ref('')
+const form = ref<HTMLFormElement | null>(null)
 const mesgul = ref(false)
 
 async function getir() {
   if (mesgul.value) return
   hata.value = ''
-  if (!bas.value || !bit.value) {
-    hata.value = 'Başlangıç ve bitiş tarihi gerekli.'
-    return
-  }
-  if (bit.value < bas.value) {
-    hata.value = 'Bitiş tarihi başlangıçtan önce olamaz.'
+  basHata.value = ''
+  bitHata.value = ''
+  if (!bas.value) basHata.value = 'Başlangıç tarihi gerekli.'
+  else if (!bit.value) bitHata.value = 'Bitiş tarihi gerekli.'
+  else if (bit.value < bas.value) bitHata.value = 'Bitiş tarihi başlangıçtan önce olamaz.'
+  if (basHata.value || bitHata.value) {
+    await nextTick()
+    form.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
     return
   }
   const suzgec: DegisiklikSuzgeci = {
@@ -77,19 +85,45 @@ async function excelIndir() {
 </script>
 
 <template>
-  <section>
-    <div class="sayfa-baslik">
-      <h1>Denetim raporu</h1>
-    </div>
+  <section class="rapor-sayfa">
+    <SayfaBasligi baslik="Denetim raporu">
+      <template v-if="rapor && uygulanan" #eylemler>
+        <button type="button" class="btn" @click="excelIndir">Excel indir</button>
+        <RouterLink
+          class="btn"
+          :to="{ name: 'yazdir-degisiklik', query: suzgecSorgusu(uygulanan) }"
+          target="_blank"
+          rel="noopener"
+        >
+          Yazdır
+        </RouterLink>
+      </template>
+    </SayfaBasligi>
 
-    <form class="arac-cubugu" @submit.prevent="getir">
-      <div class="alan">
+    <form ref="form" class="arac-cubugu" @submit.prevent="getir">
+      <div class="alan alan-zorunlu">
         <label for="rapor-bas">Başlangıç</label>
-        <input id="rapor-bas" v-model="bas" type="date" required />
+        <input
+          id="rapor-bas"
+          v-model="bas"
+          type="date"
+          required
+          :aria-invalid="basHata ? 'true' : undefined"
+          :aria-describedby="basHata ? 'rapor-bas-hata' : undefined"
+        />
+        <AlanHatasi id="rapor-bas-hata" :metin="basHata" />
       </div>
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="rapor-bit">Bitiş</label>
-        <input id="rapor-bit" v-model="bit" type="date" required />
+        <input
+          id="rapor-bit"
+          v-model="bit"
+          type="date"
+          required
+          :aria-invalid="bitHata ? 'true' : undefined"
+          :aria-describedby="bitHata ? 'rapor-bit-hata' : undefined"
+        />
+        <AlanHatasi id="rapor-bit-hata" :metin="bitHata" />
       </div>
       <div class="alan">
         <label for="rapor-tren">Tren no</label>
@@ -107,7 +141,7 @@ async function excelIndir() {
         </select>
       </div>
       <div class="alan">
-        <label for="rapor-gordum">
+        <label for="rapor-gordum" class="onay">
           <input id="rapor-gordum" v-model="gordumKayitlari" type="checkbox" />
           Yalnız “{{ GORDUM_ETIKETI }}” kayıtları
         </label>
@@ -115,8 +149,16 @@ async function excelIndir() {
       <button type="submit" class="btn btn-birincil" :disabled="mesgul">Raporu getir</button>
     </form>
 
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
-    <p v-if="mesgul" class="soluk">Rapor hazırlanıyor…</p>
+    <VeriDurumu v-if="mesgul" durum="yukleniyor" metin="Rapor hazırlanıyor…" />
+    <VeriDurumu v-else-if="hata && !rapor" durum="hata" :metin="hata" />
+    <p v-else-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
+    <VeriDurumu
+      v-else-if="!rapor"
+      durum="bos"
+      metin="Rapor henüz alınmadı."
+      ayrinti="Tarih aralığını ve süzgeçleri seçip Raporu getir'e basın."
+      data-test="denetim-bos"
+    />
 
     <template v-if="rapor && uygulanan">
       <div class="kart ozet" data-test="ozet">
@@ -125,17 +167,6 @@ async function excelIndir() {
           <strong>{{ rapor.ureten }}</strong>
         </p>
         <p>{{ suzgecOzeti(rapor.filtre) }} · Kayıt sayısı: {{ rapor.kayitSayisi }}</p>
-        <div class="eylemler">
-          <button type="button" class="btn" @click="excelIndir">Excel indir</button>
-          <RouterLink
-            class="btn"
-            :to="{ name: 'yazdir-degisiklik', query: suzgecSorgusu(uygulanan) }"
-            target="_blank"
-            rel="noopener"
-          >
-            Yazdır
-          </RouterLink>
-        </div>
       </div>
       <DegisiklikBolumleri :rapor="rapor" />
     </template>
@@ -143,10 +174,14 @@ async function excelIndir() {
 </template>
 
 <style scoped>
-.ozet {
-  margin-bottom: 1rem;
-}
 .ozet p {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--aralik-2);
+}
+.onay {
+  display: flex;
+  align-items: center;
+  gap: var(--aralik-3);
+  min-height: var(--kontrol-yukseklik);
+  font-weight: var(--yazi-agirlik-normal);
 }
 </style>

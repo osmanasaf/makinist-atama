@@ -5,7 +5,10 @@ const routes: RouteRecordRaw[] = [
     path: '/rapor/puantaj',
     name: 'rapor-puantaj',
     component: () => import('./PuantajRaporu.vue'),
-    meta: { menu: { ad: 'Puantaj', sira: 48 }, baslik: 'Puantaj ön hesabı' },
+    meta: {
+      menu: { ad: 'Puantaj', sira: 48, grup: 'Raporlar', simge: 'gecikme' },
+      baslik: 'Puantaj ön hesabı',
+    },
   },
   {
     path: '/yazdir/puantaj',

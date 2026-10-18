@@ -86,11 +86,48 @@ describe('MakinistKarti: personel türü (F3b)', () => {
     expect(govde.sonSurus).toBeNull()
   })
 
-  it('kayıtlı kartta tür değiştirilemez (select kapalı); başlık türü söyler', async () => {
+  it('kayıtlı kartta tür değiştirilemez (select kapalı); başlık "Personel: ad", tür rozeti türü söyler', async () => {
     vi.mocked(makinistApi.getir).mockResolvedValue(kondukturDetay)
     const w = await kur('/makinistler/8')
     expect((w.get('#tur').element as HTMLSelectElement).disabled).toBe(true)
     expect((w.get('#tur').element as HTMLSelectElement).value).toBe('KONDUKTOR')
-    expect(w.get('h1').text()).toBe('Kondüktör: Şef Kişi')
+    expect(w.get('h1').text()).toBe('Personel: Şef Kişi')
+    expect(w.get('[data-test="personel-turu"]').text()).toBe('Kondüktör')
+  })
+})
+
+describe('MakinistKarti: izin durumu (H5 erişilebilirlik)', () => {
+  it('izin durumu düz metin değil rozet: ton + simge + metin', async () => {
+    vi.mocked(tanimApi.liste).mockResolvedValue([])
+    vi.mocked(makinistApi.getir).mockResolvedValue({
+      ...kondukturDetay,
+      izinler: [
+        {
+          id: 1,
+          baslangic: '2026-11-01',
+          bitis: '2026-11-03',
+          tur: 'YILLIK',
+          durum: 'ONAY',
+          olusturan: 'a',
+        },
+        {
+          id: 2,
+          baslangic: '2026-12-01',
+          bitis: '2026-12-03',
+          tur: 'RAPOR',
+          durum: 'RED',
+          olusturan: 'a',
+        },
+      ],
+    })
+    const w = await kur('/makinistler/8')
+    const rozetler = w
+      .findAll('table .rozet')
+      .filter((r) => ['Onaylı', 'Reddedildi'].includes(r.text()))
+    expect(rozetler.map((r) => [r.text(), r.classes().find((c) => c !== 'rozet')])).toEqual([
+      ['Onaylı', 'rozet-basari'],
+      ['Reddedildi', 'rozet-engel'],
+    ])
+    expect(rozetler.map((r) => r.get('svg').attributes('data-simge'))).toEqual(['basari', 'iptal'])
   })
 })

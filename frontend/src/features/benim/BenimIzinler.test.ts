@@ -67,6 +67,10 @@ describe('BenimIzinler', () => {
     expect(w.get('[role=status]').text()).toContain('atamacıya iletildi')
     expect(w.get('.benim-liste').text()).toContain('10.05.2030 – 12.05.2030')
     expect(w.get('.benim-liste').text()).toContain('Onay bekliyor')
+    // durum yalnız renkle değil: rozet ton + simge + metin
+    const rozet = w.get('.benim-liste .rozet')
+    expect(rozet.classes()).toContain('rozet-uyari')
+    expect(rozet.get('svg').attributes('data-simge')).toBe('saat')
   })
 
   it('sunucu alan hatası (geçmiş tarih) alanın altında, çakışma genel hata olarak görünür', async () => {

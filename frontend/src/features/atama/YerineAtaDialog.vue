@@ -2,6 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import { sayiBicimle } from '@/lib/sayi'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import NobetNotu from './NobetNotu.vue'
 import { atamaApi, ROL_ETIKETLERI, type AtamaRolu, type Oneri, type OneriSonucu } from './atamaApi'
 
@@ -25,9 +28,7 @@ const nobetMetinleri = computed(() =>
 /** Sunucu gerekçeye "; uyarı: …" ekliyor; uyarılar zaten madde madde gösterildiği için kuyruğu atılır. */
 const gerekceMetni = (o: Oneri) => o.gerekce.split('; uyarı: ')[0]
 
-const dialog = ref<HTMLDialogElement | null>(null)
 onMounted(async () => {
-  dialog.value?.showModal()
   try {
     sonuc.value = await atamaApi.oneri(props.seferId)
   } catch (e) {
@@ -39,20 +40,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <dialog
-    ref="dialog"
-    class="genis-dialog"
-    aria-labelledby="yerine-dlg-baslik"
-    @cancel.prevent="emit('kapat')"
-  >
-    <h2 id="yerine-dlg-baslik">Yerine ata: öneriler</h2>
+  <Diyalog baslik="Yerine ata: öneriler" boyut="genis" @kapat="emit('kapat')">
     <p>{{ seferEtiketi }}</p>
 
-    <p v-if="yukleniyor" class="soluk">Öneriler yükleniyor…</p>
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Öneriler yükleniyor…" />
+    <div role="alert">
+      <p v-if="hata" class="bildirim bildirim-hata">{{ hata }}</p>
+    </div>
     <div role="status">
       <p v-if="sonuc?.uygunAdayYok" class="bildirim bildirim-uyari">
-        <span><span aria-hidden="true">◌</span> {{ sonuc.mesaj ?? 'Uygun aday yok.' }}</span>
+        <span><Simge ad="daire" boyut="1em" /> {{ sonuc.mesaj ?? 'Uygun aday yok.' }}</span>
       </p>
     </div>
 
@@ -79,7 +76,7 @@ onMounted(async () => {
               {{ gerekceMetni(o) }}
               <ul v-if="o.uyarilar.length > 0" class="ihlal-listesi">
                 <li v-for="(u, i) in o.uyarilar" :key="i">
-                  <span aria-hidden="true">⚠</span> {{ u.metin }}
+                  <Simge ad="uyari" boyut="1em" /> {{ u.metin }}
                 </li>
               </ul>
             </td>
@@ -99,19 +96,16 @@ onMounted(async () => {
     </div>
     <NobetNotu :metinler="nobetMetinleri" />
 
-    <div class="eylemler">
+    <template #eylemler>
       <button type="button" class="btn" @click="emit('kapat')">Kapat</button>
-    </div>
-  </dialog>
+    </template>
+  </Diyalog>
 </template>
 
 <style scoped>
-.genis-dialog {
-  min-width: min(760px, 94vw);
-}
 .alt-bilgi {
   display: block;
-  color: var(--renk-soluk);
+  color: var(--renk-metin-soluk);
 }
 .ihlal-listesi {
   margin: 0.25rem 0 0;

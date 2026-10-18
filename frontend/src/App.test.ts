@@ -36,8 +36,9 @@ async function kur(rol: KullaniciDto['rol'], rotalar: RouteRecordRaw[] = routela
   vi.mocked(api.get).mockResolvedValue(kisi(rol))
   const router = yonlendiriciKur(rotalar, createMemoryHistory())
   await router.push('/')
-  const w = mount(App, { global: { plugins: [router] } })
+  const w = mount(App, { global: { plugins: [router] }, attachTo: document.body })
   await flushPromises()
+  acik.push(w)
   return { w, router }
 }
 
@@ -88,6 +89,42 @@ describe('App düzeni', () => {
   it('atamacı Kullanıcılar menüsünü görmez', async () => {
     const { w } = await kur('ATAMACI')
     expect(w.findAll('nav a').map((a) => a.text())).toEqual(['Ana Sayfa'])
+  })
+
+  it('kabuk: içeriğe geç bağlantısı, odaklanabilir main#icerik, tek "Ana menü" gezinti bölgesi', async () => {
+    const { w } = await kur('YONETICI')
+    const atla = w.get('a.atla-baglanti')
+    expect(atla.text()).toBe('İçeriğe geç')
+    expect(w.findAll('nav[aria-label="Ana menü"]')).toHaveLength(1)
+    const main = w.get('main#icerik')
+    expect(main.attributes('tabindex')).toBe('-1')
+    expect(w.findAll('main')).toHaveLength(1)
+    await atla.trigger('click')
+    expect(document.activeElement).toBe(main.element)
+  })
+
+  it('kabuk: tam genişlik rota (meta.tam) sayfa--tam sınıfı alır', async () => {
+    const { w, router } = await kur('ATAMACI', [
+      ...routelar,
+      { path: '/genis', name: 'genis', component: bos, meta: { tam: true } },
+    ])
+    expect(w.get('main').classes()).not.toContain('sayfa--tam')
+    await router.push('/genis')
+    await flushPromises()
+    expect(w.get('main').classes()).toContain('sayfa--tam')
+  })
+
+  it('yazdırma sayfasında kabuk (üst çubuk, menü, atla bağlantısı) çizilmez', async () => {
+    const { w, router } = await kur('ATAMACI', [
+      ...routelar,
+      { path: '/yazdir', name: 'yz', component: bos, meta: { yazdir: true } },
+    ])
+    await router.push('/yazdir')
+    await flushPromises()
+    expect(w.find('header').exists()).toBe(false)
+    expect(w.find('nav').exists()).toBe(false)
+    expect(w.find('a.atla-baglanti').exists()).toBe(false)
+    expect(w.get('main').classes()).not.toContain('sayfa')
   })
 
   it('oturum yokken üst çubuk çizilmez', async () => {

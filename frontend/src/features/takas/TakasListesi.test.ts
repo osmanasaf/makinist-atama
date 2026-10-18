@@ -49,6 +49,7 @@ describe('TakasListesi', () => {
     const h = mount(TakasListesi)
     await flushPromises()
     expect(h.get('[role="alert"]').text()).toContain('Sunucu hatası.')
+    expect(h.get('[role="alert"] button').text()).toBe('Yeniden dene')
   })
 
   it('onay bekleyenler üstte ve vurgulu; sayaç; durum metin + simgeyle', async () => {
@@ -75,6 +76,12 @@ describe('TakasListesi', () => {
     expect(satirlar[0]!.text()).toContain('Atamacı onayı bekleniyor')
     expect(satirlar[0]!.text()).toContain('ates')
     expect(satirlar[0]!.get('button').text()).toBe('İncele')
+    // durum = rozet: ton + simge + metin (onay bekleyen = uyarı/saat, onaylanan = başarı)
+    expect(satirlar[0]!.get('.rozet').classes()).toContain('rozet-uyari')
+    expect(satirlar[0]!.get('.rozet svg').attributes('data-simge')).toBe('saat')
+    expect(satirlar[1]!.get('.rozet').classes()).toContain('rozet-basari')
+    expect(satirlar[1]!.get('.rozet svg').attributes('data-simge')).toBe('basari')
+    expect(w.findAll('h1')).toHaveLength(1)
     expect(satirlar[1]!.text()).toContain('D001 ⇄ D002')
     expect(satirlar[1]!.get('button').text()).toBe('Göster')
   })
@@ -109,5 +116,34 @@ describe('TakasListesi', () => {
     expect(w.find('dialog').exists()).toBe(false)
     expect(w.get('[role="status"] .bildirim').text()).toContain('reddedildi')
     expect(w.get('[data-test="takas-bekleyen"]').text()).toContain('0')
+  })
+
+  it('YENİ-1: Reddet sonrası satır listeden düşse de odak sayfa başlığına gider (BODY değil)', async () => {
+    document.body.innerHTML = '<main id="icerik" tabindex="-1"><div id="kok"></div></main>'
+    vi.mocked(takasApi.liste).mockResolvedValue({
+      bekleyen: 1,
+      talepler: [satir({ id: 2, durum: 'ATAMACI_ONAYI_BEKLIYOR' })],
+    })
+    vi.mocked(takasApi.detay).mockResolvedValue({
+      talep: satir({ id: 2, durum: 'ATAMACI_ONAYI_BEKLIYOR' }),
+      ihlaller: [],
+      oneri: null,
+    })
+    vi.mocked(takasApi.red).mockResolvedValue(satir({ id: 2, durum: 'REDDEDILDI' }))
+    const w = mount(TakasListesi, { attachTo: '#kok' })
+    await flushPromises()
+    const incele = w.get('tbody button')
+    ;(incele.element as HTMLElement).focus()
+    await incele.trigger('click')
+    await flushPromises()
+    vi.mocked(takasApi.liste).mockResolvedValue({ bekleyen: 0, talepler: [] }) // satır düşer
+    await w
+      .findAll('dialog button')
+      .find((b) => b.text() === 'Reddet')!
+      .trigger('click')
+    await flushPromises()
+    expect(incele.element.isConnected).toBe(false)
+    expect(document.activeElement?.tagName).toBe('H1')
+    w.unmount()
   })
 })

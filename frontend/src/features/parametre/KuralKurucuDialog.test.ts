@@ -547,6 +547,24 @@ describe('KuralKurucuDialog', () => {
     expect(w.emitted('kaydedildi')).toHaveLength(1)
   })
 
+  it('QA BUG-3: onay istemi görünür alana kaydırılır ve odağı alır (Kaydet "ölü" görünmez)', async () => {
+    const kaydir = vi.fn()
+    Element.prototype.scrollIntoView = kaydir
+    vi.mocked(ozelKuralApi.dene).mockResolvedValue(sonuc(3))
+    const w = mount(KuralKurucuDialog, { props: { katalog }, attachTo: document.body })
+    await flushPromises()
+    await doldur(w)
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    const onay = w.get('[data-test="kk-onay"]')
+    expect(onay.attributes('role')).toBe('alert')
+    expect(kaydir).toHaveBeenCalledTimes(1)
+    expect(kaydir.mock.contexts[0]).toBe(onay.element)
+    expect(document.activeElement).toBe(onay.element) // klavye kullanıcısı onay kutusuna iner; Tab ile "Evet, kaydet"e geçer
+    w.unmount()
+    delete (Element.prototype as Partial<Element>).scrollIntoView
+  })
+
   it('ENGEL + onay satırında Vazgeç kaydetmez', async () => {
     vi.mocked(ozelKuralApi.dene).mockResolvedValue(sonuc(3))
     const w = kur()
@@ -645,5 +663,50 @@ describe('KuralKurucuDialog', () => {
     await w.get('form').trigger('submit')
     await flushPromises()
     expect(w.get('[role="alert"]').text()).toContain('başka biri tarafından değiştirildi')
+  })
+
+  it('bölümlü düzen: numaralı bölüm başlıkları, zorunlu alan işareti ve açıklaması', async () => {
+    const w = kur()
+    await flushPromises()
+    expect(w.findAll('section.kk-bolum h3').map((h) => h.text())).toEqual([
+      '1. Kuralın tanımı',
+      '2. Kime uygulanır',
+      '3. Şiddet ve geçerlilik',
+      '4. Gerekçe',
+      '5. Özet ve etki',
+    ])
+    for (const id of ['kk-ad', 'kk-esik', 'kk-gerekce']) {
+      expect(w.get(`#${id}`).element.closest('.alan')!.classList.contains('alan-zorunlu')).toBe(
+        true,
+      )
+    }
+    expect(w.text()).toContain('* ile işaretli alanlar zorunludur.')
+    expect(w.find('.alan-zorunlu #kk-kaynak').exists()).toBe(false) // isteğe bağlı alan işaretsiz
+  })
+
+  it('sunucu alan hatasından sonra odak ilk hatalı alana gider; kapsam ve kaynak hataları bağlıdır', async () => {
+    vi.mocked(ozelKuralApi.ekle).mockRejectedValue(
+      new ApiHata(400, 'DOGRULAMA', 'Geçersiz', {
+        alanlar: {
+          esik: 'Eşik 24 saatten büyük olamaz.',
+          kaynak: 'Kaynak çok uzun.',
+          kapsam: 'Kapsam geçersiz.',
+        },
+      }),
+    )
+    const w = mount(KuralKurucuDialog, { props: { katalog }, attachTo: document.body })
+    await flushPromises()
+    await doldur(w)
+    await w.get('input[name="kk-siddet"][value="UYARI"]').setValue()
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(document.activeElement).toBe(w.get('#kk-esik').element)
+    expect(w.get('#kk-kaynak').attributes('aria-invalid')).toBe('true')
+    expect(w.get('#kk-kaynak').attributes('aria-describedby')).toBe('kk-kaynak-hata')
+    expect(w.get('#kk-kaynak-hata').text()).toBe('Kaynak çok uzun.')
+    const kapsam = w.findAll('fieldset').find((f) => f.find('legend').text() === 'Kapsam')!
+    expect(kapsam.attributes('aria-describedby')).toBe('kk-kapsam-hata')
+    expect(w.get('#kk-kapsam-hata').text()).toBe('Kapsam geçersiz.')
+    w.unmount()
   })
 })

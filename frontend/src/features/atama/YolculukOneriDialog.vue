@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import { computed, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import type { Ihlal } from '@/api/tipler'
 import { saatBicimle } from '@/lib/tarih'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import Dugme from '@/bilesenler/Dugme.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import NobetNotu from './NobetNotu.vue'
 import {
   atamaApi,
@@ -72,9 +77,18 @@ const nobetMetinleri = computed(() => [
 
 const saatler = (o: YolculukOnerisi) => `${saatBicimle(o.kalkis)}–${saatBicimle(o.varis)}`
 
-const dialog = ref<HTMLDialogElement | null>(null)
+// Birincil eylem kapalıyken nedeni (Diyalog `neden` slotu)
+const eylemNedeni = computed(() => {
+  if (gecerli.value) return ''
+  if (!seciliOneri.value && !intikalSecili.value) return 'Önce bir yolculuk seçin.'
+  if (gerekceEksik.value) return 'Uyarılar için gerekçe yazın.'
+  if (nedenEksik.value) return 'Değiştirme nedenini seçin.'
+  return 'Neden notunu yazın.'
+})
+// sunucu/kural hatası ya da yükleme hatası: tek bantta
+const hataMetni = computed(() => genelHata.value || yuklemeHatasi.value)
+
 onMounted(async () => {
-  dialog.value?.showModal()
   try {
     const sonuc = await atamaApi.yolculukOner(props.seferId, props.aday.makinistId)
     oneriler.value = sonuc.oneriler
@@ -136,160 +150,164 @@ async function onayla() {
 </script>
 
 <template>
-  <dialog
-    ref="dialog"
-    class="genis-dialog"
-    aria-labelledby="yolculuk-dlg-baslik"
-    @cancel.prevent="vazgec"
-  >
-    <form @submit.prevent="onayla">
-      <h2 id="yolculuk-dlg-baslik">Yolculuk öner</h2>
+  <Diyalog baslik="Yolculuk öner" boyut="genis" :form="true" @kapat="vazgec" @gonder="onayla">
+    <p>
+      {{ seferEtiketi }} · <strong>{{ aday.adSoyad }} ({{ aday.sicil }})</strong>
+    </p>
+    <p class="soluk">
+      Makinistin bu seferin kalkış garına yolcu olarak gidebileceği seferler. Seçince önce yolculuk,
+      sonra bu sefer atanır; biri reddedilirse hiçbiri yazılmaz.
+    </p>
+
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Öneriler yükleniyor…" />
+    <div role="status">
+      <p
+        v-if="!yukleniyor && !yuklemeHatasi && oneriler.length === 0 && !intikalOneri"
+        class="bildirim bildirim-uyari"
+      >
+        <span><Simge ad="daire" boyut="1em" /> Uygun yolculuk bulunamadı.</span>
+      </p>
+    </div>
+
+    <fieldset v-if="oneriler.length > 0 || intikalOneri" class="oneri-listesi">
+      <legend>Yolculuk seferi</legend>
+      <label v-for="o in oneriler" :key="o.seferId" class="oneri">
+        <input v-model="secili" type="radio" name="yolculuk-sefer" :value="o.seferId" />
+        <span>
+          <strong>{{ o.trenNo }}</strong> {{ o.kalkisGar }} → {{ o.varisGar }} {{ saatler(o) }}
+          <small class="alt-bilgi">{{ o.gerekce }}</small>
+          <ul v-if="o.uyarilar.length > 0" class="ihlal-listesi">
+            <li v-for="(u, i) in o.uyarilar" :key="i">
+              <Simge ad="uyari" boyut="1em" /> {{ u.metin }}
+            </li>
+          </ul>
+        </span>
+      </label>
+      <label v-if="intikalOneri" class="oneri" data-test="intikal-oneri">
+        <input v-model="secili" type="radio" name="yolculuk-sefer" value="intikal" />
+        <span>
+          <strong>Servis ile intikal ({{ intikalOneri.sureDk }} dk)</strong>
+          {{ intikalOneri.kalkisGar }} {{ saatBicimle(intikalOneri.kalkis) }} →
+          {{ intikalOneri.varisGar }}
+          {{ saatBicimle(intikalOneri.varis) }}
+          <small class="alt-bilgi">{{ intikalOneri.gerekce }}</small>
+          <ul v-if="intikalOneri.uyarilar.length > 0" class="ihlal-listesi">
+            <li v-for="(u, i) in intikalOneri.uyarilar" :key="i">
+              <Simge ad="uyari" boyut="1em" /> {{ u.metin }}
+            </li>
+          </ul>
+        </span>
+      </label>
+    </fieldset>
+
+    <div v-if="intikalSecili" class="satir-iki">
+      <div class="alan">
+        <label for="yolculuk-arac">Araç</label>
+        <select id="yolculuk-arac" v-model="aracTuru">
+          <option value="SERVIS">Servis</option>
+          <option value="OTOBUS">Otobüs</option>
+          <option value="TAKSI">Taksi</option>
+          <option value="DIGER">Diğer</option>
+        </select>
+      </div>
+      <div class="alan">
+        <label for="yolculuk-intikal-not">Not (isteğe bağlı)</label>
+        <input id="yolculuk-intikal-not" v-model="intikalNotu" type="text" maxlength="200" />
+      </div>
+    </div>
+
+    <template v-if="(seciliOneri || intikalSecili) && uyarilar.length > 0">
+      <div class="alan">
+        <label for="yolculuk-gerekce">Gerekçe (zorunlu)</label>
+        <textarea
+          id="yolculuk-gerekce"
+          v-model="gerekce"
+          required
+          :aria-invalid="!!alanHatalari.gerekce"
+          :aria-describedby="alanHatalari.gerekce ? 'yolculuk-gerekce-hata' : undefined"
+        ></textarea>
+        <AlanHatasi id="yolculuk-gerekce-hata" :metin="alanHatalari.gerekce" />
+      </div>
+    </template>
+
+    <template v-if="(seciliOneri || intikalSecili) && nedenGerekli">
       <p>
-        {{ seferEtiketi }} · <strong>{{ aday.adSoyad }} ({{ aday.sicil }})</strong>
+        Görevden çıkacak: <strong>{{ mevcutAsil!.ad }} ({{ mevcutAsil!.sicil }})</strong>
       </p>
-      <p class="soluk">
-        Makinistin bu seferin kalkış garına yolcu olarak gidebileceği seferler. Seçince önce
-        yolculuk, sonra bu sefer atanır; biri reddedilirse hiçbiri yazılmaz.
-      </p>
-
-      <p v-if="yukleniyor" class="soluk">Öneriler yükleniyor…</p>
-      <p v-if="yuklemeHatasi" class="bildirim bildirim-hata" role="alert">{{ yuklemeHatasi }}</p>
-      <div role="status">
-        <p
-          v-if="!yukleniyor && !yuklemeHatasi && oneriler.length === 0 && !intikalOneri"
-          class="bildirim bildirim-uyari"
+      <div class="alan">
+        <label for="yolculuk-neden">Değiştirme nedeni</label>
+        <select
+          id="yolculuk-neden"
+          v-model="neden"
+          required
+          :aria-invalid="!!alanHatalari.neden"
+          :aria-describedby="alanHatalari.neden ? 'yolculuk-neden-hata' : undefined"
         >
-          <span><span aria-hidden="true">◌</span> Uygun yolculuk bulunamadı.</span>
-        </p>
+          <option value="">Seçin…</option>
+          <option v-for="(etiket, k) in NEDEN_ETIKETLERI" :key="k" :value="k">
+            {{ etiket }}
+          </option>
+        </select>
+        <AlanHatasi id="yolculuk-neden-hata" :metin="alanHatalari.neden" />
       </div>
-
-      <fieldset v-if="oneriler.length > 0 || intikalOneri" class="oneri-listesi">
-        <legend>Yolculuk seferi</legend>
-        <label v-for="o in oneriler" :key="o.seferId" class="oneri">
-          <input v-model="secili" type="radio" name="yolculuk-sefer" :value="o.seferId" />
-          <span>
-            <strong>{{ o.trenNo }}</strong> {{ o.kalkisGar }} → {{ o.varisGar }} {{ saatler(o) }}
-            <small class="alt-bilgi">{{ o.gerekce }}</small>
-            <ul v-if="o.uyarilar.length > 0" class="ihlal-listesi">
-              <li v-for="(u, i) in o.uyarilar" :key="i">
-                <span aria-hidden="true">⚠</span> {{ u.metin }}
-              </li>
-            </ul>
-          </span>
-        </label>
-        <label v-if="intikalOneri" class="oneri" data-test="intikal-oneri">
-          <input v-model="secili" type="radio" name="yolculuk-sefer" value="intikal" />
-          <span>
-            <strong>Servis ile intikal ({{ intikalOneri.sureDk }} dk)</strong>
-            {{ intikalOneri.kalkisGar }} {{ saatBicimle(intikalOneri.kalkis) }} →
-            {{ intikalOneri.varisGar }}
-            {{ saatBicimle(intikalOneri.varis) }}
-            <small class="alt-bilgi">{{ intikalOneri.gerekce }}</small>
-            <ul v-if="intikalOneri.uyarilar.length > 0" class="ihlal-listesi">
-              <li v-for="(u, i) in intikalOneri.uyarilar" :key="i">
-                <span aria-hidden="true">⚠</span> {{ u.metin }}
-              </li>
-            </ul>
-          </span>
-        </label>
-      </fieldset>
-
-      <div v-if="intikalSecili" class="satir-iki">
-        <div class="alan">
-          <label for="yolculuk-arac">Araç</label>
-          <select id="yolculuk-arac" v-model="aracTuru">
-            <option value="SERVIS">Servis</option>
-            <option value="OTOBUS">Otobüs</option>
-            <option value="TAKSI">Taksi</option>
-            <option value="DIGER">Diğer</option>
-          </select>
-        </div>
-        <div class="alan">
-          <label for="yolculuk-intikal-not">Not (isteğe bağlı)</label>
-          <input id="yolculuk-intikal-not" v-model="intikalNotu" type="text" maxlength="200" />
-        </div>
+      <div v-if="neden === 'DIGER'" class="alan">
+        <label for="yolculuk-neden-notu">Neden notu (zorunlu)</label>
+        <textarea
+          id="yolculuk-neden-notu"
+          v-model="nedenNotu"
+          required
+          :aria-invalid="!!alanHatalari.nedenNotu"
+          :aria-describedby="alanHatalari.nedenNotu ? 'yolculuk-neden-notu-hata' : undefined"
+        ></textarea>
+        <AlanHatasi id="yolculuk-neden-notu-hata" :metin="alanHatalari.nedenNotu" />
       </div>
+    </template>
 
-      <template v-if="(seciliOneri || intikalSecili) && uyarilar.length > 0">
-        <div class="alan">
-          <label for="yolculuk-gerekce">Gerekçe (zorunlu)</label>
-          <textarea
-            id="yolculuk-gerekce"
-            v-model="gerekce"
-            required
-            :aria-invalid="!!alanHatalari.gerekce"
-          ></textarea>
-          <p v-if="alanHatalari.gerekce" class="alan-hata">{{ alanHatalari.gerekce }}</p>
-        </div>
-      </template>
-
-      <template v-if="(seciliOneri || intikalSecili) && nedenGerekli">
-        <p>
-          Görevden çıkacak: <strong>{{ mevcutAsil!.ad }} ({{ mevcutAsil!.sicil }})</strong>
-        </p>
-        <div class="alan">
-          <label for="yolculuk-neden">Değiştirme nedeni</label>
-          <select id="yolculuk-neden" v-model="neden" required>
-            <option value="">Seçin…</option>
-            <option v-for="(etiket, k) in NEDEN_ETIKETLERI" :key="k" :value="k">
-              {{ etiket }}
-            </option>
-          </select>
-          <p v-if="alanHatalari.neden" class="alan-hata">{{ alanHatalari.neden }}</p>
-        </div>
-        <div v-if="neden === 'DIGER'" class="alan">
-          <label for="yolculuk-neden-notu">Neden notu (zorunlu)</label>
-          <textarea id="yolculuk-neden-notu" v-model="nedenNotu" required></textarea>
-          <p v-if="alanHatalari.nedenNotu" class="alan-hata">{{ alanHatalari.nedenNotu }}</p>
-        </div>
-      </template>
-
-      <div role="alert">
-        <p v-if="genelHata" class="hata-mesaji">{{ genelHata }}</p>
-        <ul v-if="ihlaller.length > 0" class="ihlal-listesi hata-mesaji">
+    <div role="alert">
+      <div v-if="hataMetni || ihlaller.length > 0" class="bildirim bildirim-hata">
+        <p v-if="hataMetni">{{ hataMetni }}</p>
+        <ul v-if="ihlaller.length > 0" class="ihlal-listesi">
           <li v-for="(ih, i) in ihlaller" :key="i">
-            <span aria-hidden="true">{{ ih.siddet === 'ENGEL' ? '⛔' : '⚠' }}</span> {{ ih.metin }}
+            <Simge :ad="ih.siddet === 'ENGEL' ? 'engel' : 'uyari'" boyut="1em" /> {{ ih.metin }}
           </li>
         </ul>
       </div>
-      <NobetNotu :metinler="nobetMetinleri" />
+    </div>
+    <NobetNotu :metinler="nobetMetinleri" />
 
-      <div class="eylemler">
-        <button type="submit" class="btn btn-birincil" :disabled="!gecerli || mesgul">
-          {{ intikalSecili ? 'İntikalle ata' : 'Yolculukla ata' }}
-        </button>
-        <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
-      </div>
-    </form>
-  </dialog>
+    <template #eylemler>
+      <Dugme varyant="birincil" tip="submit" :disabled="!gecerli || mesgul">
+        {{ intikalSecili ? 'İntikalle ata' : 'Yolculukla ata' }}
+      </Dugme>
+      <Dugme :disabled="mesgul" @click="vazgec">Vazgeç</Dugme>
+    </template>
+    <template v-if="eylemNedeni" #neden>{{ eylemNedeni }}</template>
+  </Diyalog>
 </template>
 
 <style scoped>
 .satir-iki {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: 0.75rem;
-}
-.genis-dialog {
-  min-width: min(640px, 94vw);
+  gap: var(--aralik-4);
 }
 .oneri-listesi {
   border: 0;
   padding: 0;
-  margin: 0.5rem 0;
+  margin: var(--aralik-3) 0;
 }
 .oneri {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--aralik-3);
   align-items: flex-start;
-  padding: 0.3rem 0;
+  padding: var(--aralik-2) 0;
 }
 .alt-bilgi {
   display: block;
-  color: var(--renk-soluk);
+  color: var(--renk-metin-soluk);
 }
 .ihlal-listesi {
-  margin: 0.25rem 0 0;
+  margin: var(--aralik-2) 0 0;
   padding-left: 0;
   list-style: none;
 }

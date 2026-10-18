@@ -66,7 +66,7 @@ watch(
   >
     <p v-if="hata" class="bildirim bildirim-hata no-print" role="alert">{{ hata }}</p>
     <div class="yazdir-tablo-kap">
-      <table class="yazdir-tablo">
+      <table class="yazdir-tablo" aria-label="Günlük atama listesi">
         <thead>
           <tr>
             <th>Saat</th>

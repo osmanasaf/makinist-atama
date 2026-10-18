@@ -1,4 +1,5 @@
 // Takas / bırakma ortak tipleri ve etiketleri (makinist ve atamacı ekranları paylaşır). Durum metin + simgeyle gösterilir, yalnız renkle değil (NFR-M04).
+import type { SimgeAdi } from '@/bilesenler/simgeler'
 import type { AtamaNedeni } from '@/features/atama/atamaApi'
 
 export type TakasTuru = 'TAKAS' | 'BIRAK'
@@ -24,14 +25,14 @@ export const TAKAS_TUR_ETIKETLERI: Record<TakasTuru, string> = {
   BIRAK: 'Görevi bırakma',
 }
 
-export const TAKAS_DURUM_ETIKETLERI: Record<TakasDurumu, { simge: string; ad: string }> = {
-  KARSI_ONAY_BEKLIYOR: { simge: '⏳', ad: 'Karşı makinistin yanıtı bekleniyor' },
-  ATAMACI_ONAYI_BEKLIYOR: { simge: '⏳', ad: 'Atamacı onayı bekleniyor' },
-  ONAYLANDI: { simge: '✓', ad: 'Onaylandı' },
-  REDDEDILDI: { simge: '✗', ad: 'Reddedildi' },
-  IPTAL: { simge: '↩', ad: 'Geri çekildi' },
-  SURESI_DOLDU: { simge: '⌛', ad: 'Süresi doldu' },
-  BAYAT: { simge: '🔄', ad: 'Görev değiştiği için geçersiz' },
+export const TAKAS_DURUM_ETIKETLERI: Record<TakasDurumu, { simge: SimgeAdi; ad: string }> = {
+  KARSI_ONAY_BEKLIYOR: { simge: 'saat', ad: 'Karşı makinistin yanıtı bekleniyor' },
+  ATAMACI_ONAYI_BEKLIYOR: { simge: 'saat', ad: 'Atamacı onayı bekleniyor' },
+  ONAYLANDI: { simge: 'basari', ad: 'Onaylandı' },
+  REDDEDILDI: { simge: 'iptal', ad: 'Reddedildi' },
+  IPTAL: { simge: 'ok-sol', ad: 'Geri çekildi' },
+  SURESI_DOLDU: { simge: 'gecikme', ad: 'Süresi doldu' },
+  BAYAT: { simge: 'takas', ad: 'Görev değiştiği için geçersiz' },
 }
 
 /** Sunucudaki 422 KURAL_IHLALI gövdesinde takasın ihlali: hangi makinist, hangi kural (yalnız atamacı görür). */

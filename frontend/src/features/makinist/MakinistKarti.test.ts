@@ -75,6 +75,55 @@ describe('MakinistKarti', () => {
     expect(makinistApi.olustur).not.toHaveBeenCalled()
   })
 
+  it('başlık "Personel: ad" (tür rozetiyle); zorunlu alan işaretleri; hata alanın altında, aria bağlı, odak ilk hatalı alanda', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/makinistler', name: 'makinistler', component: { template: '<div />' } },
+        { path: '/makinistler/yeni', name: 'makinist-yeni', component: MakinistKarti },
+      ],
+    })
+    await router.push('/makinistler/yeni')
+    await router.isReady()
+    const w = mount(MakinistKarti, { attachTo: document.body, global: { plugins: [router] } })
+    await flushPromises()
+    expect(w.get('h1').text()).toBe('Yeni personel')
+    expect(w.findAll('form > .form-izgara > .alan-zorunlu')).toHaveLength(3)
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    const sicil = w.get('#sicil')
+    expect(sicil.attributes('aria-invalid')).toBe('true')
+    expect(sicil.attributes('aria-describedby')).toBe('sicil-hata')
+    expect(w.get('#sicil-hata').text()).toBe('Sicil zorunludur.')
+    expect(sicil.element.parentElement!.contains(w.get('#sicil-hata').element)).toBe(true)
+    expect(document.activeElement).toBe(sicil.element)
+    w.unmount()
+  })
+
+  it('kayıtlı kartta başlık "Personel: ad"; bröve satırı hatası tabloda işaretlenir ve tablonun altında yazılır', async () => {
+    vi.mocked(makinistApi.getir).mockResolvedValue({
+      ...detay,
+      broveAracTipleri: [],
+    })
+    const w = await kur('/makinistler/5')
+    expect(w.get('h1').text()).toBe('Personel: Ali Veli')
+    expect(w.get('[data-test="personel-turu"]').text()).toBe('Makinist')
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Araç tipi ekle')!
+      .trigger('click')
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(makinistApi.guncelle).not.toHaveBeenCalled()
+    const secim = w.get('select[aria-label="Araç tipi 1"]')
+    expect(secim.attributes('aria-invalid')).toBe('true')
+    expect(secim.attributes('aria-describedby')).toBe('brove-arac-hata')
+    expect(w.get('#brove-arac-hata').text()).toContain('araç tipi ve sınav tarihi zorunludur')
+    expect(w.get('#brove-arac-hata').element.previousElementSibling!.classList).toContain(
+      'tablo-kap',
+    )
+  })
+
   it('SICIL_TEKRARI sicil alanında gösterilir', async () => {
     vi.mocked(makinistApi.olustur).mockRejectedValue(
       new ApiHata(409, 'SICIL_TEKRARI', 'Bu sicil zaten kayıtlı.'),

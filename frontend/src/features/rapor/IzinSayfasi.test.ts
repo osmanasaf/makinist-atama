@@ -71,7 +71,7 @@ const gun = (tarih: string, acik: number) => ({
   gorevli: 1,
 })
 
-async function kur() {
+async function kur(bagla?: string) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -80,7 +80,10 @@ async function kur() {
     ],
   })
   await router.push('/izin')
-  const w = mount(IzinSayfasi, { global: { plugins: [router] } })
+  const w = mount(IzinSayfasi, {
+    ...(bagla ? { attachTo: bagla } : {}),
+    global: { plugins: [router] },
+  })
   await flushPromises()
   return w
 }
@@ -138,6 +141,45 @@ describe('IzinSayfasi', () => {
     expect(satirlar[1]!.findAll('button')).toHaveLength(0)
   })
 
+  it('durum sütunu rozet: ton + simge + metin (renk tek başına anlam taşımaz)', async () => {
+    vi.mocked(raporApi.izinListe).mockResolvedValue([
+      izin(1),
+      izin(2, { durum: 'ONAY' }),
+      izin(3, { durum: 'RED' }),
+    ])
+    const r = (await kur()).findAll('tbody tr .rozet')
+    expect(r.map((x) => [x.text(), x.classes()[1], x.get('svg').attributes('data-simge')])).toEqual(
+      [
+        ['Talep', 'rozet-uyari', 'saat'],
+        ['Onaylı', 'rozet-basari', 'basari'],
+        ['Reddedildi', 'rozet-engel', 'iptal'],
+      ],
+    )
+  })
+
+  it('zorunlu alan işareti, eksik alanlar alanın altında; odak ilk hatalı alana', async () => {
+    const w = mount(IzinSayfasi, {
+      attachTo: document.body,
+      global: {
+        plugins: [
+          createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: bos }] }),
+        ],
+      },
+    })
+    await flushPromises()
+    expect(w.findAll('.alan-zorunlu')).toHaveLength(4)
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(raporApi.izinTalep).not.toHaveBeenCalled()
+    const sec = w.get('#izin-makinist')
+    expect(sec.attributes('aria-invalid')).toBe('true')
+    expect(sec.attributes('aria-describedby')).toBe('izin-makinist-hata')
+    expect(w.get('#izin-makinist-hata').text()).toBe('Personel seçin.')
+    expect(w.get('#izin-bit-hata').text()).toBe('Bitiş tarihi gerekli.')
+    expect(document.activeElement).toBe(sec.element)
+    w.unmount()
+  })
+
   it('liste boşsa "İzin kaydı yok."', async () => {
     vi.mocked(raporApi.izinListe).mockResolvedValue([])
     expect((await kur()).text()).toContain('İzin kaydı yok.')
@@ -179,7 +221,7 @@ describe('IzinSayfasi', () => {
     await w.get('form').trigger('submit')
     await flushPromises()
     expect(w.get('.alan-hata').text()).toBe('Çakışan izin var.')
-    expect(w.get('[role="alert"]').text()).toBe('Geçersiz izin.')
+    expect(w.get('.bildirim-hata[role="alert"]').text()).toBe('Geçersiz izin.')
   })
 
   it('Onayla: onay çağrılır, liste yenilenir; etki paneli atanmış seferleri ve Atama Masası bağlantısını gösterir', async () => {
@@ -196,8 +238,10 @@ describe('IzinSayfasi', () => {
     const panel = w.get('[data-test="etki"]')
     expect(panel.text()).toContain('13.10.2026 – 15.10.2026 izni onaylandı')
     expect(w.get('[data-test="sefer-etkisi"]').text().replace(/\s+/g, ' ')).toContain(
-      "⚠ Bu izin 1 atanmış seferi kırmızı yaptı → Atama Masası'ndan düzeltin",
+      "Bu izin 1 atanmış seferi kırmızı yaptı → Atama Masası'ndan düzeltin",
     )
+    expect(w.get('[data-test="sefer-etkisi"] svg').attributes('data-simge')).toBe('uyari')
+    expect(w.get('[data-test="yedek-acigi"] svg').attributes('data-simge')).toBe('uyari')
     const a = panel.get('a')
     expect(a.attributes('href')).toBe('/atama?tarih=2026-10-14')
     expect(panel.text()).toContain('T1001')
@@ -222,6 +266,7 @@ describe('IzinSayfasi', () => {
     expect(raporApi.yedek).toHaveBeenCalledWith('2026-10')
     expect(raporApi.yedek).toHaveBeenCalledWith('2026-11')
     expect(w.find('[data-test="sefer-yok"]').exists()).toBe(true)
+    expect(w.get('[data-test="sefer-yok"] svg').attributes('data-simge')).toBe('basari')
     expect(w.get('[data-test="yedek-yok"]').text()).toBe('Yedek açığı yok.')
   })
 
@@ -246,6 +291,36 @@ describe('IzinSayfasi', () => {
     expect(raporApi.izinOnay).not.toHaveBeenCalled()
     expect(w.find('[data-test="etki"]').exists()).toBe(false)
     expect(raporApi.izinListe).toHaveBeenCalledTimes(2)
+  })
+
+  it('YENİ-1: Reddet satırı listeden düşürür; odak gövdeye düşmez, sayfa başlığına gider', async () => {
+    document.body.innerHTML = '<main id="icerik" tabindex="-1"><div id="kok"></div></main>'
+    vi.mocked(raporApi.izinRed).mockResolvedValue(izin(1, { durum: 'RED' }))
+    const w = await kur('#kok')
+    const reddet = dugme(w, 'Reddet')
+    ;(reddet.element as HTMLElement).focus()
+    vi.mocked(raporApi.izinListe).mockResolvedValue([]) // TALEP süzgecinde satır kalmaz
+    await reddet.trigger('click')
+    await flushPromises()
+    expect(reddet.element.isConnected).toBe(false)
+    expect(document.activeElement?.tagName).toBe('H1')
+    w.unmount()
+  })
+
+  it('YENİ-1 (d): Talep et gönderimi bitince odak düğmeye döner ve kayıt duyurulur', async () => {
+    document.body.innerHTML = '<main id="icerik" tabindex="-1"><div id="kok"></div></main>'
+    vi.mocked(raporApi.izinTalep).mockResolvedValue(izin(5))
+    const w = await kur('#kok')
+    await w.get('#izin-makinist').setValue(1)
+    await w.get('#izin-bas').setValue('2026-10-20')
+    await w.get('#izin-bit').setValue('2026-10-21')
+    const gonder = w.get('button[type="submit"]')
+    ;(gonder.element as HTMLElement).focus()
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(document.activeElement).toBe(gonder.element)
+    expect(w.get('[role="status"] [data-test="izin-bilgi"]').text()).toContain('kaydedildi')
+    w.unmount()
   })
 
   it('409 IZIN_KARARLI: sunucu metni gösterilir ve liste yenilenir', async () => {

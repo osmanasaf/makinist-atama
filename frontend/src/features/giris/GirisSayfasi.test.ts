@@ -93,4 +93,25 @@ describe('GirisSayfasi: makinist girişi', () => {
     const { w } = await kur('?parola=degisti')
     expect(w.get('[role=status]').text()).toContain('Parolanız değiştirildi')
   })
+
+  it('QA BUG-6: giriş hatası alanlara aria-invalid + aria-describedby ile bağlanır, band role=alert ve odak parola alanına gider', async () => {
+    vi.mocked(girisYap).mockRejectedValue(
+      new ApiHata(401, 'YETKISIZ', 'E-posta veya parola hatalı.'),
+    )
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: { template: '<div />' } }],
+    })
+    const w = mount(GirisSayfasi, { global: { plugins: [router] }, attachTo: document.body })
+    expect(w.get('#eposta').attributes('aria-invalid')).toBe('false')
+    await doldurVeGonder(w)
+    const bant = w.get('.bildirim-hata')
+    expect(bant.attributes('role')).toBe('alert')
+    for (const id of ['#eposta', '#parola']) {
+      expect(w.get(id).attributes('aria-invalid')).toBe('true')
+      expect(w.get(id).attributes('aria-describedby')).toBe(bant.attributes('id'))
+    }
+    expect(document.activeElement).toBe(w.get('#parola').element)
+    w.unmount()
+  })
 })

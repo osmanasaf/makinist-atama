@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
 import { bugun, zamanBicimle } from '@/lib/tarih'
 import { sayiBicimle } from '@/lib/sayi'
 import { TUR_ETIKETLERI, makinistApi, type MakinistOzet } from '@/features/makinist/makinistApi'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import PuantajTablo from './PuantajTablo.vue'
 import { puantajApi, suzgecSorgusu, type PuantajSuzgeci, type PuantajYaniti } from './puantajApi'
 
@@ -22,6 +25,8 @@ const rapor = ref<PuantajYaniti | null>(null)
 /** Görünen raporun süzgeci: form sonradan değişse de Excel/Yazdır bununla çalışır. */
 const uygulanan = ref<PuantajSuzgeci | null>(null)
 const hata = ref('')
+const ayHata = ref('')
+const ayAlani = ref<HTMLInputElement | null>(null)
 const mesgul = ref(false)
 
 onMounted(async () => {
@@ -37,8 +42,11 @@ onMounted(getir)
 async function getir() {
   if (mesgul.value) return
   hata.value = ''
+  ayHata.value = ''
   if (!ay.value) {
-    hata.value = 'Ay seçimi gerekli.'
+    ayHata.value = 'Ay seçimi gerekli.'
+    await nextTick()
+    ayAlani.value?.focus()
     return
   }
   const suzgec: PuantajSuzgeci = {
@@ -93,15 +101,34 @@ const oranlar = computed<[string, string][]>(() => {
 </script>
 
 <template>
-  <section>
-    <div class="sayfa-baslik">
-      <h1>Puantaj ön hesabı</h1>
-    </div>
+  <section class="rapor-sayfa">
+    <SayfaBasligi baslik="Puantaj ön hesabı">
+      <template v-if="rapor && uygulanan" #eylemler>
+        <button type="button" class="btn" @click="excelIndir">Excel indir</button>
+        <RouterLink
+          class="btn"
+          :to="{ name: 'yazdir-puantaj', query: suzgecSorgusu(uygulanan) }"
+          target="_blank"
+          rel="noopener"
+        >
+          Yazdır
+        </RouterLink>
+      </template>
+    </SayfaBasligi>
 
     <form class="arac-cubugu" @submit.prevent="getir">
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="puantaj-ay">Ay</label>
-        <input id="puantaj-ay" v-model="ay" type="month" required />
+        <input
+          id="puantaj-ay"
+          ref="ayAlani"
+          v-model="ay"
+          type="month"
+          required
+          :aria-invalid="ayHata ? 'true' : undefined"
+          :aria-describedby="ayHata ? 'puantaj-ay-hata' : undefined"
+        />
+        <AlanHatasi id="puantaj-ay-hata" :metin="ayHata" />
       </div>
       <div class="alan">
         <label for="puantaj-tur">Personel türü</label>
@@ -121,8 +148,9 @@ const oranlar = computed<[string, string][]>(() => {
       <button type="submit" class="btn btn-birincil" :disabled="mesgul">Raporu getir</button>
     </form>
 
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
-    <p v-if="mesgul" class="soluk">Rapor hazırlanıyor…</p>
+    <VeriDurumu v-if="mesgul" durum="yukleniyor" metin="Rapor hazırlanıyor…" />
+    <VeriDurumu v-else-if="hata && !rapor" durum="hata" :metin="hata" />
+    <p v-else-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
 
     <template v-if="rapor && uygulanan">
       <div class="kart ozet" data-test="ozet">
@@ -133,20 +161,9 @@ const oranlar = computed<[string, string][]>(() => {
         <dl class="oranlar" data-test="oranlar">
           <div v-for="[ad, deger] in oranlar" :key="ad">
             <dt>{{ ad }}:</dt>
-            <dd>{{ deger }}</dd>
+            <dd class="sayisal">{{ deger }}</dd>
           </div>
         </dl>
-        <div class="eylemler">
-          <button type="button" class="btn" @click="excelIndir">Excel indir</button>
-          <RouterLink
-            class="btn"
-            :to="{ name: 'yazdir-puantaj', query: suzgecSorgusu(uygulanan) }"
-            target="_blank"
-            rel="noopener"
-          >
-            Yazdır
-          </RouterLink>
-        </div>
       </div>
       <PuantajTablo :rapor="rapor" />
     </template>
@@ -154,24 +171,24 @@ const oranlar = computed<[string, string][]>(() => {
 </template>
 
 <style scoped>
-.ozet {
-  margin-bottom: 1rem;
-}
 .ozet p {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--aralik-2);
 }
 .oranlar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1.5rem;
-  margin: 0.5rem 0;
+  gap: var(--aralik-2) var(--aralik-6);
+  margin: var(--aralik-3) 0 0;
 }
 .oranlar div {
   display: flex;
-  gap: 0.35rem;
+  gap: var(--aralik-2);
+}
+.oranlar dt {
+  color: var(--renk-metin-ikincil);
 }
 .oranlar dd {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--yazi-agirlik-orta);
 }
 </style>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { computed, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import type { Ihlal } from '@/api/tipler'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import NobetNotu from './NobetNotu.vue'
 import {
   atamaApi,
@@ -67,8 +70,13 @@ const baslik = computed(() => {
   return props.mevcut ? 'Makinisti değiştir' : 'Makinist ata'
 })
 
-const dialog = ref<HTMLDialogElement | null>(null)
-onMounted(() => dialog.value?.showModal())
+// Birincil eylem kapalıyken nedeni söylenir (Diyalog neden slotu).
+const nedenMetni = computed(() => {
+  if (gerekceEksik.value) return 'Önce gerekçeyi yazın.'
+  if (nedenEksik.value) return 'Önce neden seçin.'
+  if (notEksik.value) return 'Neden notu zorunlu.'
+  return ''
+})
 
 function vazgec() {
   if (!mesgul.value) emit('kapat', hataOldu)
@@ -134,103 +142,95 @@ async function onayla() {
 </script>
 
 <template>
-  <dialog ref="dialog" aria-labelledby="atama-dlg-baslik" @cancel.prevent="vazgec">
-    <form @submit.prevent="onayla">
-      <h2 id="atama-dlg-baslik">{{ baslik }}</h2>
-      <p>
-        {{ seferEtiketi }} · <strong>{{ ROL_ETIKETLERI[rol] }}</strong>
-      </p>
-      <p v-if="aday">
-        {{ mevcut ? 'Göreve gelecek' : 'Atanacak' }}:
-        <strong>{{ aday.adSoyad }} ({{ aday.sicil }})</strong>
-      </p>
-      <p v-if="mevcut">
-        {{ kaldirKipi ? 'Kaldırılacak' : 'Görevden çıkacak' }}:
-        <strong>{{ mevcut.ad }} ({{ mevcut.sicil }})</strong>
-      </p>
+  <Diyalog :baslik="baslik" boyut="orta" form @kapat="vazgec" @gonder="onayla">
+    <p>
+      {{ seferEtiketi }} · <strong>{{ ROL_ETIKETLERI[rol] }}</strong>
+    </p>
+    <p v-if="aday">
+      {{ mevcut ? 'Göreve gelecek' : 'Atanacak' }}:
+      <strong>{{ aday.adSoyad }} ({{ aday.sicil }})</strong>
+    </p>
+    <p v-if="mevcut">
+      {{ kaldirKipi ? 'Kaldırılacak' : 'Görevden çıkacak' }}:
+      <strong>{{ mevcut.ad }} ({{ mevcut.sicil }})</strong>
+    </p>
 
-      <template v-if="uyarilar.length > 0">
-        <div class="bildirim bildirim-uyari" role="group" aria-label="Uyarılar">
-          <ul class="ihlal-listesi">
-            <li v-for="(u, i) in uyarilar" :key="i">
-              <span aria-hidden="true">⚠</span> {{ u.metin }}
-            </li>
-          </ul>
-        </div>
-        <div class="alan">
-          <label for="atama-gerekce">Gerekçe (zorunlu)</label>
-          <textarea
-            id="atama-gerekce"
-            v-model="gerekce"
-            required
-            :aria-invalid="!!alanHatalari.gerekce"
-            :aria-describedby="alanHatalari.gerekce ? 'atama-gerekce-hata' : undefined"
-          ></textarea>
-          <p v-if="alanHatalari.gerekce" id="atama-gerekce-hata" class="alan-hata">
-            {{ alanHatalari.gerekce }}
-          </p>
-        </div>
-      </template>
-
-      <template v-if="nedenGerekli">
-        <div class="alan">
-          <label for="atama-neden">{{
-            kaldirKipi ? 'Kaldırma nedeni' : 'Değiştirme nedeni'
-          }}</label>
-          <select
-            id="atama-neden"
-            v-model="neden"
-            required
-            :aria-invalid="!!alanHatalari.neden"
-            :aria-describedby="alanHatalari.neden ? 'atama-neden-hata' : undefined"
-          >
-            <option value="">Seçin…</option>
-            <option v-for="(etiket, k) in NEDEN_ETIKETLERI" :key="k" :value="k">
-              {{ etiket }}
-            </option>
-          </select>
-          <p v-if="alanHatalari.neden" id="atama-neden-hata" class="alan-hata">
-            {{ alanHatalari.neden }}
-          </p>
-        </div>
-        <div v-if="neden === 'DIGER'" class="alan">
-          <label for="atama-neden-notu">Neden notu (zorunlu)</label>
-          <textarea
-            id="atama-neden-notu"
-            v-model="nedenNotu"
-            required
-            :aria-invalid="!!alanHatalari.nedenNotu"
-            :aria-describedby="alanHatalari.nedenNotu ? 'atama-neden-notu-hata' : undefined"
-          ></textarea>
-          <p v-if="alanHatalari.nedenNotu" id="atama-neden-notu-hata" class="alan-hata">
-            {{ alanHatalari.nedenNotu }}
-          </p>
-        </div>
-      </template>
-
-      <div role="alert">
-        <p v-if="genelHata" class="hata-mesaji">{{ genelHata }}</p>
-        <ul v-if="ihlaller.length > 0" class="ihlal-listesi hata-mesaji">
-          <li v-for="(ih, i) in ihlaller" :key="i">
-            <span aria-hidden="true">{{ ih.siddet === 'ENGEL' ? '⛔' : '⚠' }}</span> {{ ih.metin }}
+    <template v-if="uyarilar.length > 0">
+      <div class="bildirim bildirim-uyari" role="group" aria-label="Uyarılar">
+        <ul class="ihlal-listesi">
+          <li v-for="(u, i) in uyarilar" :key="i">
+            <Simge ad="uyari" boyut="1em" /> {{ u.metin }}
           </li>
         </ul>
       </div>
-      <NobetNotu :metinler="nobetMetinleri" />
-
-      <div class="eylemler">
-        <button
-          type="submit"
-          class="btn"
-          :class="kaldirKipi ? 'btn-tehlike' : 'btn-birincil'"
-          :disabled="!gecerli || mesgul"
-        >
-          {{ kaldirKipi ? 'Kaldır' : 'Onayla' }}
-        </button>
-        <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
+      <div class="alan">
+        <label for="atama-gerekce">Gerekçe (zorunlu)</label>
+        <textarea
+          id="atama-gerekce"
+          v-model="gerekce"
+          required
+          :aria-invalid="!!alanHatalari.gerekce"
+          :aria-describedby="alanHatalari.gerekce ? 'atama-gerekce-hata' : undefined"
+        ></textarea>
+        <AlanHatasi id="atama-gerekce-hata" :metin="alanHatalari.gerekce" />
       </div>
-    </form>
-  </dialog>
+    </template>
+
+    <template v-if="nedenGerekli">
+      <div class="alan">
+        <label for="atama-neden">{{ kaldirKipi ? 'Kaldırma nedeni' : 'Değiştirme nedeni' }}</label>
+        <select
+          id="atama-neden"
+          v-model="neden"
+          required
+          :aria-invalid="!!alanHatalari.neden"
+          :aria-describedby="alanHatalari.neden ? 'atama-neden-hata' : undefined"
+        >
+          <option value="">Seçin…</option>
+          <option v-for="(etiket, k) in NEDEN_ETIKETLERI" :key="k" :value="k">
+            {{ etiket }}
+          </option>
+        </select>
+        <AlanHatasi id="atama-neden-hata" :metin="alanHatalari.neden" />
+      </div>
+      <div v-if="neden === 'DIGER'" class="alan">
+        <label for="atama-neden-notu">Neden notu (zorunlu)</label>
+        <textarea
+          id="atama-neden-notu"
+          v-model="nedenNotu"
+          required
+          :aria-invalid="!!alanHatalari.nedenNotu"
+          :aria-describedby="alanHatalari.nedenNotu ? 'atama-neden-notu-hata' : undefined"
+        ></textarea>
+        <AlanHatasi id="atama-neden-notu-hata" :metin="alanHatalari.nedenNotu" />
+      </div>
+    </template>
+
+    <div role="alert">
+      <div v-if="genelHata || ihlaller.length > 0" class="bildirim bildirim-hata">
+        <p v-if="genelHata">{{ genelHata }}</p>
+        <ul v-if="ihlaller.length > 0" class="ihlal-listesi">
+          <li v-for="(ih, i) in ihlaller" :key="i">
+            <Simge :ad="ih.siddet === 'ENGEL' ? 'engel' : 'uyari'" boyut="1em" /> {{ ih.metin }}
+          </li>
+        </ul>
+      </div>
+    </div>
+    <NobetNotu :metinler="nobetMetinleri" />
+
+    <template v-if="nedenMetni" #neden>{{ nedenMetni }}</template>
+    <template #eylemler>
+      <button
+        type="submit"
+        class="btn"
+        :class="kaldirKipi ? 'btn-tehlike' : 'btn-birincil'"
+        :disabled="!gecerli || mesgul"
+      >
+        {{ kaldirKipi ? 'Kaldır' : 'Onayla' }}
+      </button>
+      <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
+    </template>
+  </Diyalog>
 </template>
 
 <style scoped>

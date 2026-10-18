@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { tarihBicimle, zamanBicimle } from '@/lib/tarih'
 import { trenAdi } from '@/lib/trenAdi'
 import { seferApi, type YuklemeSonucu } from './seferApi'
@@ -11,7 +15,9 @@ const EN_COK_MB = 5
 
 const dosya = ref<File | null>(null)
 const sonuc = ref<YuklemeSonucu | null>(null)
+/** Dosya seçimi / okuma / yükleme hatası: dosya alanının altında gösterilir. */
 const hata = ref('')
+const sablonHata = ref('')
 const mesgul = ref(false)
 
 const yeniVar = computed(() => sonuc.value?.satirlar.some((s) => s.durum === 'YENI') ?? false)
@@ -26,7 +32,7 @@ function hataYaz(e: unknown, varsayilan: string) {
 }
 
 async function sablonIndir() {
-  hata.value = ''
+  sablonHata.value = ''
   try {
     const { blob, ad } = await seferApi.sablon()
     const url = URL.createObjectURL(blob)
@@ -36,7 +42,7 @@ async function sablonIndir() {
     a.click()
     URL.revokeObjectURL(url)
   } catch (e) {
-    hataYaz(e, 'Şablon indirilemedi.')
+    sablonHata.value = e instanceof ApiHata ? e.detail : 'Şablon indirilemedi.'
   }
 }
 
@@ -77,23 +83,32 @@ async function onayla() {
 
 <template>
   <section>
-    <div class="sayfa-baslik">
-      <h1>Sefer yükleme</h1>
-      <RouterLink class="btn" :to="{ name: 'seferler' }">Seferlere dön</RouterLink>
-    </div>
+    <SayfaBasligi baslik="Sefer yükleme">
+      <template #eylemler>
+        <RouterLink class="btn" :to="{ name: 'seferler' }">Seferlere dön</RouterLink>
+      </template>
+    </SayfaBasligi>
     <div class="arac-cubugu">
       <button type="button" class="btn" @click="sablonIndir">Şablonu indir</button>
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="dosya">Excel dosyası (.xlsx)</label>
         <input
           id="dosya"
           type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          :aria-invalid="!!hata"
+          :aria-describedby="hata ? 'dosya-yardim dosya-hata' : 'dosya-yardim'"
           @change="dosyaSecildi"
         />
+        <p id="dosya-yardim" class="alan-yardim">
+          En çok {{ EN_COK_MB }} MB. Seçilen dosya önce denetlenir, onaylamadan hiçbir sefer
+          yazılmaz.
+        </p>
+        <AlanHatasi id="dosya-hata" :metin="hata" />
       </div>
     </div>
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
+    <p v-if="sablonHata" class="bildirim bildirim-hata" role="alert">{{ sablonHata }}</p>
+    <VeriDurumu v-if="mesgul && !sonuc" durum="yukleniyor" metin="Dosya okunuyor…" />
 
     <template v-if="sonuc">
       <p class="bildirim bildirim-bilgi" role="status">
@@ -120,12 +135,12 @@ async function onayla() {
         ayrışan tren no'lar olabilir). Hiçbir sefer yazılmaz.
       </p>
 
-      <div v-if="sonuc.hatalar.length" class="tablo-kap" style="margin-bottom: 1rem">
+      <div v-if="sonuc.hatalar.length" class="tablo-kap hata-tablosu">
         <table class="tablo" aria-label="Hatalı satırlar">
           <thead>
             <tr>
               <th>Sayfa</th>
-              <th>Satır no</th>
+              <th class="sayisal">Satır no</th>
               <th>Tren no</th>
               <th>Neden</th>
             </tr>
@@ -133,7 +148,7 @@ async function onayla() {
           <tbody>
             <tr v-for="(h, i) in sonuc.hatalar" :key="i" class="gecikti">
               <td>{{ h.sayfa ?? 'Seferler' }}</td>
-              <td>{{ h.satirNo }}</td>
+              <td class="sayisal">{{ h.satirNo }}</td>
               <td>{{ h.trenNo ?? '' }}</td>
               <td>{{ h.neden }}</td>
             </tr>
@@ -145,7 +160,7 @@ async function onayla() {
         <table class="tablo" aria-label="Geçerli satırlar">
           <thead>
             <tr>
-              <th>Satır no</th>
+              <th class="sayisal">Satır no</th>
               <th>Tren no</th>
               <th>Tarih</th>
               <th>Kalkış gar</th>
@@ -159,7 +174,7 @@ async function onayla() {
           </thead>
           <tbody>
             <tr v-for="s in sonuc.satirlar" :key="`${s.satirNo}-${s.parcaNo ?? 0}`">
-              <td>{{ s.satirNo }}</td>
+              <td class="sayisal">{{ s.satirNo }}</td>
               <td>{{ trenAdi(s) }}</td>
               <td>{{ tarihBicimle(s.tarih) }}</td>
               <td>{{ s.kalkisGar }}</td>
@@ -168,7 +183,10 @@ async function onayla() {
               <td>{{ zamanBicimle(s.varis) }}</td>
               <td>{{ s.aracTipi }}</td>
               <td>{{ s.hat }}</td>
-              <td>{{ s.durum === 'YENI' ? 'Yeni' : 'Zaten var' }}</td>
+              <td>
+                <Rozet v-if="s.durum === 'YENI'" ton="basari" simge="ekle" metin="Yeni" />
+                <Rozet v-else ton="notr" metin="Zaten var" />
+              </td>
             </tr>
           </tbody>
         </table>
@@ -179,6 +197,7 @@ async function onayla() {
           type="button"
           class="btn btn-birincil"
           :disabled="mesgul || !yeniVar || sonuc.engelli"
+          :aria-busy="mesgul ? 'true' : undefined"
           @click="onayla"
         >
           Onayla ve yükle
@@ -190,3 +209,9 @@ async function onayla() {
     </template>
   </section>
 </template>
+
+<style scoped>
+.hata-tablosu {
+  margin-bottom: var(--aralik-5);
+}
+</style>

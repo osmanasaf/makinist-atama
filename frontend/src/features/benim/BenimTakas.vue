@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import type { Ton } from '@/bilesenler/durum'
+import type { SimgeAdi } from '@/bilesenler/simgeler'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { NEDEN_ETIKETLERI } from '@/features/atama/atamaApi'
 import { TAKAS_DURUM_ETIKETLERI, TAKAS_TUR_ETIKETLERI } from '@/features/takas/takasTipleri'
 import { zamanBicimle } from '@/lib/tarih'
@@ -61,12 +66,20 @@ const red = (t: BenimTakas) => islem(t, (id) => benimApi.takasRed(id))
 const geriCek = (t: BenimTakas) => islem(t, (id) => benimApi.takasIptal(id))
 
 /** Durum etiketi okuyan kişiye göre (UX-1: gelen talepte yanıtı bekleyen benim; UX-4: reddi kimin verdiği). */
-function etiket(t: BenimTakas): { simge: string; ad: string } {
+function etiket(t: BenimTakas): { simge: SimgeAdi; ad: string } {
   const e = TAKAS_DURUM_ETIKETLERI[t.durum]
   if (t.gelen && t.durum === 'KARSI_ONAY_BEKLIYOR') return { ...e, ad: 'Yanıtınız bekleniyor' }
   if (t.durum === 'REDDEDILDI' && t.reddeden)
     return { ...e, ad: e.ad + (t.reddeden === 'ATAMACI' ? ' (atamacı)' : ' (karşı makinist)') }
   return e
+}
+
+/** Rozet tonu: yanıt bekleyen benim → uyarı; onay → başarı; ret → engel; geri kalanı nötr (simge + metin zaten anlamı taşır). */
+function tonu(t: BenimTakas): Ton {
+  if (t.yanitBekliyor) return 'uyari'
+  if (t.durum === 'ONAYLANDI') return 'basari'
+  if (t.durum === 'REDDEDILDI') return 'engel'
+  return 'notr'
 }
 
 /** Karşı yanıt ya da atamacı kararı beklenen (kapanmamış) talep: geri çekilebilir. */
@@ -76,29 +89,33 @@ const acikMi = (t: BenimTakas) =>
 
 <template>
   <section>
-    <h1>Takas taleplerim</h1>
+    <SayfaBasligi baslik="Takas taleplerim" />
     <p class="soluk">
       Talepler önce karşı personelin, sonra atamacının onayından geçer; onaylanmadıkça görevleriniz
       yerinde kalır. Panodaki liste asıl tebliğ yoludur.
     </p>
-    <p v-if="yukleniyor" role="status">Yükleniyor…</p>
-    <div v-else-if="hata" class="bildirim bildirim-hata" role="alert">
-      <p>{{ hata }}</p>
-      <button type="button" class="btn" @click="yukle()">Yeniden dene</button>
-    </div>
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Yükleniyor…" />
+    <VeriDurumu v-else-if="hata" durum="hata" :metin="hata">
+      <template #eylem>
+        <button type="button" class="btn" @click="yukle()">Yeniden dene</button>
+      </template>
+    </VeriDurumu>
     <template v-else>
       <p v-if="islemHatasi" class="bildirim bildirim-hata" role="alert">{{ islemHatasi }}</p>
-      <p v-if="talepler.length === 0" class="benim-bos">Takas ya da bırakma talebiniz yok.</p>
+      <VeriDurumu
+        v-if="talepler.length === 0"
+        durum="bos"
+        metin="Takas ya da bırakma talebiniz yok."
+      />
       <article
         v-for="t in talepler"
         :key="t.id"
-        class="benim-kart"
+        class="kart benim-kart"
         :class="{ 'yanit-bekliyor': t.yanitBekliyor }"
         :data-test="'takas-' + t.id"
       >
-        <p class="benim-etiket" :class="{ yeni: t.yanitBekliyor }">
-          <span aria-hidden="true">{{ etiket(t).simge }}</span>
-          {{ etiket(t).ad }}
+        <p class="benim-satir">
+          <Rozet :ton="tonu(t)" :simge="etiket(t).simge" :metin="etiket(t).ad" />
         </p>
         <p>
           <strong>{{ TAKAS_TUR_ETIKETLERI[t.tur] }}</strong>
@@ -117,7 +134,7 @@ const acikMi = (t: BenimTakas) =>
         <p v-if="t.sonKabul && t.durum === 'KARSI_ONAY_BEKLIYOR'" class="soluk">
           Son yanıt zamanı: {{ zamanBicimle(t.sonKabul) }}
         </p>
-        <template v-if="t.yanitBekliyor">
+        <div v-if="t.yanitBekliyor" class="benim-takas-dugmeleri">
           <button
             type="button"
             class="btn btn-birincil"
@@ -136,7 +153,7 @@ const acikMi = (t: BenimTakas) =>
           >
             Reddet
           </button>
-        </template>
+        </div>
         <button
           v-else-if="!t.gelen && acikMi(t)"
           type="button"

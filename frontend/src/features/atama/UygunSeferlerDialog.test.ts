@@ -59,7 +59,8 @@ describe('UygunSeferlerDialog', () => {
     expect(satirlar[0]!.text()).toContain('08:30–11:00')
     expect(satirlar[0]!.text()).toContain('T5')
     expect(satirlar[0]!.text()).toContain('Ankara – Konya')
-    expect(satirlar[1]!.text()).toContain('⚠ Günlük 9 s > 8 s')
+    expect(satirlar[1]!.text()).toContain('Günlük 9 s > 8 s')
+    expect(satirlar[1]!.find('svg[data-simge="uyari"]').exists()).toBe(true)
   })
 
   it('Seç: seferi yayınlar', async () => {
@@ -85,7 +86,7 @@ describe('UygunSeferlerDialog: boş durum ve nöbet notu', () => {
   it('sonuç boşken nedenleri açıklayan metin gösterilir', async () => {
     vi.mocked(atamaApi.uygunSeferler).mockResolvedValue([])
     const w = await kur()
-    expect(w.get('.bos-durum').text()).toBe(
+    expect(w.get('.veri-durumu-bos').text()).toBe(
       'Bu gün için bu makinistin atanabileceği sefer yok: seferlerin tümü dolu ya da kurallar (dinlenme, izin, yetki vb.) uygun görmüyor.',
     )
   })

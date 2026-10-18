@@ -274,3 +274,34 @@ describe('ayarUyarilari', () => {
     ).toEqual([])
   })
 })
+
+describe('grup düzeltmesi', () => {
+  it('Excel parça süresi sunucuda "Çalışma" grubunda gelse de ekranda "Seferler ve Excel" grubunda görünür', () => {
+    const gruplar = gruplaYap(
+      birlestir(
+        [],
+        [
+          parametre('dinlenme.ev_saat', '11', 'CALISMA', 10),
+          parametre('sefer.parca_azami_saat', '16', 'CALISMA', 10),
+        ],
+        [],
+      ),
+    )
+    expect(gruplar.map((g) => g.baslik)).toEqual(['Çalışma ve dinlenme', 'Seferler ve Excel'])
+    expect(gruplar[1]!.degerler.map((s) => s.anahtar)).toEqual(['sefer.parca_azami_saat'])
+  })
+
+  // QA BUG-7 (04 madde 9 yanlışlıkla TAMAM yazılmıştı): sunucuda bu anahtar /api/ayar (AyarDto) kaynağından gelir, /api/parametre'den değil.
+  it('Excel parça süresi gerçek kaynaktan (/api/ayar → ayarSatiri) gelince de "Seferler ve Excel" grubundadır', () => {
+    const gruplar = gruplaYap(
+      birlestir(
+        [],
+        [parametre('dinlenme.ev_saat', '11', 'CALISMA', 10)],
+        [ayar('sefer.parca_azami_saat', 16, 'CALISMA', 10)],
+      ),
+    )
+    expect(gruplar.map((g) => g.baslik)).toEqual(['Çalışma ve dinlenme', 'Seferler ve Excel'])
+    expect(gruplar[1]!.degerler.map((x) => x.anahtar)).toEqual(['sefer.parca_azami_saat'])
+    expect(gruplar[0]!.degerler.map((x) => x.anahtar)).toEqual(['dinlenme.ev_saat'])
+  })
+})

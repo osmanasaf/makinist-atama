@@ -147,7 +147,8 @@ describe('DegisiklikRaporu', () => {
     expect(satirlar[1]!.text()).toContain('Eski Kişi (D009) → Ali Veli (D001)')
     expect(satirlar[1]!.text()).toContain('Belge sorunu')
     expect(satirlar[1]!.text()).toContain('Ehliyet süresi dolmuş')
-    expect(satirlar[1]!.text()).toContain('⚠ Uyarılı: Günlük 9 s > 8 s; amir onayı')
+    expect(satirlar[1]!.text()).toContain('Uyarılı: Günlük 9 s > 8 s; amir onayı')
+    expect(satirlar[1]!.find('.uyarili svg[data-simge="uyari"]').exists()).toBe(true)
   })
 
   it('uyarılı satırda uyaran kurallar madde madde listelenir; uyarısı olmayan satırda liste yok', async () => {

@@ -433,6 +433,92 @@ describe('AyarlarSayfasi', () => {
     expect(w.text()).not.toContain('Varsayılana dön')
   })
 
+  it('sayfada tek h1 var; güvenilirlik rozeti nötr tonda, simge + metinle', async () => {
+    const w = await kur()
+    expect(w.findAll('h1')).toHaveLength(1)
+    const rozetler = w.findAll('.guven')
+    expect(rozetler).toHaveLength(2)
+    for (const r of rozetler) {
+      expect(r.classes()).toContain('rozet-notr') // hata (rozet-engel) ile karışmaz
+      expect(r.classes()).not.toContain('rozet-engel')
+      expect(r.find('svg[data-simge]').exists()).toBe(true)
+    }
+    expect(w.get('.guven-dusuk').text()).toBe('Güvenilirlik: Düşük')
+  })
+
+  it('grup gezgini her grubu ve Sistem bölümünü başlığa bağlar', async () => {
+    const w = await kur()
+    const nav = w.get('nav[aria-label="Ayar grupları"]')
+    expect(nav.findAll('a').map((a) => a.attributes('href'))).toEqual([
+      '#grup-CALISMA',
+      '#grup-MAKINIST',
+      '#sistem-baslik',
+    ])
+    expect(w.find('#grup-CALISMA').exists()).toBe(true)
+    expect(w.find('#sistem-baslik').exists()).toBe(true)
+  })
+
+  it('"Varsayılandan farklı" süzgeci (aria-pressed) yalnız farklı satırları gösterir; boşsa kaldırma eylemi çıkar', async () => {
+    vi.mocked(parametreApi.parametreler).mockResolvedValue([{ ...parametre, deger: '12' }])
+    const w = await kur()
+    const suzgec = w.get('.suzgec button')
+    expect(suzgec.attributes('aria-pressed')).toBe('false')
+    expect(w.findAll('tbody tr strong').length).toBeGreaterThan(1)
+    await suzgec.trigger('click')
+    expect(suzgec.attributes('aria-pressed')).toBe('true')
+    expect(
+      w
+        .findAll('table')[0]!
+        .findAll('tbody tr strong')
+        .map((c) => c.text()),
+    ).toEqual(['Asgari dinlenme süresi'])
+    await suzgec.trigger('click')
+    expect(suzgec.attributes('aria-pressed')).toBe('false')
+    expect(w.findAll('tbody tr strong').length).toBeGreaterThan(1)
+
+    // hiçbir ayar farklı değilken süzgeç açılırsa boş durum + "Süzgeci kaldır"
+    vi.mocked(parametreApi.parametreler).mockResolvedValue([parametre])
+    const bos = await kur()
+    await bos.get('.suzgec button').trigger('click')
+    expect(bos.text()).toContain('Varsayılandan farklı ayar yok.')
+    const kaldir = bos.findAll('button').find((b) => b.text() === 'Süzgeci kaldır')!
+    await kaldir.trigger('click')
+    expect(bos.get('.suzgec button').attributes('aria-pressed')).toBe('false')
+  })
+
+  it('alan hatası alanın altında, aria-invalid + aria-describedby ile bağlı; odak hatalı alana gider', async () => {
+    vi.mocked(parametreApi.parametreKaydet).mockRejectedValue(
+      new ApiHata(400, 'DOGRULAMA', 'Girilen bilgilerde hata var.', {
+        alanlar: { deger: 'Değer 8 ile 14 arasında olmalı.' },
+      }),
+    )
+    girisYap('YONETICI')
+    const w = mount(AyarlarSayfasi, {
+      attachTo: document.body,
+      global: {
+        plugins: [
+          createRouter({
+            history: createMemoryHistory(),
+            routes: [{ path: '/ozel-kurallar', component: { template: '<div />' } }],
+          }),
+        ],
+      },
+    })
+    await flushPromises()
+    const alan = w.get('[aria-label="Asgari dinlenme süresi değeri"]')
+    await alan.setValue('99')
+    await neden(w, 'Asgari dinlenme süresi').setValue('Deneme')
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(alan.attributes('aria-invalid')).toBe('true')
+    const hataKimligi = alan.attributes('aria-describedby')!.split(' ').pop()!
+    expect(document.getElementById(hataKimligi)!.textContent).toContain(
+      'Değer 8 ile 14 arasında olmalı.',
+    )
+    expect(document.activeElement).toBe(alan.element)
+    w.unmount()
+  })
+
   it('yükleme hatası uyarı olarak gösterilir', async () => {
     vi.mocked(parametreApi.ayarlar).mockRejectedValue(
       new ApiHata(500, 'SUNUCU_HATASI', 'Beklenmeyen bir hata oluştu. Tekrar deneyin.'),

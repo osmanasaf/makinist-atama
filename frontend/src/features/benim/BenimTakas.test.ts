@@ -69,6 +69,7 @@ describe('BenimTakas', () => {
     const w = await kur()
     const kart = w.get('article')
     expect(kart.text()).toContain('Yanıtınız bekleniyor') // gelen talepte yanıtı bekleyen benim (UX-1)
+    expect(kart.find('svg[data-simge="saat"]').exists()).toBe(true) // durum simgesi (emoji yerine)
     expect(kart.text()).toContain('D001')
     expect(kart.text()).toContain('Size gelen talep')
     expect(kart.text()).not.toMatch(/ihlal|belge|dinlenme/i)
@@ -97,6 +98,7 @@ describe('BenimTakas', () => {
     const kartlar = (await kur()).findAll('article')
     expect(kartlar[0]!.text()).toContain('Karşı makinistin yanıtı bekleniyor')
     expect(kartlar[1]!.text()).toContain('Reddedildi (atamacı)')
+    expect(kartlar[1]!.find('svg[data-simge="iptal"]').exists()).toBe(true)
     expect(kartlar[2]!.text()).toContain('Reddedildi (karşı makinist)')
   })
 

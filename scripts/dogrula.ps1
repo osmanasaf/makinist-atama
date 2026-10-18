@@ -1,8 +1,10 @@
 ﻿# Tümünü doğrular: backend testi, frontend tip/lint/build/test. İlk hatada durur.
 # Henüz var olmayan kısım "atlandı" olarak geçilir. Testler kendi PostgreSQL kabını açar (Docker açık olmalı), DB-UP gerekmez.
-# Kullanım: .\scripts\dogrula.ps1
+# Kullanım: .\scripts\dogrula.ps1 [-BackendAtla]
+# -BackendAtla: backend testini koşmaz (yalnız ön yüz aşamalarında ara doğrulama için; aşama A/E/H ve teslimde TAM koşulur, MK-143).
 # Süre (ölçüm 2026-10-15): backend ~4:40 (2 fork = 2 JVM + 2 PostgreSQL kabı; Docker açık olmalı, ~2 GB boş bellek), frontend adımları ~1 dk (test ~9 sn).
 # Ölçek testleri (ayrı, seri, ~10 dk): backend\mvnw.cmd -f backend\pom.xml test -Pyavas. Tek fork için: ... test -DtestForkSayisi=1
+param([switch]$BackendAtla)
 $ErrorActionPreference = 'Stop'
 $kok = Split-Path -Parent $PSScriptRoot
 
@@ -22,7 +24,9 @@ function Adim([string]$ad, [scriptblock]$komut) {
     }
 }
 
-if (Test-Path -LiteralPath "$kok\backend\pom.xml") {
+if ($BackendAtla) {
+    Write-Host 'backend: atlandı (-BackendAtla)' -ForegroundColor Yellow
+} elseif (Test-Path -LiteralPath "$kok\backend\pom.xml") {
     Adim 'backend test' { & "$kok\backend\mvnw.cmd" -f "$kok\backend\pom.xml" test }
 } else {
     Write-Host 'backend: atlandı (henüz yok)'
