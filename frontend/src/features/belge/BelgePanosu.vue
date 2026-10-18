@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import Simge from '@/bilesenler/Simge.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import type { SimgeAdi } from '@/bilesenler/simgeler'
+import type { Ton } from '@/bilesenler/durum'
 import { tarihBicimle } from '@/lib/tarih'
 import { DURUM_ETIKETLERI, TUR_ETIKETLERI } from '@/features/makinist/makinistApi'
 import { belgeApi, type BelgeDto, type BelgeDurumu, type MakinistBelgeDto } from './belgeApi'
@@ -13,11 +19,12 @@ const SUZGECLER: { kod: Suzgec; ad: string }[] = [
   { kod: 'YAKLASIYOR', ad: 'Yaklaşan' },
   { kod: 'GIRILMEMIS', ad: 'Girilmemiş' },
 ]
-const SIMGELER: Record<BelgeDurumu, string> = {
-  DOLDU: '✖',
-  YAKLASIYOR: '⚠',
-  GIRILMEMIS: '?',
-  GECERLI: '✔',
+/** Belge durumu -> ton + simge: anlam renk, simge ve METİNle birlikte taşınır (WCAG 1.4.1). "Girilmemiş" kesikli kenarlıklı nötr. */
+const GORUNUM: Record<BelgeDurumu, { ton: Ton; simge: SimgeAdi }> = {
+  DOLDU: { ton: 'engel', simge: 'engel' },
+  YAKLASIYOR: { ton: 'uyari', simge: 'uyari' },
+  GIRILMEMIS: { ton: 'notr', simge: 'daire' },
+  GECERLI: { ton: 'basari', simge: 'basari' },
 }
 
 const makinistler = ref<MakinistBelgeDto[]>([])
@@ -67,21 +74,22 @@ function belgeMetni(b: BelgeDto): string {
 
 <template>
   <section class="belge-panosu">
-    <div class="sayfa-baslik"><h1>Belge durumu</h1></div>
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
+    <SayfaBasligi baslik="Belge durumu" />
+    <VeriDurumu v-if="hata" durum="hata" :metin="hata" />
+    <VeriDurumu v-else-if="!yuklendi" durum="yukleniyor" metin="Yükleniyor…" />
 
     <ul class="sayaclar" aria-label="Özet">
       <li class="sayac sayac-DOLDU">
-        <span aria-hidden="true">{{ SIMGELER.DOLDU }}</span> Dolmuş:
-        <strong>{{ sayac('DOLDU') }}</strong>
+        <Simge :ad="GORUNUM.DOLDU.simge" boyut="1em" /> Dolmuş:
+        <strong class="sayisal">{{ sayac('DOLDU') }}</strong>
       </li>
       <li class="sayac sayac-YAKLASIYOR">
-        <span aria-hidden="true">{{ SIMGELER.YAKLASIYOR }}</span> Yaklaşan:
-        <strong>{{ sayac('YAKLASIYOR') }}</strong>
+        <Simge :ad="GORUNUM.YAKLASIYOR.simge" boyut="1em" /> Yaklaşan:
+        <strong class="sayisal">{{ sayac('YAKLASIYOR') }}</strong>
       </li>
       <li class="sayac sayac-GECERLI">
-        <span aria-hidden="true">{{ SIMGELER.GECERLI }}</span> Geçerli:
-        <strong>{{ sayac('GECERLI') }}</strong>
+        <Simge :ad="GORUNUM.GECERLI.simge" boyut="1em" /> Geçerli:
+        <strong class="sayisal">{{ sayac('GECERLI') }}</strong>
       </li>
     </ul>
 
@@ -92,7 +100,6 @@ function belgeMetni(b: BelgeDto): string {
           :key="s.kod"
           type="button"
           class="btn"
-          :class="{ 'btn-birincil': suzgec === s.kod }"
           :aria-pressed="suzgec === s.kod"
           @click="suzgec = s.kod"
         >
@@ -106,7 +113,7 @@ function belgeMetni(b: BelgeDto): string {
     </div>
 
     <div class="tablo-kap">
-      <table class="tablo">
+      <table class="tablo" aria-label="Belge durumu">
         <thead>
           <tr>
             <th>Sicil</th>
@@ -127,30 +134,33 @@ function belgeMetni(b: BelgeDto): string {
             <td>{{ TUR_ETIKETLERI[m.tur ?? 'MAKINIST'] }}</td>
             <td>
               <ul v-if="sorunlu(m).length > 0" class="rozetler">
-                <li
-                  v-for="b in sorunlu(m)"
-                  :key="b.tur + b.ad"
-                  class="rozet"
-                  :class="`rozet-${b.durum}`"
-                >
-                  <span aria-hidden="true">{{ SIMGELER[b.durum] }}</span> {{ belgeMetni(b) }}
+                <li v-for="b in sorunlu(m)" :key="b.tur + b.ad">
+                  <Rozet
+                    :class="{ 'rozet-girilmemis': b.durum === 'GIRILMEMIS' }"
+                    :ton="GORUNUM[b.durum].ton"
+                    :simge="GORUNUM[b.durum].simge"
+                    :metin="belgeMetni(b)"
+                  />
                 </li>
               </ul>
-              <span v-else class="rozet rozet-GECERLI"
-                ><span aria-hidden="true">{{ SIMGELER.GECERLI }}</span> Tüm belgeler geçerli</span
-              >
+              <Rozet
+                v-else
+                ton="basari"
+                :simge="GORUNUM.GECERLI.simge"
+                metin="Tüm belgeler geçerli"
+              />
               <details class="ayrinti">
                 <summary>Tüm belgeler</summary>
                 <ul>
                   <li v-for="b in m.belgeler" :key="b.tur + b.ad">
-                    <span aria-hidden="true">{{ SIMGELER[b.durum] }}</span> {{ belgeMetni(b) }}
+                    <Simge :ad="GORUNUM[b.durum].simge" boyut="1em" /> {{ belgeMetni(b) }}
                   </li>
                 </ul>
               </details>
             </td>
           </tr>
-          <tr v-if="yuklendi && gorunen.length === 0">
-            <td colspan="4" class="bos-durum">Kayıt bulunamadı.</td>
+          <tr v-if="yuklendi && !hata && gorunen.length === 0">
+            <td colspan="4"><VeriDurumu durum="bos" metin="Kayıt bulunamadı." /></td>
           </tr>
         </tbody>
       </table>
@@ -162,63 +172,50 @@ function belgeMetni(b: BelgeDto): string {
 .sayaclar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--aralik-4);
   list-style: none;
   padding: 0;
-  margin: 0 0 var(--bosluk);
+  margin: 0 0 var(--aralik-4);
 }
 .sayac {
-  padding: 0.4rem 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aralik-2);
+  padding: var(--aralik-2) var(--aralik-4);
   border: 2px solid currentcolor;
   border-radius: var(--yaricap);
   background: var(--renk-yuzey);
 }
-.suzgec {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
 .rozetler {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--aralik-2);
   list-style: none;
   padding: 0;
   margin: 0;
 }
-.rozet {
-  display: inline-block;
-  padding: 0.1rem 0.55rem;
-  border: 1px solid currentcolor;
-  border-radius: 999px;
-  font-size: 0.88rem;
-}
-.sayac-DOLDU,
-.rozet-DOLDU {
-  color: #b3261e;
+.sayac-DOLDU {
+  color: var(--renk-engel-metin);
   background: var(--renk-hata-zemin);
-  font-weight: 600;
+  font-weight: var(--yazi-agirlik-orta);
 }
-.sayac-YAKLASIYOR,
-.rozet-YAKLASIYOR {
-  color: #7a5200;
+.sayac-YAKLASIYOR {
+  color: var(--renk-uyari-metin);
   background: var(--renk-uyari-zemin);
 }
-.rozet-GIRILMEMIS {
-  color: #4a4f5c;
+.rozet-girilmemis {
   border-style: dashed;
 }
-.sayac-GECERLI,
-.rozet-GECERLI {
-  color: #1b6e2f;
+.sayac-GECERLI {
+  color: var(--renk-basari-metin);
 }
 .ayrinti {
-  margin-top: 0.35rem;
-  font-size: 0.9rem;
+  margin-top: var(--aralik-2);
+  font-size: var(--yazi-md);
 }
 .ayrinti ul {
-  margin: 0.25rem 0 0;
-  padding-left: 1.1rem;
+  margin: var(--aralik-2) 0 0;
+  padding-left: var(--aralik-5);
 }
 @media print {
   .no-print {
@@ -227,8 +224,8 @@ function belgeMetni(b: BelgeDto): string {
   .sayac,
   .rozet {
     background: none;
-    color: #000;
-    border-color: #000;
+    color: CanvasText;
+    border-color: CanvasText;
   }
   .ayrinti {
     display: none;

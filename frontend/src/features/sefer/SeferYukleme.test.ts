@@ -4,6 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 
 vi.mock('./seferApi', () => ({ seferApi: { yukle: vi.fn(), sablon: vi.fn() } }))
 
+import { ApiHata } from '@/api/istemci'
 import SeferYukleme from './SeferYukleme.vue'
 import { seferApi, type YuklemeSonucu } from './seferApi'
 
@@ -82,5 +83,28 @@ describe('SeferYukleme', () => {
     await flushPromises()
     expect(seferApi.yukle).toHaveBeenLastCalledWith(dosya, false)
     expect(w.get('[role=status]').text()).toContain('Yükleme tamamlandı')
+  })
+
+  it('önizleme tablosu: satır no sağa hizalı, durum rozeti; dosya alanı zorunlu işaretli ve yardım metinli', async () => {
+    const { w } = await kur()
+    const satirlar = w.findAll('table[aria-label="Geçerli satırlar"] tbody tr')
+    expect(satirlar[0]!.findAll('td')[0]!.classes()).toContain('sayisal')
+    expect(satirlar[0]!.get('.rozet').classes()).toContain('rozet-basari')
+    expect(satirlar[0]!.get('.rozet').text()).toBe('Yeni')
+    expect(satirlar[1]!.get('.rozet').text()).toBe('Zaten var')
+    expect(w.get('#dosya').element.closest('.alan')!.classList.contains('alan-zorunlu')).toBe(true)
+    expect(w.get('#dosya').attributes('aria-describedby')).toBe('dosya-yardim')
+    expect(w.get('#dosya-yardim').text()).toContain('5 MB')
+  })
+
+  it('dosya hatası dosya alanının altında: aria-invalid + aria-describedby ile bağlı', async () => {
+    vi.mocked(seferApi.yukle).mockRejectedValue(new ApiHata(400, 'GECERSIZ_DOSYA', 'Dosya boş.'))
+    const { w } = await kur()
+    const girdi = w.get('#dosya')
+    expect(girdi.attributes('aria-invalid')).toBe('true')
+    expect(girdi.attributes('aria-describedby')).toBe('dosya-yardim dosya-hata')
+    const hata = w.get('#dosya-hata')
+    expect(hata.classes()).toContain('alan-hata')
+    expect(hata.element.parentElement).toBe(girdi.element.parentElement)
   })
 })

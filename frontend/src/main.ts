@@ -3,6 +3,7 @@ import App from './App.vue'
 import router, { oturumDustu } from './router'
 import { yetkisizIsleyiciKaydet } from '@/api/istemci'
 import { oturumuTemizle } from '@/composables/oturum'
+import './styles/belirtecler.css'
 import './styles/temel.css'
 import './styles/yazdir.css'
 

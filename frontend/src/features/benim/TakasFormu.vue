@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { ilkHataliyaOdaklan } from '@/lib/odak'
 import { ApiHata } from '@/api/istemci'
 import { saatBicimle, tarihBicimle } from '@/lib/tarih'
 import { TAKAS_NEDENLERI, type TakasNedeni, type TakasTuru } from '@/features/takas/takasTipleri'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import Dugme from '@/bilesenler/Dugme.vue'
 import { benimApi, type BenimGorev, type BenimTakas, type TakasHedef } from './benimApi'
 
 /**
@@ -12,7 +17,6 @@ import { benimApi, type BenimGorev, type BenimTakas, type TakasHedef } from './b
 const props = defineProps<{ gorev: BenimGorev; tur: TakasTuru }>()
 const emit = defineEmits<{ kapat: []; olustu: [talep: BenimTakas] }>()
 
-const dialog = ref<HTMLDialogElement | null>(null)
 const hedefler = ref<TakasHedef[]>([])
 const yukleniyor = ref(props.tur === 'TAKAS')
 const yuklemeHatasi = ref('')
@@ -28,8 +32,14 @@ const gonderilemez = computed(
 
 const baslik = computed(() => (props.tur === 'TAKAS' ? 'Takas iste' : 'Görevi bırak'))
 
+/** Birincil eylem kapalıyken nedeni (Diyalog `neden` slotu). */
+const eylemNedeni = computed(() => {
+  if (!gonderilemez.value) return ''
+  if (yukleniyor.value) return 'Takas edilecek görevler yükleniyor.'
+  return yuklemeHatasi.value ? 'Takas edilecek görevler yüklenemedi.' : 'Seçilebilecek görev yok.'
+})
+
 onMounted(async () => {
-  dialog.value?.showModal()
   if (props.tur !== 'TAKAS') return
   try {
     hedefler.value = await benimApi.takasHedefler(props.gorev.atamaId)
@@ -43,6 +53,14 @@ onMounted(async () => {
 const hedefMetni = (h: TakasHedef) =>
   `${h.sicil} · ${h.trenNo} · ${tarihBicimle(h.tarih)} ${saatBicimle(h.guncelKalkis)} · ${h.kalkisGar} → ${h.varisGar}`
 
+/** Diyalog kökü (odak ilk geçersiz alana taşınır) */
+const diyalogKok = ref<{ $el: HTMLElement } | null>(null)
+
+/** × / Esc istek sürerken kapatmaz (sökülen bileşenden `olustu` yayılmaz, liste yenilenmezdi). */
+function vazgec() {
+  if (!mesgul.value) emit('kapat')
+}
+
 async function gonder() {
   if (mesgul.value) return
   genelHata.value = ''
@@ -52,7 +70,7 @@ async function gonder() {
   else if (form.neden === 'DIGER' && !form.nedenNotu.trim())
     h.nedenNotu = 'Diğer nedeni için kısa bir açıklama yazın.'
   alanHatalari.value = h
-  if (Object.keys(h).length > 0) return
+  if (Object.keys(h).length > 0) return ilkHataliyaOdaklan(diyalogKok.value?.$el)
   mesgul.value = true
   try {
     const talep = await benimApi.takasAc({
@@ -66,6 +84,7 @@ async function gonder() {
     if (e instanceof ApiHata) {
       alanHatalari.value = e.alanlar ?? {}
       genelHata.value = Object.keys(alanHatalari.value).length > 0 ? '' : e.detail
+      await ilkHataliyaOdaklan(diyalogKok.value?.$el)
     } else {
       genelHata.value = 'Talep gönderilemedi.'
     }
@@ -76,8 +95,14 @@ async function gonder() {
 </script>
 
 <template>
-  <dialog ref="dialog" aria-labelledby="takas-formu-baslik" @cancel.prevent="emit('kapat')">
-    <h2 id="takas-formu-baslik">{{ baslik }}</h2>
+  <Diyalog
+    ref="diyalogKok"
+    :baslik="baslik"
+    boyut="orta"
+    :form="true"
+    @kapat="vazgec"
+    @gonder="gonder"
+  >
     <p class="soluk">{{ gorev.trenNo }} · {{ gorev.ozet }}</p>
     <p v-if="tur === 'BIRAK'" class="soluk">
       Bırakma talebi atamacınıza gider; onaylanmadıkça göreviniz sizde kalır.
@@ -87,77 +112,73 @@ async function gonder() {
       kalır.
     </p>
 
-    <form novalidate @submit.prevent="gonder">
-      <div v-if="tur === 'TAKAS'" class="alan">
-        <label for="takas-hedef">Takas edilecek görev</label>
-        <p v-if="yukleniyor" class="soluk" role="status">Görevler yükleniyor…</p>
-        <p v-else-if="yuklemeHatasi" class="bildirim bildirim-hata" role="alert">
-          {{ yuklemeHatasi }}
-        </p>
-        <p v-else-if="hedefler.length === 0" class="soluk" role="status">
-          Şu an takas edilebilecek görev yok: kalkışına yeterli süre kalan, size uygun başka görev
-          bulunamadı.
-        </p>
-        <select
-          v-else
-          id="takas-hedef"
-          v-model="form.hedefAtamaId"
-          :aria-invalid="!!alanHatalari.hedefAtamaId"
-          :aria-describedby="alanHatalari.hedefAtamaId ? 'takas-hedef-hata' : undefined"
-        >
-          <option value="">Seçin…</option>
-          <option v-for="h in hedefler" :key="h.hedefAtamaId" :value="String(h.hedefAtamaId)">
-            {{ hedefMetni(h) }}
-          </option>
-        </select>
-        <p v-if="alanHatalari.hedefAtamaId" id="takas-hedef-hata" class="alan-hata">
-          {{ alanHatalari.hedefAtamaId }}
-        </p>
-      </div>
+    <div v-if="tur === 'TAKAS'" class="alan">
+      <label for="takas-hedef">Takas edilecek görev</label>
+      <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Görevler yükleniyor…" />
+      <p v-else-if="yuklemeHatasi" class="bildirim bildirim-hata" role="alert">
+        {{ yuklemeHatasi }}
+      </p>
+      <VeriDurumu
+        v-else-if="hedefler.length === 0"
+        durum="bos"
+        metin="Şu an takas edilebilecek görev yok: kalkışına yeterli süre kalan, size uygun başka görev bulunamadı."
+      />
+      <select
+        v-else
+        id="takas-hedef"
+        v-model="form.hedefAtamaId"
+        :aria-invalid="!!alanHatalari.hedefAtamaId"
+        :aria-describedby="alanHatalari.hedefAtamaId ? 'takas-hedef-hata' : undefined"
+      >
+        <option value="">Seçin…</option>
+        <option v-for="h in hedefler" :key="h.hedefAtamaId" :value="String(h.hedefAtamaId)">
+          {{ hedefMetni(h) }}
+        </option>
+      </select>
+      <AlanHatasi id="takas-hedef-hata" :metin="alanHatalari.hedefAtamaId" />
+    </div>
 
-      <div class="alan">
-        <label for="takas-neden">Neden</label>
-        <select
-          id="takas-neden"
-          v-model="form.neden"
-          :aria-invalid="!!alanHatalari.neden"
-          :aria-describedby="alanHatalari.neden ? 'takas-neden-hata' : undefined"
-        >
-          <option value="">Seçin…</option>
-          <option v-for="n in TAKAS_NEDENLERI" :key="n.deger" :value="n.deger">{{ n.ad }}</option>
-        </select>
-        <p v-if="alanHatalari.neden" id="takas-neden-hata" class="alan-hata">
-          {{ alanHatalari.neden }}
-        </p>
-      </div>
+    <div class="alan">
+      <label for="takas-neden">Neden</label>
+      <select
+        id="takas-neden"
+        v-model="form.neden"
+        :aria-invalid="!!alanHatalari.neden"
+        :aria-describedby="alanHatalari.neden ? 'takas-neden-hata' : undefined"
+      >
+        <option value="">Seçin…</option>
+        <option v-for="n in TAKAS_NEDENLERI" :key="n.deger" :value="n.deger">{{ n.ad }}</option>
+      </select>
+      <AlanHatasi id="takas-neden-hata" :metin="alanHatalari.neden" />
+    </div>
 
-      <div class="alan">
-        <label for="takas-not">Not (isteğe bağlı)</label>
-        <input
-          id="takas-not"
-          v-model="form.nedenNotu"
-          type="text"
-          maxlength="120"
-          autocomplete="off"
-          :aria-invalid="!!alanHatalari.nedenNotu"
-          :aria-describedby="'takas-not-uyari' + (alanHatalari.nedenNotu ? ' takas-not-hata' : '')"
-        />
-        <p id="takas-not-uyari" class="soluk">
-          En çok 120 karakter. Hastalık tanısı ya da sağlık ayrıntısı yazmayın.
-        </p>
-        <p v-if="alanHatalari.nedenNotu" id="takas-not-hata" class="alan-hata">
-          {{ alanHatalari.nedenNotu }}
-        </p>
-      </div>
+    <div class="alan">
+      <label for="takas-not">Not (isteğe bağlı)</label>
+      <input
+        id="takas-not"
+        v-model="form.nedenNotu"
+        type="text"
+        maxlength="120"
+        autocomplete="off"
+        :aria-invalid="!!alanHatalari.nedenNotu"
+        :aria-describedby="'takas-not-uyari' + (alanHatalari.nedenNotu ? ' takas-not-hata' : '')"
+      />
+      <p id="takas-not-uyari" class="soluk">
+        En çok 120 karakter. Hastalık tanısı ya da sağlık ayrıntısı yazmayın.
+      </p>
+      <AlanHatasi id="takas-not-hata" :metin="alanHatalari.nedenNotu" />
+    </div>
 
-      <p v-if="genelHata" class="bildirim bildirim-hata" role="alert">{{ genelHata }}</p>
+    <div role="alert">
+      <p v-if="genelHata" class="bildirim bildirim-hata">{{ genelHata }}</p>
+    </div>
 
-      <div class="eylemler">
-        <button type="button" class="btn" @click="emit('kapat')">Vazgeç</button>
-        <button type="submit" class="btn btn-birincil" :disabled="mesgul || gonderilemez">
-          {{ mesgul ? 'Gönderiliyor…' : 'Talebi gönder' }}
-        </button>
-      </div>
-    </form>
-  </dialog>
+    <template #eylemler>
+      <Dugme varyant="birincil" boyut="dokunma" tip="submit" :disabled="mesgul || gonderilemez">
+        {{ mesgul ? 'Gönderiliyor…' : 'Talebi gönder' }}
+      </Dugme>
+      <Dugme boyut="dokunma" :disabled="mesgul" @click="vazgec">Vazgeç</Dugme>
+    </template>
+    <template v-if="eylemNedeni" #neden>{{ eylemNedeni }}</template>
+  </Diyalog>
 </template>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { sayiBicimle } from '@/lib/sayi'
+import Simge from '@/bilesenler/Simge.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import type { AdaletRaporu } from './raporApi'
 
 /** Adalet raporu gövdesi (ekran ve yazdırma ortak). `yazdir`: renksiz yazdırma tablosu. */
@@ -43,7 +45,7 @@ function fark(f: number | null): string {
             <td>
               {{ s.adSoyad }}
               <strong v-if="s.sifirSaat" class="sifir"
-                ><span aria-hidden="true">⚠</span> 0 saat</strong
+                ><Simge ad="uyari" boyut="1em" /> 0 saat</strong
               >
             </td>
             <td class="sayisal">
@@ -59,7 +61,8 @@ function fark(f: number | null): string {
             <td class="sayisal">{{ fark(s.farkYuzde) }}</td>
           </tr>
           <tr v-if="rapor.satirlar.length === 0">
-            <td colspan="8" class="bos-durum">Kayıt yok.</td>
+            <td v-if="yazdir" colspan="8" class="bos-durum">Kayıt yok.</td>
+            <td v-else colspan="8"><VeriDurumu durum="bos" metin="Kayıt yok." /></td>
           </tr>
         </tbody>
       </table>
@@ -72,10 +75,14 @@ function fark(f: number | null): string {
 
 <style scoped>
 .sifir {
-  margin-left: 0.4rem;
-  padding: 0 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aralik-1);
+  margin-left: var(--aralik-3);
+  padding: 0 var(--aralik-3);
   border: 1px solid currentcolor;
-  border-radius: 999px;
-  font-size: 0.85rem;
+  border-radius: var(--yaricap-pill);
+  font-size: var(--yazi-sm);
+  white-space: nowrap;
 }
 </style>

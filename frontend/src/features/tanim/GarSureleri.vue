@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { yoneticiMi } from '@/composables/oturum'
 import { tanimApi, type GarIntikalSuresi, type TanimDto } from './tanimApi'
 
@@ -13,6 +15,8 @@ const garlar = ref<TanimDto[]>([])
 const hata = ref('')
 const bilgi = ref('')
 const mesgul = ref(false)
+/** Yalnız ilk yükleme "yükleniyor" gösterir; kayıttan sonraki yenileme tabloyu (ve odağı) bozmaz. */
+const yukleniyor = ref(true)
 const garA = ref(0)
 const garB = ref(0)
 const dakika = ref<number | ''>('')
@@ -21,18 +25,24 @@ const mevcut = computed(() => {
   const [a, b] = [Math.min(garA.value, garB.value), Math.max(garA.value, garB.value)]
   return sureler.value.find((s) => s.garAId === a && s.garBId === b) ?? null
 })
+const dakikaGecerli = computed(
+  () => typeof dakika.value === 'number' && dakika.value >= 1 && dakika.value <= 1440,
+)
+/** Alan altı hata: yalnız kullanıcı değer girdikten sonra (boş form hata göstermez). */
+const dakikaHatasi = computed(() =>
+  dakika.value !== '' && !dakikaGecerli.value ? 'Süre 1 ile 1440 dakika arasında olmalı.' : '',
+)
+const ayniGar = computed(() => garA.value > 0 && garA.value === garB.value)
 const gecerli = computed(
-  () =>
-    garA.value > 0 &&
-    garB.value > 0 &&
-    garA.value !== garB.value &&
-    typeof dakika.value === 'number' &&
-    dakika.value >= 1 &&
-    dakika.value <= 1440,
+  () => garA.value > 0 && garB.value > 0 && !ayniGar.value && dakikaGecerli.value,
 )
 
 const hataYaz = (e: unknown, yedek: string) =>
   (hata.value = e instanceof ApiHata ? e.detail : yedek)
+const odakla = async (kimlik: string) => {
+  await nextTick()
+  document.getElementById(kimlik)?.focus()
+}
 
 async function yukle() {
   try {
@@ -53,6 +63,7 @@ onMounted(async () => {
       hataYaz(e, 'Gar listesi yüklenemedi.')
     }
   }
+  yukleniyor.value = false
 })
 
 function duzenle(s: GarIntikalSuresi) {
@@ -60,6 +71,7 @@ function duzenle(s: GarIntikalSuresi) {
   garB.value = s.garBId
   dakika.value = s.dakika
   bilgi.value = ''
+  void odakla('sure-dk')
 }
 
 async function kaydet() {
@@ -80,9 +92,11 @@ async function kaydet() {
     garB.value = 0
     dakika.value = ''
     await yukle()
+    void odakla('sure-gar-a') // sıradaki çift
   } catch (e) {
     hataYaz(e, 'Süre kaydedilemedi.')
     if (e instanceof ApiHata && e.cakismaMi) await yukle()
+    void odakla('sure-dk')
   } finally {
     mesgul.value = false
   }
@@ -115,45 +129,69 @@ async function sil(s: GarIntikalSuresi) {
     <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
     <p v-if="bilgi" class="bildirim bildirim-bilgi" role="status">{{ bilgi }}</p>
     <form v-if="yoneticiMi" class="arac-cubugu" data-test="sure-formu" @submit.prevent="kaydet">
-      <div class="alan">
-        <label for="sure-gar-a">Gar</label>
+      <div class="alan alan-zorunlu">
+        <label for="sure-gar-a">Birinci gar</label>
         <select id="sure-gar-a" v-model="garA">
           <option :value="0" disabled>Seçin…</option>
           <option v-for="g in garlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
         </select>
       </div>
-      <div class="alan">
-        <label for="sure-gar-b">Gar</label>
-        <select id="sure-gar-b" v-model="garB">
+      <div class="alan alan-zorunlu">
+        <label for="sure-gar-b">İkinci gar</label>
+        <select
+          id="sure-gar-b"
+          v-model="garB"
+          :aria-invalid="ayniGar"
+          :aria-describedby="ayniGar ? 'sure-gar-hata' : undefined"
+        >
           <option :value="0" disabled>Seçin…</option>
           <option v-for="g in garlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
         </select>
+        <AlanHatasi
+          id="sure-gar-hata"
+          :metin="ayniGar ? 'Süre iki farklı gar arasında tanımlanır.' : ''"
+          data-test="ayni-gar-ipucu"
+        />
       </div>
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="sure-dk">Süre (dk)</label>
-        <input id="sure-dk" v-model.number="dakika" type="number" min="1" max="1440" />
+        <input
+          id="sure-dk"
+          v-model.number="dakika"
+          class="sayisal"
+          type="number"
+          min="1"
+          max="1440"
+          :aria-invalid="dakikaHatasi !== ''"
+          :aria-describedby="dakikaHatasi ? 'sure-dk-yardim sure-dk-hata' : 'sure-dk-yardim'"
+        />
+        <p id="sure-dk-yardim" class="alan-yardim">1 ile 1440 dakika arası.</p>
+        <AlanHatasi id="sure-dk-hata" :metin="dakikaHatasi" />
       </div>
       <button type="submit" class="btn btn-birincil" :disabled="mesgul || !gecerli">
         {{ mevcut ? 'Güncelle' : 'Ekle' }}
       </button>
-      <p v-if="garA > 0 && garA === garB" class="soluk" data-test="ayni-gar-ipucu">
-        Süre iki farklı gar arasında tanımlanır.
-      </p>
     </form>
-    <div class="tablo-kap">
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Gar süreleri yükleniyor…" />
+    <div v-else-if="sureler.length > 0" class="tablo-kap sure-kap">
       <table class="tablo" aria-label="Gar süreleri">
         <thead>
           <tr>
             <th>Gar çifti</th>
             <th class="sayisal">Süre</th>
-            <th v-if="yoneticiMi"></th>
+            <th v-if="yoneticiMi"><span class="gorunmez">İşlemler</span></th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in sureler" :key="`${s.garAId}-${s.garBId}`" data-test="sure-satiri">
+          <tr
+            v-for="s in sureler"
+            :key="`${s.garAId}-${s.garBId}`"
+            :class="{ duzenlenen: mevcut === s }"
+            data-test="sure-satiri"
+          >
             <td>{{ s.garA }} – {{ s.garB }}</td>
             <td class="sayisal">{{ s.dakika }} dk</td>
-            <td v-if="yoneticiMi">
+            <td v-if="yoneticiMi" class="islem-hucre">
               <button
                 type="button"
                 class="btn btn-kucuk"
@@ -173,22 +211,34 @@ async function sil(s: GarIntikalSuresi) {
               </button>
             </td>
           </tr>
-          <tr v-if="sureler.length === 0">
-            <td :colspan="yoneticiMi ? 3 : 2" class="bos-durum">Tanımlı süre yok.</td>
-          </tr>
         </tbody>
       </table>
     </div>
+    <VeriDurumu v-else-if="!hata" durum="bos" metin="Tanımlı süre yok." />
   </section>
 </template>
 
 <style scoped>
 .gar-sureleri {
-  margin-top: 1.5rem;
+  margin-top: var(--aralik-6);
 }
-.btn-kucuk {
-  padding: 0.1rem 0.5rem;
-  font-size: 0.85rem;
-  margin-left: 0.25rem;
+/* sabit başlık: tablo kendi kabında kayar */
+.sure-kap {
+  max-height: 26rem;
+  overflow: auto;
+}
+.sure-kap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.islem-hucre {
+  white-space: nowrap;
+}
+.islem-hucre .btn + .btn {
+  margin-left: var(--aralik-3);
+}
+.duzenlenen td {
+  background: var(--renk-bilgi-zemin);
 }
 </style>

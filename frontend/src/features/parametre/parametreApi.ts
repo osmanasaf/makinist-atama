@@ -67,6 +67,7 @@ export const GRUPLAR: readonly { kod: string; baslik: string }[] = [
   { kod: 'PUANTAJ', baslik: 'Puantaj' },
   { kod: 'TAKAS_IZIN', baslik: 'Takas ve izin' },
   { kod: 'YOLCULUK', baslik: 'Yolculuk ve konaklama' },
+  { kod: 'SEFER', baslik: 'Seferler ve Excel' },
   { kod: 'OTOMATIK', baslik: 'Otomatik atama ve adalet' },
   { kod: 'KADRO', baslik: 'Kadro' },
   { kod: 'PERSONEL', baslik: 'Diğer personel' },
@@ -164,6 +165,11 @@ export const kuralSatiri = (d: KuralSiddetDto): AyarSatiri => ({
   sira: d.sira,
 })
 
+/** Sunucu kataloğu bu parametreyi "Çalışma ve dinlenme" grubuna koyuyor; ekranda ait olduğu yerde (Seferler ve Excel) gösterilir. Kalıcı çözüm katalogdadır (V29); bu geçici ön yüz eşlemesidir. */
+const GRUP_DUZELTMESI: Record<string, string> = { 'sefer.parca_azami_saat': 'SEFER' }
+/** Eşleme iki kaynağa da uygulanır: parametre (/api/parametre) ve yerel ayar (/api/ayar); `sefer.parca_azami_saat` gerçekte ikincisinden gelir. */
+const grupDuzelt = (anahtar: string, grup: string) => GRUP_DUZELTMESI[anahtar] ?? grup
+
 export const parametreSatiri = (d: ParametreDto): AyarSatiri => ({
   tur: 'PARAMETRE',
   anahtar: d.anahtar,
@@ -178,7 +184,7 @@ export const parametreSatiri = (d: ParametreDto): AyarSatiri => ({
   guvenilirlik: d.guvenilirlik,
   bayrak: d.birim === '0/1',
   sayisal: d.tip === 'SAYI',
-  grup: d.grup,
+  grup: grupDuzelt(d.anahtar, d.grup),
   sira: d.sira,
 })
 
@@ -196,7 +202,7 @@ export const ayarSatiri = (d: AyarDto): AyarSatiri => ({
   guvenilirlik: null,
   bayrak: d.birim === '0/1',
   sayisal: true,
-  grup: d.grup,
+  grup: grupDuzelt(d.anahtar, d.grup),
   sira: d.sira,
 })
 

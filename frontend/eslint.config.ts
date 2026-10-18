@@ -26,6 +26,13 @@ export default defineConfigWithVueTs(
     files: ['src/**/*.test.ts'],
   },
 
+  // Paylaşılan bileşen adları bilerek tek sözcüktür (MK-131: Simge, Dugme, Rozet, Diyalog, Sekmeler)
+  {
+    name: 'app/bilesen-adlari',
+    files: ['src/bilesenler/*.vue'],
+    rules: { 'vue/multi-word-component-names': 'off' },
+  },
+
   // XSS: kullanıcı metinleri hep kaçışlı basılır.
   { name: 'app/no-v-html', rules: { 'vue/no-v-html': 'error' } },
 

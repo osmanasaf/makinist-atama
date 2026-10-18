@@ -140,6 +140,31 @@ describe('OzelKuralSayfasi', () => {
     await flushPromises()
     expect(w.find('dialog').exists()).toBe(false)
     expect(w.text()).toContain('Yeni kural adı')
+    // QA BUG-3: kayıt sonrası görünür + duyurulan bildirim
+    expect(w.get('[role="status"]').text()).toBe('Kural kaydedildi: Ö-003 Yeni kural adı.')
+  })
+
+  it('YENİ-1: ilk kural kaydında boş durumdaki "Yeni kural" düğmesi kalkar; odak sayfa başlığına gider', async () => {
+    document.body.innerHTML = '<main id="icerik" tabindex="-1"><div id="kok"></div></main>'
+    vi.mocked(ozelKuralApi.liste).mockResolvedValue([])
+    vi.mocked(ozelKuralApi.ekle).mockResolvedValue({ ...kural, id: 3, kod: 'Ö-003', ad: 'İlk' })
+    kullanici.value = { id: 1, eposta: 'a@b.c', adSoyad: 'Ayşe Kaya', rol: 'YONETICI', aktif: true }
+    const w = mount(OzelKuralSayfasi, { attachTo: '#kok' })
+    await flushPromises()
+    const ac = dugme(w, 'Yeni kural')!
+    ;(ac.element as HTMLElement).focus()
+    await ac.trigger('click')
+    await flushPromises()
+    await w.get('#kk-ad').setValue('İlk')
+    await w.get('#kk-esik').setValue('8')
+    await w.get('#kk-gerekce').setValue('Gerekçe')
+    await w.get('input[name="kk-siddet"][value="UYARI"]').setValue()
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(w.find('dialog').exists()).toBe(false)
+    expect(ac.element.isConnected).toBe(false)
+    expect(document.activeElement?.tagName).toBe('H1')
+    w.unmount()
   })
 
   it('Düzenle seçili kuralla diyalog açar', async () => {
@@ -184,5 +209,51 @@ describe('OzelKuralSayfasi', () => {
     await dugme(w, 'Kapatmayı onayla')!.trigger('click')
     await flushPromises()
     expect(w.get('.kapat-alani [role="alert"]').text()).toBe('Yetkiniz yok.')
+  })
+
+  it('sayfada tek h1; şiddet rozeti ton + simge + metinle; sayfa üstünde Yeni kural', async () => {
+    const w = await kur()
+    expect(w.findAll('h1')).toHaveLength(1)
+    const rozetler = w.findAll('td .rozet')
+    expect(rozetler.map((r) => r.text())).toEqual(['Engel', 'Kapalı'])
+    expect(rozetler[0]!.classes()).toContain('rozet-engel')
+    expect(rozetler[0]!.find('svg[data-simge="engel"]').exists()).toBe(true)
+    expect(rozetler[1]!.classes()).toContain('rozet-notr')
+    expect(w.get('.sayfa-baslik-eylemler').text()).toBe('Yeni kural')
+  })
+
+  it('yüklenirken durum bildirimi görünür', async () => {
+    let bitir: (l: OzelKuralDto[]) => void = () => {}
+    vi.mocked(ozelKuralApi.liste).mockReturnValue(new Promise((c) => (bitir = c)))
+    kullanici.value = { id: 1, eposta: 'a@b.c', adSoyad: 'Ayşe Kaya', rol: 'YONETICI', aktif: true }
+    const w = mount(OzelKuralSayfasi)
+    await flushPromises()
+    expect(w.get('.veri-durumu[role="status"]').text()).toContain('yükleniyor')
+    bitir([kural])
+    await flushPromises()
+    expect(w.find('.veri-durumu').exists()).toBe(false)
+    expect(w.text()).toContain('Ö-001')
+  })
+
+  it('Kapat: neden kutusuna odak gider; hata alanın altında, aria-invalid + aria-describedby ile bağlıdır', async () => {
+    vi.mocked(ozelKuralApi.guncelle).mockRejectedValue(
+      new ApiHata(403, 'YETKISIZ', 'Yetkiniz yok.'),
+    )
+    kullanici.value = { id: 1, eposta: 'a@b.c', adSoyad: 'Ayşe Kaya', rol: 'YONETICI', aktif: true }
+    const w = mount(OzelKuralSayfasi, { attachTo: document.body })
+    await flushPromises()
+    await w.get('[aria-label="Ö-001 kuralını kapat"]').trigger('click')
+    await flushPromises()
+    const girdi = w.get('#ozel-kapat-neden-1')
+    expect(document.activeElement).toBe(girdi.element)
+    expect(girdi.attributes('aria-invalid')).toBe('false')
+    await girdi.setValue('Neden')
+    await dugme(w, 'Kapatmayı onayla')!.trigger('click')
+    await flushPromises()
+    expect(girdi.attributes('aria-invalid')).toBe('true')
+    expect(girdi.attributes('aria-describedby')).toBe('ozel-kapat-hata-1')
+    expect(w.get('#ozel-kapat-hata-1').text()).toBe('Yetkiniz yok.')
+    expect(document.activeElement).toBe(girdi.element)
+    w.unmount()
   })
 })

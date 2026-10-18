@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import { bugun, zamanBicimle } from '@/lib/tarih'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { konaklamaApi, type KonaklamaRaporu } from './konaklamaApi'
 
 /** Aylık konaklama gece raporu (F2b, MK-44): makinist x gar; ay = giriş günü; "kaydı eksik öneri" = konaklama gerektiren ama kaydı girilmemiş boşluklar. */
@@ -10,13 +13,18 @@ const rapor = ref<KonaklamaRaporu | null>(null)
 /** Görünen raporun ayı: form sonradan değişse de Excel bununla çalışır. */
 const uygulanan = ref('')
 const hata = ref('')
+const ayHata = ref('')
+const ayAlani = ref<HTMLInputElement | null>(null)
 const mesgul = ref(false)
 
 async function getir() {
   if (mesgul.value) return
   hata.value = ''
+  ayHata.value = ''
   if (!ay.value) {
-    hata.value = 'Ay seçin.'
+    ayHata.value = 'Ay seçin.'
+    await nextTick()
+    ayAlani.value?.focus()
     return
   }
   const secilen = ay.value
@@ -50,36 +58,51 @@ async function excelIndir() {
 </script>
 
 <template>
-  <section>
-    <div class="sayfa-baslik"><h1>Konaklama raporu</h1></div>
+  <section class="rapor-sayfa">
+    <SayfaBasligi baslik="Konaklama raporu">
+      <template v-if="rapor" #eylemler>
+        <button type="button" class="btn" @click="excelIndir">Excel indir</button>
+      </template>
+    </SayfaBasligi>
 
     <form class="arac-cubugu" @submit.prevent="getir">
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="kr-ay">Ay</label>
-        <input id="kr-ay" v-model="ay" type="month" required />
+        <input
+          id="kr-ay"
+          ref="ayAlani"
+          v-model="ay"
+          type="month"
+          required
+          :aria-invalid="ayHata ? 'true' : undefined"
+          :aria-describedby="ayHata ? 'kr-ay-hata' : undefined"
+        />
+        <AlanHatasi id="kr-ay-hata" :metin="ayHata" />
       </div>
       <button type="submit" class="btn btn-birincil" :disabled="mesgul">Raporu getir</button>
     </form>
 
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
-    <p v-if="mesgul" class="soluk">Rapor hazırlanıyor…</p>
+    <VeriDurumu v-if="mesgul" durum="yukleniyor" metin="Rapor hazırlanıyor…" />
+    <VeriDurumu v-else-if="hata && !rapor" durum="hata" :metin="hata" />
+    <p v-else-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
 
     <template v-if="rapor">
       <div class="kart ozet" data-test="ozet">
         <p>
-          Toplam <strong>{{ rapor.toplamGece }}</strong> gece · kaydı eksik öneri
-          <strong>{{ rapor.toplamEksikOneri }}</strong>
+          Toplam <strong class="sayisal">{{ rapor.toplamGece }}</strong> gece · kaydı eksik öneri
+          <strong class="sayisal">{{ rapor.toplamEksikOneri }}</strong>
         </p>
         <p class="soluk">
           Üretim zamanı: {{ zamanBicimle(rapor.uretimZamani) }} · Üreten: {{ rapor.ureten }}. Gece =
           süre / 24 saat yukarı yuvarlanır (en az 1); konaklama giriş gününün ayına yazılır.
         </p>
-        <div class="eylemler">
-          <button type="button" class="btn" @click="excelIndir">Excel indir</button>
-        </div>
       </div>
 
-      <p v-if="rapor.makinistler.length === 0" class="soluk">Bu ay konaklama kaydı ve öneri yok.</p>
+      <VeriDurumu
+        v-if="rapor.makinistler.length === 0"
+        durum="bos"
+        metin="Bu ay konaklama kaydı ve öneri yok."
+      />
       <div v-else class="tablo-kap">
         <table class="tablo" aria-label="Aylık konaklama">
           <thead>
@@ -133,10 +156,10 @@ async function excelIndir() {
 </template>
 
 <style scoped>
-.ozet {
-  margin-bottom: 1rem;
-}
 .ozet p {
-  margin: 0 0 0.25rem;
+  margin: 0 0 var(--aralik-2);
+}
+.toplam td {
+  background: var(--renk-n-50);
 }
 </style>

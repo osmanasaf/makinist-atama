@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import Simge from '@/bilesenler/Simge.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { useCikisKorumasi } from '@/composables/cikis-korumasi'
+import { ilkHataliyaOdaklan } from '@/lib/odak'
 import { tarihBicimle, zamanBicimle } from '@/lib/tarih'
 import { ROL_ETIKETLERI } from '@/features/atama/atamaApi'
 import { tanimApi, type TanimDto } from '@/features/tanim/tanimApi'
@@ -10,6 +16,7 @@ import MakinistHesap from './MakinistHesap.vue'
 import {
   DURUM_ETIKETLERI,
   IZIN_DURUM_ETIKETLERI,
+  IZIN_DURUM_GORUNUMU,
   IZIN_ETIKETLERI,
   TUR_ETIKETLERI,
   makinistApi,
@@ -69,6 +76,9 @@ const cakisma = ref(false)
 const bilgi = ref('')
 const mesgul = ref(false)
 const yuklendi = ref(false)
+const formKok = ref<HTMLFormElement | null>(null)
+const izinFormKok = ref<HTMLFormElement | null>(null)
+const izinHatalari = ref<Record<string, string>>({})
 let kaydedilmis = ''
 
 const anlik = () => JSON.stringify(form)
@@ -109,6 +119,7 @@ function hataYaz(e: unknown) {
   if (e.kod === 'SICIL_TEKRARI') alanHatalari.value = { sicil: e.detail }
   else hata.value = e.detail
   cakisma.value = e.cakismaMi
+  void ilkHataliyaOdaklan(formKok.value)
 }
 
 async function yukle() {
@@ -155,7 +166,10 @@ async function kaydet() {
   bilgi.value = ''
   cakisma.value = false
   alanHatalari.value = dogrula()
-  if (Object.keys(alanHatalari.value).length > 0) return
+  if (Object.keys(alanHatalari.value).length > 0) {
+    await ilkHataliyaOdaklan(formKok.value)
+    return
+  }
   const govde = {
     sicil: form.sicil.trim(),
     adSoyad: form.adSoyad.trim(),
@@ -199,8 +213,12 @@ async function kaydet() {
 async function izinEkle() {
   if (id.value === null || mesgul.value) return
   hata.value = ''
-  if (!izinForm.baslangic || !izinForm.bitis) {
-    hata.value = 'İzin başlangıç ve bitiş tarihi zorunludur.'
+  const eksik: Record<string, string> = {}
+  if (!izinForm.baslangic) eksik.baslangic = 'İzin başlangıç tarihi zorunludur.'
+  if (!izinForm.bitis) eksik.bitis = 'İzin bitiş tarihi zorunludur.'
+  izinHatalari.value = eksik
+  if (Object.keys(eksik).length > 0) {
+    await ilkHataliyaOdaklan(izinFormKok.value)
     return
   }
   mesgul.value = true
@@ -231,29 +249,39 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
 
 <template>
   <section>
-    <div class="sayfa-baslik">
-      <h1>{{ id === null ? 'Yeni personel' : `${TUR_ETIKETLERI[form.tur]}: ${form.adSoyad}` }}</h1>
-      <button type="button" class="btn" @click="router.push({ name: 'makinistler' })">
-        Listeye dön
-      </button>
-    </div>
+    <SayfaBasligi :baslik="id === null ? 'Yeni personel' : `Personel: ${form.adSoyad}`">
+      <template v-if="id !== null" #sayaclar>
+        <Rozet
+          :metin="TUR_ETIKETLERI[form.tur]"
+          :ton="konduktor ? 'bilgi' : 'notr'"
+          simge="kisi"
+          data-test="personel-turu"
+        />
+      </template>
+      <template #eylemler>
+        <button type="button" class="btn" @click="router.push({ name: 'makinistler' })">
+          Listeye dön
+        </button>
+      </template>
+    </SayfaBasligi>
     <div v-if="hata" class="bildirim bildirim-hata" role="alert">
       <p>{{ hata }}</p>
       <button v-if="cakisma" type="button" class="btn" @click="yukle">Yeniden yükle</button>
     </div>
     <p v-if="bilgi" class="bildirim bildirim-bilgi" role="status">{{ bilgi }}</p>
 
-    <form class="kart" novalidate @submit.prevent="kaydet">
+    <form ref="formKok" class="kart" novalidate @submit.prevent="kaydet">
       <div class="form-izgara">
-        <div class="alan">
+        <div class="alan alan-zorunlu">
           <label for="sicil">Sicil</label>
           <input
             id="sicil"
             v-model="form.sicil"
             :readonly="id !== null"
             :aria-invalid="!!alanHatalari.sicil"
+            :aria-describedby="alanHatalari.sicil ? 'sicil-hata' : undefined"
           />
-          <p v-if="alanHatalari.sicil" class="alan-hata">{{ alanHatalari.sicil }}</p>
+          <AlanHatasi id="sicil-hata" :metin="alanHatalari.sicil" />
         </div>
         <div class="alan">
           <label for="tur">Personel türü</label>
@@ -261,18 +289,28 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
             <option v-for="(etiket, k) in TUR_ETIKETLERI" :key="k" :value="k">{{ etiket }}</option>
           </select>
         </div>
-        <div class="alan">
+        <div class="alan alan-zorunlu">
           <label for="adSoyad">Ad soyad</label>
-          <input id="adSoyad" v-model="form.adSoyad" :aria-invalid="!!alanHatalari.adSoyad" />
-          <p v-if="alanHatalari.adSoyad" class="alan-hata">{{ alanHatalari.adSoyad }}</p>
+          <input
+            id="adSoyad"
+            v-model="form.adSoyad"
+            :aria-invalid="!!alanHatalari.adSoyad"
+            :aria-describedby="alanHatalari.adSoyad ? 'adSoyad-hata' : undefined"
+          />
+          <AlanHatasi id="adSoyad-hata" :metin="alanHatalari.adSoyad" />
         </div>
-        <div class="alan">
+        <div class="alan alan-zorunlu">
           <label for="bagliGar">Bağlı gar</label>
-          <select id="bagliGar" v-model="form.bagliGarId" :aria-invalid="!!alanHatalari.bagliGarId">
+          <select
+            id="bagliGar"
+            v-model="form.bagliGarId"
+            :aria-invalid="!!alanHatalari.bagliGarId"
+            :aria-describedby="alanHatalari.bagliGarId ? 'bagliGar-hata' : undefined"
+          >
             <option value="">Seçin</option>
             <option v-for="g in garlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
           </select>
-          <p v-if="alanHatalari.bagliGarId" class="alan-hata">{{ alanHatalari.bagliGarId }}</p>
+          <AlanHatasi id="bagliGar-hata" :metin="alanHatalari.bagliGarId" />
         </div>
         <div class="alan">
           <label for="durum">Durum</label>
@@ -291,8 +329,9 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
             v-model="form.ehliyetBitis"
             type="date"
             :aria-invalid="!!alanHatalari.ehliyetBitis"
+            :aria-describedby="alanHatalari.ehliyetBitis ? 'ehliyetBitis-hata' : undefined"
           />
-          <p v-if="alanHatalari.ehliyetBitis" class="alan-hata">{{ alanHatalari.ehliyetBitis }}</p>
+          <AlanHatasi id="ehliyetBitis-hata" :metin="alanHatalari.ehliyetBitis" />
         </div>
         <div class="alan">
           <label for="saglikBitis">Sağlık bitişi</label>
@@ -301,8 +340,9 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
             v-model="form.saglikBitis"
             type="date"
             :aria-invalid="!!alanHatalari.saglikBitis"
+            :aria-describedby="alanHatalari.saglikBitis ? 'saglikBitis-hata' : undefined"
           />
-          <p v-if="alanHatalari.saglikBitis" class="alan-hata">{{ alanHatalari.saglikBitis }}</p>
+          <AlanHatasi id="saglikBitis-hata" :metin="alanHatalari.saglikBitis" />
         </div>
         <div class="alan">
           <label for="psikoteknikBitis">Psikoteknik bitişi</label>
@@ -311,10 +351,9 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
             v-model="form.psikoteknikBitis"
             type="date"
             :aria-invalid="!!alanHatalari.psikoteknikBitis"
+            :aria-describedby="alanHatalari.psikoteknikBitis ? 'psikoteknikBitis-hata' : undefined"
           />
-          <p v-if="alanHatalari.psikoteknikBitis" class="alan-hata">
-            {{ alanHatalari.psikoteknikBitis }}
-          </p>
+          <AlanHatasi id="psikoteknikBitis-hata" :metin="alanHatalari.psikoteknikBitis" />
         </div>
         <div v-if="!konduktor" class="alan">
           <label for="sonSurus">Son sürüş</label>
@@ -324,23 +363,27 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
 
       <template v-if="!konduktor">
         <h2>Araç tipi bröveleri</h2>
-        <p v-if="alanHatalari.broveAracTipleri" class="alan-hata">
-          {{ alanHatalari.broveAracTipleri }}
-        </p>
         <div class="tablo-kap">
-          <table class="tablo">
+          <table class="tablo" aria-label="Araç tipi bröveleri">
             <thead>
               <tr>
                 <th>Araç tipi</th>
                 <th>Sınav tarihi</th>
                 <th>Geçerlilik</th>
-                <th></th>
+                <th><span class="gorunmez">İşlem</span></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(s, i) in form.aracTipleri" :key="i">
                 <td>
-                  <select v-model="s.aracTipiId" :aria-label="`Araç tipi ${i + 1}`">
+                  <select
+                    v-model="s.aracTipiId"
+                    :aria-label="`Araç tipi ${i + 1}`"
+                    :aria-invalid="!!alanHatalari.broveAracTipleri && s.aracTipiId === ''"
+                    :aria-describedby="
+                      alanHatalari.broveAracTipleri ? 'brove-arac-hata' : undefined
+                    "
+                  >
                     <option value="">Seçin</option>
                     <option v-for="a in aracTipleri" :key="a.id" :value="a.id">{{ a.ad }}</option>
                   </select>
@@ -350,6 +393,10 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
                     v-model="s.sinavTarihi"
                     type="date"
                     :aria-label="`Araç tipi sınav tarihi ${i + 1}`"
+                    :aria-invalid="!!alanHatalari.broveAracTipleri && !s.sinavTarihi"
+                    :aria-describedby="
+                      alanHatalari.broveAracTipleri ? 'brove-arac-hata' : undefined
+                    "
                     @input="s.gecerlilikBitis = null"
                   />
                 </td>
@@ -360,7 +407,12 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
                   <small v-else>Kayıttan sonra hesaplanır</small>
                 </td>
                 <td>
-                  <button type="button" class="btn" @click="form.aracTipleri.splice(i, 1)">
+                  <button
+                    type="button"
+                    class="btn"
+                    :aria-label="`${i + 1}. araç tipi bröve satırını sil`"
+                    @click="form.aracTipleri.splice(i, 1)"
+                  >
                     Sil
                   </button>
                 </td>
@@ -368,6 +420,7 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
             </tbody>
           </table>
         </div>
+        <AlanHatasi id="brove-arac-hata" :metin="alanHatalari.broveAracTipleri" />
         <button
           type="button"
           class="btn"
@@ -377,22 +430,26 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
         </button>
 
         <h2>Hat bröveleri</h2>
-        <p v-if="alanHatalari.broveHatlar" class="alan-hata">{{ alanHatalari.broveHatlar }}</p>
         <div class="tablo-kap">
-          <table class="tablo">
+          <table class="tablo" aria-label="Hat bröveleri">
             <thead>
               <tr>
                 <th>Hat</th>
                 <th>Sınav tarihi</th>
                 <th>Son sürüş</th>
                 <th>Geçerlilik</th>
-                <th></th>
+                <th><span class="gorunmez">İşlem</span></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(s, i) in form.hatlar" :key="i">
                 <td>
-                  <select v-model="s.hatId" :aria-label="`Hat ${i + 1}`">
+                  <select
+                    v-model="s.hatId"
+                    :aria-label="`Hat ${i + 1}`"
+                    :aria-invalid="!!alanHatalari.broveHatlar && s.hatId === ''"
+                    :aria-describedby="alanHatalari.broveHatlar ? 'brove-hat-hata' : undefined"
+                  >
                     <option value="">Seçin</option>
                     <option v-for="h in hatlar" :key="h.id" :value="h.id">{{ h.ad }}</option>
                   </select>
@@ -402,6 +459,8 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
                     v-model="s.sinavTarihi"
                     type="date"
                     :aria-label="`Hat sınav tarihi ${i + 1}`"
+                    :aria-invalid="!!alanHatalari.broveHatlar && !s.sinavTarihi"
+                    :aria-describedby="alanHatalari.broveHatlar ? 'brove-hat-hata' : undefined"
                     @input="s.gecerlilikBitis = null"
                   />
                 </td>
@@ -420,12 +479,20 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
                   <small v-else>Kayıttan sonra hesaplanır</small>
                 </td>
                 <td>
-                  <button type="button" class="btn" @click="form.hatlar.splice(i, 1)">Sil</button>
+                  <button
+                    type="button"
+                    class="btn"
+                    :aria-label="`${i + 1}. hat bröve satırını sil`"
+                    @click="form.hatlar.splice(i, 1)"
+                  >
+                    Sil
+                  </button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
+        <AlanHatasi id="brove-hat-hata" :metin="alanHatalari.broveHatlar" />
         <button
           type="button"
           class="btn"
@@ -444,10 +511,10 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
 
     <MakinistHesap v-if="id !== null && yuklendi" :makinist-id="id" :durum="form.durum" />
 
-    <section v-if="id !== null" class="kart" style="margin-top: 1rem">
+    <section v-if="id !== null" class="kart alt-kart">
       <h2>İzinler</h2>
       <div class="tablo-kap">
-        <table class="tablo">
+        <table class="tablo" aria-label="İzinler">
           <thead>
             <tr>
               <th>Başlangıç</th>
@@ -462,23 +529,43 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
               <td>{{ tarihBicimle(iz.baslangic) }}</td>
               <td>{{ tarihBicimle(iz.bitis) }}</td>
               <td>{{ IZIN_ETIKETLERI[iz.tur] }}</td>
-              <td>{{ IZIN_DURUM_ETIKETLERI[iz.durum] ?? iz.durum }}</td>
+              <td>
+                <Rozet
+                  :ton="IZIN_DURUM_GORUNUMU[iz.durum]?.ton ?? 'notr'"
+                  :simge="IZIN_DURUM_GORUNUMU[iz.durum]?.simge"
+                  :metin="IZIN_DURUM_ETIKETLERI[iz.durum] ?? iz.durum"
+                />
+              </td>
               <td>{{ iz.olusturan }}</td>
             </tr>
             <tr v-if="izinler.length === 0">
-              <td colspan="5" class="bos-durum">İzin kaydı yok.</td>
+              <td colspan="5"><VeriDurumu durum="bos" metin="İzin kaydı yok." /></td>
             </tr>
           </tbody>
         </table>
       </div>
-      <form class="arac-cubugu" style="margin-top: 0.75rem" @submit.prevent="izinEkle">
-        <div class="alan">
+      <form ref="izinFormKok" class="arac-cubugu izin-formu" novalidate @submit.prevent="izinEkle">
+        <div class="alan alan-zorunlu">
           <label for="izin-baslangic">İzin başlangıç</label>
-          <input id="izin-baslangic" v-model="izinForm.baslangic" type="date" />
+          <input
+            id="izin-baslangic"
+            v-model="izinForm.baslangic"
+            type="date"
+            :aria-invalid="!!izinHatalari.baslangic"
+            :aria-describedby="izinHatalari.baslangic ? 'izin-baslangic-hata' : undefined"
+          />
+          <AlanHatasi id="izin-baslangic-hata" :metin="izinHatalari.baslangic" />
         </div>
-        <div class="alan">
+        <div class="alan alan-zorunlu">
           <label for="izin-bitis">İzin bitiş</label>
-          <input id="izin-bitis" v-model="izinForm.bitis" type="date" />
+          <input
+            id="izin-bitis"
+            v-model="izinForm.bitis"
+            type="date"
+            :aria-invalid="!!izinHatalari.bitis"
+            :aria-describedby="izinHatalari.bitis ? 'izin-bitis-hata' : undefined"
+          />
+          <AlanHatasi id="izin-bitis-hata" :metin="izinHatalari.bitis" />
         </div>
         <div class="alan">
           <label for="izin-tur">İzin türü</label>
@@ -492,12 +579,12 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
         <div>
           <p>
             <strong
-              ><span aria-hidden="true">⚠</span> Bu izin aralığında atanmış
+              ><Simge ad="uyari" boyut="1em" /> Bu izin aralığında atanmış
               {{ izinEtkisi.length }} sefer var — atamaları gözden geçirin</strong
             >
           </p>
           <div class="tablo-kap">
-            <table class="tablo">
+            <table class="tablo" aria-label="Etkilenen atamalar">
               <thead>
                 <tr>
                   <th>Tarih</th>
@@ -523,3 +610,12 @@ const varisSaati = (s: IzinEtkisiSatiri) =>
     </section>
   </section>
 </template>
+
+<style scoped>
+.alt-kart {
+  margin-top: var(--aralik-5);
+}
+.izin-formu {
+  margin-top: var(--aralik-4);
+}
+</style>

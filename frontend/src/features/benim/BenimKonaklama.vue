@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import Simge from '@/bilesenler/Simge.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { zamanBicimle } from '@/lib/tarih'
 import { benimApi, type BenimKonaklama } from './benimApi'
 import { rozetYaz } from './rozet'
@@ -32,23 +36,28 @@ onMounted(async () => {
 
 <template>
   <section>
-    <h1>Konaklamam</h1>
+    <SayfaBasligi baslik="Konaklamam" />
     <p class="soluk">Önümüzdeki günlerde dış garda kalacağınız yerler.</p>
-    <p v-if="yukleniyor" role="status">Yükleniyor…</p>
-    <div v-else-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</div>
-    <p v-else-if="kayitlar.length === 0" class="soluk" data-test="bos">
-      Bu günlerde konaklama kaydınız yok.
-    </p>
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Yükleniyor…" />
+    <VeriDurumu v-else-if="hata" durum="hata" :metin="hata" />
+    <VeriDurumu
+      v-else-if="kayitlar.length === 0"
+      durum="bos"
+      metin="Bu günlerde konaklama kaydınız yok."
+      data-test="bos"
+    />
     <ul v-else class="benim-liste">
-      <li v-for="k in kayitlar" :key="k.id" class="benim-kart" data-test="konaklama">
+      <li v-for="k in kayitlar" :key="k.id" class="kart benim-kart" data-test="konaklama">
         <p class="benim-saat">{{ k.gar }}</p>
-        <p>
-          <span class="benim-etiket">{{ YER_ETIKETLERI[k.yerTipi] }}</span>
+        <p class="benim-satir">
+          <Rozet ton="notr" simge="yatak" :metin="YER_ETIKETLERI[k.yerTipi]" />
           {{ zamanBicimle(k.giris) }} – {{ zamanBicimle(k.cikis) }}
-          <small class="soluk">({{ k.gece }} gece)</small>
+          <small>({{ k.gece }} gece)</small>
         </p>
       </li>
     </ul>
-    <p><a href="#/benim/gorevler">← Görevlerim</a></p>
+    <p class="benim-alt-eylem">
+      <a href="#/benim/gorevler" class="btn"><Simge ad="ok-sol" /> Görevlerim</a>
+    </p>
   </section>
 </template>

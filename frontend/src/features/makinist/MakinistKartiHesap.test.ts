@@ -81,6 +81,7 @@ describe('MakinistHesap (makinist kartı: Hesap bölümü)', () => {
     await flushPromises()
     expect(w.get('[data-test=gecici-parola]').text()).toBe('Zyxw9876Vuts')
     expect(w.text()).toContain('hesap kilitli')
+    expect(w.get('.rozet-uyari svg').attributes('data-simge')).toBe('uyari')
     expect(kilit().attributes('disabled')).toBeUndefined()
     vi.mocked(makinistApi.hesapKilitAc).mockResolvedValue({ ...var1, kilitli: false })
     await kilit().trigger('click')

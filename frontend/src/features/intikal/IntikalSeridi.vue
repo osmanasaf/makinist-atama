@@ -3,6 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import type { Tarih } from '@/api/tipler'
 import { useYoklama } from '@/features/benim/useYoklama'
+import Dugme from '@/bilesenler/Dugme.vue'
+import Rozet from '@/bilesenler/Rozet.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import { saatBicimle, tarihBicimle } from '@/lib/tarih'
 import IntikalDialog from './IntikalDialog.vue'
 import { ARAC_ETIKETLERI, intikalApi, type Intikal } from './intikalApi'
@@ -79,14 +82,16 @@ function tamam(mesaj: string) {
       <h2 id="intikal-baslik">
         İntikaller <small class="soluk">({{ sayi }})</small>
       </h2>
-      <button
-        type="button"
-        class="btn btn-kucuk"
-        data-test="intikal-ekle"
-        @click="diyalog = { kip: 'ekle' }"
-      >
+      <Dugme boyut="sm" simge="ekle" data-test="intikal-ekle" @click="diyalog = { kip: 'ekle' }">
         İntikal ekle
-      </button>
+      </Dugme>
+      <p
+        v-if="!hata && yuklendi && liste.length === 0"
+        class="soluk intikal-bos"
+        data-test="intikal-bos"
+      >
+        {{ tarihBicimle(tarih) }} için intikal yok.
+      </p>
     </div>
     <div role="status">
       <p v-if="bilgi" class="bildirim bildirim-bilgi" data-test="intikal-bilgi">{{ bilgi }}</p>
@@ -94,10 +99,7 @@ function tamam(mesaj: string) {
     <p v-if="hata" class="bildirim bildirim-hata" role="alert" data-test="intikal-hata">
       {{ hata }}
     </p>
-    <p v-else-if="yuklendi && liste.length === 0" class="soluk" data-test="intikal-bos">
-      {{ tarihBicimle(tarih) }} için intikal yok.
-    </p>
-    <ul v-else class="intikal-listesi">
+    <ul v-else-if="liste.length > 0" class="intikal-listesi">
       <li
         v-for="i in liste"
         :key="i.id"
@@ -112,24 +114,34 @@ function tamam(mesaj: string) {
             }}<template v-if="ertesiGun(i)"> (ertesi gün)</template> ·
             {{ ARAC_ETIKETLERI[i.aracTuru] }}<template v-if="i.notu"> · {{ i.notu }}</template>
           </span>
-          <span v-if="i.durum === 'IPTAL'" class="rozet rozet-iptal" data-test="intikal-iptal">
-            <span aria-hidden="true">⛔</span> İPTAL
-          </span>
-          <span v-if="i.kirmizi" class="rozet rozet-kontrol" data-test="intikal-kirmizi">
-            <span aria-hidden="true">⛔</span> KONTROL
-          </span>
+          <Rozet
+            v-if="i.durum === 'IPTAL'"
+            ton="engel"
+            simge="iptal"
+            metin="İPTAL"
+            boyut="sm"
+            data-test="intikal-iptal"
+          />
+          <Rozet
+            v-if="i.kirmizi"
+            ton="engel"
+            simge="engel"
+            metin="KONTROL"
+            boyut="sm"
+            data-test="intikal-kirmizi"
+          />
           <span v-if="i.gordu === 'GORULDU'" class="gordum goruldu" data-test="intikal-gordu">
-            <span aria-hidden="true">✓</span> gördü {{ saatBicimle(i.gorduZamani) }}
+            <Simge ad="basari" boyut="1em" />gördü {{ saatBicimle(i.gorduZamani) }}
           </span>
           <span
             v-else-if="i.gordu === 'DEGISTI'"
             class="gordum gormedi"
             data-test="intikal-degisti"
           >
-            <span aria-hidden="true">↻</span> değişti, yeniden onay bekliyor
+            <Simge ad="takas" boyut="1em" />değişti, yeniden onay bekliyor
           </span>
           <span v-else class="gordum gormedi" data-test="intikal-gormedi">
-            <span aria-hidden="true">○</span> görmedi
+            <Simge ad="daire" boyut="1em" />görmedi
           </span>
           <span v-if="i.durum === 'PLANLI'" class="islem">
             <button
@@ -153,10 +165,10 @@ function tamam(mesaj: string) {
           </span>
         </div>
         <div v-if="i.kirmizi" class="kirmizi-neden">
-          <span aria-hidden="true">⛔</span> {{ i.nedenler.join('; ') }}
+          <Simge ad="engel" boyut="1em" />{{ i.nedenler.join('; ') }}
         </div>
         <div v-if="i.uyarilar.length > 0" class="uyari-notu">
-          <span aria-hidden="true">⚠</span> Uyarı: {{ i.uyarilar.join('; ') }}
+          <Simge ad="uyari" boyut="1em" />Uyarı: {{ i.uyarilar.join('; ') }}
         </div>
       </li>
     </ul>
@@ -174,76 +186,82 @@ function tamam(mesaj: string) {
 
 <style scoped>
 .intikal-seridi {
-  margin: 0 0 var(--bosluk);
+  margin: 0 0 var(--aralik-3);
 }
 .serit-baslik {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--aralik-2) var(--aralik-4);
 }
 .serit-baslik h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--yazi-lg);
+}
+.intikal-bos {
+  margin: 0;
+  font-size: var(--yazi-sm);
 }
 .intikal-listesi {
   list-style: none;
-  margin: 0.25rem 0 0;
+  margin: var(--aralik-2) 0 0;
   padding: 0;
+  max-height: 9rem;
+  overflow: auto;
+  background: var(--renk-yuzey);
+  border: 1px solid var(--renk-cizgi);
+  border-radius: var(--yaricap);
 }
 .intikal {
-  padding: 0.3rem 0.5rem;
-  border-bottom: 1px solid var(--renk-cizgi, #ddd);
+  padding: var(--aralik-2) var(--aralik-3);
+  border-bottom: 1px solid var(--renk-cizgi);
+  border-left: 4px solid transparent;
+  font-size: var(--yazi-sm);
+}
+.intikal:last-child {
+  border-bottom: 0;
 }
 .intikal.kirmizi {
-  background: var(--renk-hata-zemin);
-  box-shadow: inset 4px 0 0 var(--renk-tehlike);
+  background: var(--renk-engel-zemin);
+  border-left-color: var(--renk-engel-dolu);
 }
 .intikal.iptal .metin {
   text-decoration: line-through;
-  color: var(--renk-soluk);
+  color: var(--renk-metin-soluk);
 }
 .ana {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.6rem;
-}
-.rozet {
-  display: inline-block;
-  padding: 0.05rem 0.5rem;
-  border: 1px solid currentcolor;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-.rozet-iptal,
-.rozet-kontrol {
-  color: var(--renk-tehlike);
-  background: var(--renk-hata-zemin);
+  align-items: center;
+  gap: var(--aralik-2) var(--aralik-4);
 }
 .gordum {
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aralik-1);
+  font-size: var(--yazi-xs);
   white-space: nowrap;
 }
+.gordum.goruldu {
+  color: var(--renk-basari-metin);
+}
 .gordum.gormedi {
-  color: var(--renk-soluk);
+  color: var(--renk-metin-soluk);
 }
 .islem {
   margin-left: auto;
   display: inline-flex;
-  gap: 0.25rem;
+  gap: var(--aralik-2);
+}
+.kirmizi-neden,
+.uyari-notu {
+  font-size: var(--yazi-xs);
 }
 .kirmizi-neden {
-  color: var(--renk-tehlike);
-  font-weight: 600;
-  font-size: 0.9rem;
+  color: var(--renk-engel-metin);
+  font-weight: var(--yazi-agirlik-orta);
 }
 .uyari-notu {
-  color: #8a5a00;
-  font-size: 0.9rem;
-}
-.btn-kucuk {
-  padding: 0.1rem 0.5rem;
-  font-size: 0.85rem;
+  color: var(--renk-uyari-metin);
 }
 </style>

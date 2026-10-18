@@ -15,7 +15,7 @@ const goster = computed(() => nobetGeciyor(props.metinler))
 .nobet-notu {
   margin: 0.5rem 0 0;
   font-size: 0.85rem;
-  color: var(--renk-soluk);
+  color: var(--renk-metin-soluk);
 }
 @media print {
   .nobet-notu {

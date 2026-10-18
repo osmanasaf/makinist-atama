@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import type { Tarih } from '@/api/tipler'
 import { gunKaydir, saatBicimle, tarihBicimle } from '@/lib/tarih'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import Dugme from '@/bilesenler/Dugme.vue'
+import Rozet from '@/bilesenler/Rozet.vue'
 import NobetNotu from './NobetNotu.vue'
 import { atamaApi, type OtomatikAtamaSonucu } from './atamaApi'
 
@@ -86,9 +89,6 @@ watch([bas, bit, yolculuk, iyilestir, personelTuru], () => {
   gercekDurum.value = ''
 })
 
-const dialog = ref<HTMLDialogElement | null>(null)
-onMounted(() => dialog.value?.showModal())
-
 /** Bayraklar kapalıyken gövdede `yolculuk`/`iyilestir` alanı yoktur (bugünkü istek birebir aynı). Uygula, önizlemenin anahtarını geri gönderir. */
 const govde = (uygula: boolean) => ({
   bas: bas.value,
@@ -158,13 +158,7 @@ const saatAraligi = (a: { kalkis: string; varis: string }) =>
 </script>
 
 <template>
-  <dialog
-    ref="dialog"
-    class="genis-dialog"
-    aria-labelledby="oto-dlg-baslik"
-    @cancel.prevent="kapat"
-  >
-    <h2 id="oto-dlg-baslik">Otomatik atama</h2>
+  <Diyalog baslik="Otomatik atama" boyut="genis" @kapat="kapat">
     <p class="soluk">
       {{
         konduktor
@@ -221,26 +215,10 @@ const saatAraligi = (a: { kalkis: string; varis: string }) =>
           ></small
         >
       </div>
-      <button
-        type="button"
-        class="btn"
-        :disabled="!aralikGecerli || mesgul"
-        @click="calistir(false)"
-      >
-        Önizle
-      </button>
-      <button
-        type="button"
-        class="btn btn-birincil"
-        :disabled="!uygulanabilir"
-        @click="calistir(true)"
-      >
-        Uygula
-      </button>
     </div>
 
     <div role="alert">
-      <p v-if="hata" class="hata-mesaji">{{ hata }}</p>
+      <p v-if="hata" class="bildirim bildirim-hata">{{ hata }}</p>
     </div>
     <div role="status">
       <p v-if="mesgul" class="bildirim bildirim-bilgi" data-test="hesaplaniyor">
@@ -310,7 +288,7 @@ const saatAraligi = (a: { kalkis: string; varis: string }) =>
               <td>{{ b.trenNo }}</td>
               <td>{{ b.kalkisGar }} – {{ b.varisGar }}</td>
               <td>
-                <span class="rozet-bos"><span aria-hidden="true">◌</span> BOŞ</span>
+                <Rozet ton="uyari" simge="daire" metin="BOŞ" />
                 <div class="bos-neden">{{ b.neden }}</div>
                 <ul v-if="b.ornekler.length > 0" class="ornekler">
                   <li v-for="(o, i) in b.ornekler" :key="i">{{ o }}</li>
@@ -323,36 +301,32 @@ const saatAraligi = (a: { kalkis: string; varis: string }) =>
       <NobetNotu :metinler="nobetMetinleri" />
     </template>
 
-    <div class="eylemler">
-      <button type="button" class="btn" :disabled="uygulaSuruyor" @click="kapat">Kapat</button>
-    </div>
-  </dialog>
+    <template #eylemler>
+      <Dugme :disabled="!aralikGecerli || mesgul" @click="calistir(false)">Önizle</Dugme>
+      <Dugme varyant="birincil" :disabled="!uygulanabilir" @click="calistir(true)"> Uygula </Dugme>
+      <Dugme :disabled="uygulaSuruyor" @click="kapat">Kapat</Dugme>
+    </template>
+    <template v-if="uygulaSuruyor" #neden>Atamalar yazılırken pencere kapatılamaz.</template>
+  </Diyalog>
 </template>
 
 <style scoped>
-.genis-dialog {
-  min-width: min(900px, 94vw);
-}
 h3 {
-  font-size: 1rem;
-  margin: var(--bosluk) 0 0.25rem;
+  font-size: var(--yazi-lg);
+  margin: var(--aralik-4) 0 var(--aralik-2);
 }
 .otomatik-kaydir {
-  max-height: 400px;
+  max-height: 25rem;
   overflow: auto;
-}
-.rozet-bos {
-  font-weight: 700;
-  color: #8a5a00;
 }
 .bos-neden {
   color: var(--renk-tehlike);
   font-weight: 600;
 }
 .ornekler {
-  margin: 0.25rem 0 0;
-  padding-left: 1.1rem;
-  color: var(--renk-soluk);
-  font-size: 0.9rem;
+  margin: var(--aralik-2) 0 0;
+  padding-left: var(--aralik-5);
+  color: var(--renk-metin-soluk);
+  font-size: var(--yazi-md);
 }
 </style>

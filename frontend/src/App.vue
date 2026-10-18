@@ -1,20 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { ayrilabilirMi } from '@/composables/cikis-korumasi'
-import { cikisYap, kullanici, yoneticiMi } from '@/composables/oturum'
+import { cikisYap, kullanici } from '@/composables/oturum'
 import { ROL_ETIKETLERI } from '@/api/tipler'
 import BenimKabuk from '@/features/benim/BenimKabuk.vue'
+import Dugme from '@/bilesenler/Dugme.vue'
+import Simge from '@/bilesenler/Simge.vue'
+import YanMenu from '@/bilesenler/YanMenu.vue'
 
 const router = useRouter()
 const route = useRoute()
 
-const menu = computed(() =>
-  router
-    .getRoutes()
-    .filter((r) => r.meta.menu && (r.meta.rol !== 'Y' || yoneticiMi.value))
-    .sort((a, b) => a.meta.menu!.sira - b.meta.menu!.sira),
-)
+/** Kabuk (üst çubuk + yan menü) oturum varken ve yazdırma sayfası dışında görünür. */
+const kabukVar = () => !!kullanici.value && !route.meta.yazdir
+
+/** "İçeriğe geç": hash yönlendirici bağlantı adresini kullandığı için href izlenmez; odak ana içeriğe taşınır (WCAG 2.4.1). */
+function icerigeGec() {
+  document.getElementById('icerik')?.focus()
+}
 
 /**
  * Çıkış da bir ayrılıştır: önce kaydedilmemiş veri korumasından geçer (bekleyen kayıtlar OTURUM AÇIKKEN kaydedilir, kaydedilemeyen
@@ -35,19 +38,28 @@ async function cik() {
 <template>
   <!-- Makinist telefon görünümü (MK-31): masaüstü menüsü yerine ayrı kabuk; gerçek koruma sunucuda -->
   <BenimKabuk v-if="kullanici?.rol === 'MAKINIST'" />
-  <template v-else>
-    <header v-if="kullanici && !route.meta.yazdir" class="ust-cubuk">
-      <span class="marka">Makinist Atama</span>
-      <nav aria-label="Ana menü" class="menu">
-        <RouterLink v-for="m in menu" :key="m.path" :to="m.path">{{ m.meta.menu!.ad }}</RouterLink>
-      </nav>
+  <!-- main her durumda aynı öğedir: oturum kapanırken sayfa yeniden bağlanıp (oturumsuz) istek atmasın -->
+  <div v-else :class="{ kabuk: kabukVar() }">
+    <a v-if="kabukVar()" class="atla-baglanti" href="#icerik" @click.prevent="icerigeGec"
+      >İçeriğe geç</a
+    >
+    <header v-if="kullanici && kabukVar()" class="ust-cubuk">
+      <span class="marka">
+        <span class="marka-isaret"><Simge ad="tren" /></span>
+        Makinist Atama
+      </span>
       <span class="kullanici-bilgisi">
         {{ kullanici.adSoyad }} <small>({{ ROL_ETIKETLERI[kullanici.rol] }})</small>
       </span>
-      <button type="button" class="btn" @click="cik">Çıkış</button>
+      <Dugme @click="cik">Çıkış</Dugme>
     </header>
-    <main :class="{ sayfa: !route.meta.yazdir }">
+    <YanMenu v-if="kabukVar()" />
+    <main
+      id="icerik"
+      tabindex="-1"
+      :class="{ sayfa: !route.meta.yazdir, 'sayfa--tam': route.meta.tam }"
+    >
       <RouterView />
     </main>
-  </template>
+  </div>
 </template>

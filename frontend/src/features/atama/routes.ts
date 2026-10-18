@@ -5,7 +5,11 @@ const routes: RouteRecordRaw[] = [
     path: '/atama',
     name: 'atama',
     component: () => import('./AtamaMasasi.vue'),
-    meta: { menu: { ad: 'Atama Masası', sira: 25 }, baslik: 'Atama masası' },
+    meta: {
+      menu: { ad: 'Atama Masası', sira: 25, grup: 'Atama', simge: 'tren' },
+      baslik: 'Atama masası',
+      tam: true,
+    },
   },
 ]
 

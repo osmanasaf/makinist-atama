@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
@@ -19,6 +19,10 @@ import { raporApi } from '@/features/rapor/raporApi'
 import AnaSayfa from './AnaSayfa.vue'
 import { demoApi } from './demoApi'
 
+// Bağlı kalan sayfalar global oturum durumunu (kullanici) izlemeyi sürdürür: her testten sonra sökülür.
+const kurulan: Array<{ unmount: () => void }> = []
+afterEach(() => kurulan.splice(0).forEach((w) => w.unmount()))
+
 async function kur() {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -29,6 +33,8 @@ async function kur() {
     })),
   })
   const w = mount(AnaSayfa, { global: { plugins: [router] } })
+  kurulan.push(w)
+  await vi.dynamicImportSettled() // demo araçları tembel yüklenen ayrı bileşen (DemoAraclari.vue)
   await flushPromises()
   return w
 }

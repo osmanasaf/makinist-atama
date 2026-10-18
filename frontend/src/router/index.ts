@@ -5,6 +5,8 @@ import {
   type Router,
   type RouterHistory,
 } from 'vue-router'
+import type { MenuGrup } from '@/bilesenler/menu'
+import type { SimgeAdi } from '@/bilesenler/simgeler'
 import { cikisKorumasiniBagla } from '@/composables/cikis-korumasi'
 import { kullanici, makinistMi, oturumYukle, yoneticiMi, yuklendi } from '@/composables/oturum'
 
@@ -17,12 +19,14 @@ declare module 'vue-router' {
     acik?: boolean
     /** 'Y' = yalnız yönetici, 'M' = yalnız makinist. Yalnız UX koruması; gerçek koruma sunucuda. */
     rol?: ErisimRolu
-    /** Üst menüde görünür (rol uymayan çizilmez). */
-    menu?: { ad: string; sira: number }
+    /** Yan menüde görünür (rol uymayan çizilmez); `grup` yoksa başlıksız üst gruptadır (MK-133). */
+    menu?: { ad: string; sira: number; grup?: MenuGrup; simge?: SimgeAdi }
     /** Sayfa başlığı (<title>); yoksa menü adı, o da yoksa uygulama adı. Sayfa kendi başlığını (ör. makinist adı) kendisi yazabilir. */
     baslik?: string
     /** Yazdırma sayfası: üst çubuk ve sayfa kenar boşluğu gösterilmez (menüsüz düzen). */
     yazdir?: boolean
+    /** Tam genişlik sayfa: `.sayfa--tam` (azami genişlik yok); atama masası gibi yoğun ekranlar. */
+    tam?: boolean
   }
 }
 

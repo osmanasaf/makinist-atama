@@ -117,4 +117,62 @@ describe('AtamaMasasi: kondüktör (F3b)', () => {
     expect(satirlar[2]!.text()).toContain('BOŞ')
     expect(satirlar[2]!.text()).toContain('Kond: Şef Kişi (K001)')
   })
+
+  it('sayaç düğmesi satır süzgecidir (aria-pressed); tekrar basınca kalkar; gösterge tekrar eden bilgiyi küçük taşır', async () => {
+    const w = await kur()
+    const satirlar = () => w.findAll('tr.sefer-satiri')
+    expect(satirlar()).toHaveLength(3)
+
+    const sayac = w.get('[data-test="konduktor-sayac"]')
+    expect(sayac.attributes('aria-pressed')).toBe('false')
+    await sayac.trigger('click')
+    expect(w.get('[data-test="konduktor-sayac"]').attributes('aria-pressed')).toBe('true')
+    expect(satirlar()).toHaveLength(1)
+    // satırdaki gösterge küçük simge; metin erişilebilirlik için DOM'da (görünmez)
+    const gosterge = satirlar()[0]!.get('[data-test="konduktor-eksik"]')
+    expect(gosterge.find('svg').exists()).toBe(true)
+    expect(gosterge.get('.gorunmez').text()).toBe('Kondüktör eksik')
+
+    await w.get('[data-test="konduktor-sayac"]').trigger('click')
+    expect(satirlar()).toHaveLength(3)
+
+    await w.get('[data-test="atanmamis-sayac"]').trigger('click')
+    expect(satirlar()).toHaveLength(1) // yalnız asıl makinisti olmayan #3
+    await w.get('[data-test="konduktor-sayac"]').trigger('click') // süzgeç değişir
+    expect(satirlar()).toHaveLength(1)
+    expect(w.get('[data-test="atanmamis-sayac"]').attributes('aria-pressed')).toBe('false')
+  })
+
+  it('görevli rol kodu: yardımcı/kondüktör/yolcu renkli önek, asıl öneksiz; rol sol şeritte sınıf olarak', async () => {
+    const w = await kur()
+    const gorevliler = w.findAll('tr.sefer-satiri')[0]!.findAll('.gorevli')
+    expect(gorevliler.map((g) => g.classes().find((c) => c.startsWith('gorevli-')))).toEqual([
+      'gorevli-asil',
+      'gorevli-konduktor',
+      'gorevli-yolcu',
+    ])
+    expect(gorevliler[0]!.find('.rozet').exists()).toBe(false)
+    expect(gorevliler[1]!.get('.rozet').classes()).toContain('rozet-rol-konduktor')
+    expect(gorevliler[2]!.get('.rozet').classes()).toContain('rozet-rol-yolcu')
+  })
+
+  it('↑/↓ satırlar arasında odak gezdirir', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/atama', name: 'atama', component: bos },
+        { path: '/yazdir/gun/:tarih', name: 'yazdir-gun', component: bos },
+      ],
+    })
+    await router.push('/atama?tarih=2026-10-12')
+    const w = mount(AtamaMasasi, { global: { plugins: [router] }, attachTo: document.body })
+    await flushPromises()
+    const s = w.findAll('tr.sefer-satiri')
+    ;(s[0]!.element as HTMLElement).focus()
+    await s[0]!.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(s[1]!.element)
+    await s[1]!.trigger('keydown', { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(s[0]!.element)
+    w.unmount()
+  })
 })

@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
@@ -111,6 +113,10 @@ const belgeYaniti: BelgeDurumuYaniti = {
   ],
 }
 
+// Bağlı kalan sayfalar global oturum durumunu (kullanici) izlemeyi sürdürür: her testten sonra sökülür.
+const kurulan: Array<{ unmount: () => void }> = []
+afterEach(() => kurulan.splice(0).forEach((w) => w.unmount()))
+
 async function kur() {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -121,6 +127,8 @@ async function kur() {
     })),
   })
   const w = mount(AnaSayfa, { global: { plugins: [router] } })
+  kurulan.push(w)
+  await vi.dynamicImportSettled() // demo araçları tembel yüklenen ayrı bileşen (DemoAraclari.vue)
   await flushPromises()
   return w
 }
@@ -212,6 +220,36 @@ describe('AnaSayfa', () => {
       vi.mocked(demoApi.durum).mockResolvedValue({ yuklu: false })
       expect((await kur()).find('[data-test=demo]').exists()).toBe(false)
       expect(demoApi.durum).toHaveBeenCalledTimes(1) // yalnız ilk kurulumda (yönetici) soruldu
+    })
+
+    it('demo araçları katlanır <details> (varsayılan kapalı) ve yalnız dev derlemesinde çizilir', async () => {
+      vi.mocked(demoApi.durum).mockResolvedValue({ yuklu: false })
+      const w = await kur()
+      const d = w.get('details[data-test=demo]')
+      expect(d.get('summary').text()).toBe('Demo araçları')
+      expect(d.attributes('open')).toBeUndefined()
+      vi.stubEnv('DEV', false)
+      try {
+        expect((await kur()).find('[data-test=demo]').exists()).toBe(false)
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    })
+
+    it('INFO: bugün sefer yoksa ve demo yüklü değilse bölüm açık gelir ve demo yüklemeyi önerir', async () => {
+      vi.mocked(demoApi.durum).mockResolvedValue({ yuklu: false })
+      vi.mocked(atamaApi.gun).mockResolvedValue(gun([]))
+      const w = await kur()
+      expect(w.get('details[data-test=demo]').attributes('open')).toBeDefined()
+      expect(w.get('[data-test=demo]').text()).toContain('Bugün için sefer yok: aşağıdaki düğmeyle')
+    })
+
+    it('INFO: AnaSayfa.vue demo metni ve uç adı taşımaz (üretim paketine girmesin; DemoAraclari tembel ve DEV koşullu yüklenir)', () => {
+      const kaynak = readFileSync(join(process.cwd(), 'src/features/ana/AnaSayfa.vue'), 'utf8')
+      for (const yasak of ['Demo araçları', '/api/demo', 'demoApi', 'geciciParola'])
+        expect(kaynak).not.toContain(yasak)
+      expect(kaynak).toContain('import.meta.env.DEV')
+      expect(kaynak).toContain("defineAsyncComponent(() => import('./DemoAraclari.vue'))")
     })
 
     it('veri yokken "Demo veriyi yükle" yükler ve özeti yeniler (UX-1)', async () => {

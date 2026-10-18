@@ -5,6 +5,8 @@ import { saatBicimle } from '@/lib/tarih'
 import { sayiBicimle } from '@/lib/sayi'
 import { seferApi, type Sefer } from '@/features/sefer/seferApi'
 import { tanimApi, type TanimDto } from '@/features/tanim/tanimApi'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import { atamaApi, type BolNokta, type BolSonucu } from './atamaApi'
 
 /**
@@ -71,9 +73,20 @@ const gecerli = computed(
     ),
 )
 
-const dialog = ref<HTMLDialogElement | null>(null)
+// Birincil eylem kapalıyken nedeni söylenir (Diyalog neden slotu).
+const nedenMetni = computed(() => {
+  if (sefer.value === null) {
+    return genelHata.value
+      ? 'Sefer bilgisi okunamadığı için bölünemez.'
+      : 'Sefer bilgisi yükleniyor.'
+  }
+  if (gecerli.value) return ''
+  return kmVar.value
+    ? 'Her nokta için gar, saatler ve KM zorunlu.'
+    : 'Her nokta için gar ve saatler zorunlu.'
+})
+
 onMounted(async () => {
-  dialog.value?.showModal()
   try {
     ;[sefer.value, garlar.value, hatlar.value, aracTipleri.value] = await Promise.all([
       seferApi.getir(props.seferId),
@@ -152,136 +165,130 @@ function sureMetni(p: Sefer): string {
 </script>
 
 <template>
-  <dialog ref="dialog" aria-labelledby="bol-dlg-baslik" @cancel.prevent="vazgec">
-    <form @submit.prevent="ilerle">
-      <h2 id="bol-dlg-baslik">Seferi böl</h2>
-      <p>{{ seferEtiketi }}</p>
-      <p class="bildirim bildirim-uyari">
-        <span>
-          <span aria-hidden="true">⚠</span> Mevcut atamalar 1. parçada kalır; 2. parça boş açılır;
-          bu seferdeki açık takas/bırakma talepleri geçersiz olur.
-        </span>
-      </p>
+  <Diyalog baslik="Seferi böl" boyut="genis" form @kapat="vazgec" @gonder="ilerle">
+    <p>{{ seferEtiketi }}</p>
+    <p class="bildirim bildirim-uyari">
+      <span>
+        <Simge ad="uyari" boyut="1em" /> Mevcut atamalar 1. parçada kalır; 2. parça boş açılır; bu
+        seferdeki açık takas/bırakma talepleri geçersiz olur.
+      </span>
+    </p>
 
-      <template v-if="adim === 'form'">
-        <fieldset v-for="(n, i) in noktalar" :key="n.anahtar" class="bol-nokta">
-          <legend>{{ i + 1 }}. ara istasyon</legend>
-          <div class="alan">
-            <label :for="`bol-gar-${i}`">Gar</label>
-            <select :id="`bol-gar-${i}`" v-model="n.garId" required>
-              <option value="">Seçin…</option>
-              <option v-for="g in secenekGarlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
-            </select>
-          </div>
-          <div class="alan">
-            <label :for="`bol-varis-${i}`">Varış saati</label>
-            <input :id="`bol-varis-${i}`" v-model="n.varis" type="time" required />
-          </div>
-          <div class="alan">
-            <label :for="`bol-kalkis-${i}`">Kalkış saati</label>
-            <input :id="`bol-kalkis-${i}`" v-model="n.kalkis" type="time" required />
-          </div>
-          <div v-if="kmVar" class="alan">
-            <label :for="`bol-km-${i}`">Bu noktaya kadar KM</label>
-            <input :id="`bol-km-${i}`" v-model="n.km" type="number" min="0" step="any" required />
-          </div>
-          <div class="alan">
-            <label :for="`bol-hat-${i}`">Hat (boşsa aynı)</label>
-            <select :id="`bol-hat-${i}`" v-model="n.hatId">
-              <option value="">Aynı</option>
-              <option v-for="h in hatlar" :key="h.id" :value="h.id">{{ h.ad }}</option>
-            </select>
-          </div>
-          <div class="alan">
-            <label :for="`bol-arac-${i}`">Araç tipi (boşsa aynı)</label>
-            <select :id="`bol-arac-${i}`" v-model="n.aracTipiId">
-              <option value="">Aynı</option>
-              <option v-for="a in aracTipleri" :key="a.id" :value="a.id">{{ a.ad }}</option>
-            </select>
-          </div>
-          <button
-            type="button"
-            class="btn btn-kucuk"
-            :disabled="noktalar.length <= 1 || mesgul"
-            :aria-label="`${i + 1}. ara istasyonu çıkar`"
-            @click="noktaCikar(i)"
-          >
-            Noktayı çıkar
-          </button>
-        </fieldset>
+    <template v-if="adim === 'form'">
+      <fieldset v-for="(n, i) in noktalar" :key="n.anahtar" class="bol-nokta">
+        <legend>{{ i + 1 }}. ara istasyon</legend>
+        <div class="alan">
+          <label :for="`bol-gar-${i}`">Gar</label>
+          <select :id="`bol-gar-${i}`" v-model="n.garId" required>
+            <option value="">Seçin…</option>
+            <option v-for="g in secenekGarlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
+          </select>
+        </div>
+        <div class="alan">
+          <label :for="`bol-varis-${i}`">Varış saati</label>
+          <input :id="`bol-varis-${i}`" v-model="n.varis" type="time" required />
+        </div>
+        <div class="alan">
+          <label :for="`bol-kalkis-${i}`">Kalkış saati</label>
+          <input :id="`bol-kalkis-${i}`" v-model="n.kalkis" type="time" required />
+        </div>
+        <div v-if="kmVar" class="alan">
+          <label :for="`bol-km-${i}`">Bu noktaya kadar KM</label>
+          <input :id="`bol-km-${i}`" v-model="n.km" type="number" min="0" step="any" required />
+        </div>
+        <div class="alan">
+          <label :for="`bol-hat-${i}`">Hat (boşsa aynı)</label>
+          <select :id="`bol-hat-${i}`" v-model="n.hatId">
+            <option value="">Aynı</option>
+            <option v-for="h in hatlar" :key="h.id" :value="h.id">{{ h.ad }}</option>
+          </select>
+        </div>
+        <div class="alan">
+          <label :for="`bol-arac-${i}`">Araç tipi (boşsa aynı)</label>
+          <select :id="`bol-arac-${i}`" v-model="n.aracTipiId">
+            <option value="">Aynı</option>
+            <option v-for="a in aracTipleri" :key="a.id" :value="a.id">{{ a.ad }}</option>
+          </select>
+        </div>
         <button
           type="button"
-          class="btn"
-          :disabled="noktalar.length >= EN_COK_NOKTA || mesgul"
-          @click="noktaEkle"
+          class="btn btn-kucuk"
+          :disabled="noktalar.length <= 1 || mesgul"
+          :aria-label="`${i + 1}. ara istasyonu çıkar`"
+          @click="noktaCikar(i)"
         >
-          + Nokta ekle
+          Noktayı çıkar
         </button>
-      </template>
+      </fieldset>
+      <button
+        type="button"
+        class="btn"
+        :disabled="noktalar.length >= EN_COK_NOKTA || mesgul"
+        @click="noktaEkle"
+      >
+        + Nokta ekle
+      </button>
+    </template>
 
-      <template v-else-if="onizleme">
-        <div class="tablo-kap onizleme-kap">
-          <table class="tablo onizleme-tablo" aria-label="Önizleme: oluşacak parçalar">
-            <thead>
-              <tr>
-                <th>Parça</th>
-                <th>Güzergâh</th>
-                <th>Saat</th>
-                <th>Süre</th>
-                <th>KM</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in onizleme.parcalar" :key="p.id">
-                <td>{{ p.parcaNo }}/{{ p.parcaSayisi }}</td>
-                <td>{{ p.kalkisGar }}→{{ p.varisGar }}</td>
-                <td>{{ saatBicimle(p.guncelKalkis) }}–{{ saatBicimle(p.guncelVaris) }}</td>
-                <td>{{ sureMetni(p) }}</td>
-                <td>{{ p.km != null ? `${sayiBicimle(p.km)} km` : '' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div
-          v-if="onizleme.yeniKirmizi.length > 0"
-          data-test="yeni-kirmizi"
-          class="bildirim bildirim-uyari"
-        >
-          <p><span aria-hidden="true">⛔</span> Bölme şu atamaları kontrol bekler hâle getirir:</p>
-          <ul>
-            <li v-for="k in onizleme.yeniKirmizi" :key="k.atamaId">
-              {{ k.trenNo }}: {{ k.nedenler.join('; ') }}
-            </li>
-          </ul>
-        </div>
-      </template>
-
-      <div role="alert">
-        <p v-if="genelHata" class="hata-mesaji">{{ genelHata }}</p>
+    <template v-else-if="onizleme">
+      <div class="tablo-kap onizleme-kap">
+        <table class="tablo onizleme-tablo" aria-label="Önizleme: oluşacak parçalar">
+          <thead>
+            <tr>
+              <th>Parça</th>
+              <th>Güzergâh</th>
+              <th>Saat</th>
+              <th>Süre</th>
+              <th>KM</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in onizleme.parcalar" :key="p.id">
+              <td>{{ p.parcaNo }}/{{ p.parcaSayisi }}</td>
+              <td>{{ p.kalkisGar }}→{{ p.varisGar }}</td>
+              <td>{{ saatBicimle(p.guncelKalkis) }}–{{ saatBicimle(p.guncelVaris) }}</td>
+              <td>{{ sureMetni(p) }}</td>
+              <td>{{ p.km != null ? `${sayiBicimle(p.km)} km` : '' }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-
-      <div class="eylemler">
-        <button type="submit" class="btn btn-birincil" :disabled="!gecerli || mesgul">
-          {{ adim === 'form' ? 'Önizle' : 'Böl' }}
-        </button>
-        <button
-          v-if="adim === 'onizleme'"
-          type="button"
-          class="btn"
-          :disabled="mesgul"
-          @click="geri"
-        >
-          Geri
-        </button>
-        <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
+      <div
+        v-if="onizleme.yeniKirmizi.length > 0"
+        data-test="yeni-kirmizi"
+        class="bildirim bildirim-uyari"
+      >
+        <p><Simge ad="engel" boyut="1em" /> Bölme şu atamaları kontrol bekler hâle getirir:</p>
+        <ul>
+          <li v-for="k in onizleme.yeniKirmizi" :key="k.atamaId">
+            {{ k.trenNo }}: {{ k.nedenler.join('; ') }}
+          </li>
+        </ul>
       </div>
-    </form>
-  </dialog>
+    </template>
+
+    <div role="alert">
+      <div v-if="genelHata" class="bildirim bildirim-hata">
+        <p>{{ genelHata }}</p>
+      </div>
+    </div>
+
+    <template v-if="nedenMetni" #neden>{{ nedenMetni }}</template>
+    <template #eylemler>
+      <button type="submit" class="btn btn-birincil" :disabled="!gecerli || mesgul">
+        {{ adim === 'form' ? 'Önizle' : 'Böl' }}
+      </button>
+      <button v-if="adim === 'onizleme'" type="button" class="btn" :disabled="mesgul" @click="geri">
+        Geri
+      </button>
+      <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
+    </template>
+  </Diyalog>
 </template>
 
 <style scoped>
 .bol-nokta {
-  margin: 0 0 var(--bosluk);
+  margin: 0 0 var(--aralik-4);
 }
 .onizleme-tablo th,
 .onizleme-tablo td {

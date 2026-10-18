@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import { kaydirmaDavranisi } from '@/lib/odak'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { makinistApi, type MakinistOzet } from '@/features/makinist/makinistApi'
 import { tanimApi, type TanimDto } from '@/features/tanim/tanimApi'
+import { ilkHataliyaOdaklan } from '@/lib/odak'
 import { bugun, gunKaydir, tarihBicimle, zamanBicimle } from '@/lib/tarih'
 import {
   konaklamaApi,
@@ -28,6 +34,7 @@ const islemHata = ref('') // kaydet / sil hatası: formun yanında gösterilir (
 const bilgi = ref('')
 const formBasligi = ref<HTMLElement | null>(null)
 const bildirimAlani = ref<HTMLElement | null>(null)
+const formKok = ref<HTMLFormElement | null>(null)
 const mesgul = ref(false)
 const yuklendi = ref(false)
 
@@ -104,14 +111,14 @@ function oneriyiKullan(o: KonaklamaOnerisi) {
   bilgi.value = `${o.adSoyad} (${o.sicil}) için öneri forma dolduruldu: yer tipini seçip kaydedin.`
   void nextTick(() => {
     // öneri tablosu ~200 satır olabilir: formu görünür kıl ve yer tipine odaklan (UX-1)
-    formBasligi.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    formBasligi.value?.scrollIntoView?.({ behavior: kaydirmaDavranisi(), block: 'start' })
     document.getElementById('kon-yer')?.focus({ preventScroll: true })
   })
 }
 
 /** Başarı / hata mesajı formun hemen üstündedir; kayıt sonrası ekranda kalsın diye görünür kılınır (UX-1). */
 function bildirimeGit() {
-  bildirimAlani.value?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+  bildirimAlani.value?.scrollIntoView?.({ behavior: kaydirmaDavranisi(), block: 'nearest' })
 }
 
 function duzelt(k: Konaklama) {
@@ -140,7 +147,10 @@ async function kaydet() {
   if (!form.cikis) h.cikis = 'Çıkış zamanı gerekli.'
   else if (form.giris && form.cikis <= form.giris) h.cikis = 'Çıkış, girişten sonra olmalı.'
   alanHatalari.value = h
-  if (Object.keys(h).length > 0) return
+  if (Object.keys(h).length > 0) {
+    await ilkHataliyaOdaklan(formKok.value)
+    return
+  }
   mesgul.value = true
   try {
     const govde = {
@@ -167,6 +177,7 @@ async function kaydet() {
       islemHata.value = 'İşlem başarısız oldu.'
     }
     void nextTick(bildirimeGit)
+    await ilkHataliyaOdaklan(formKok.value)
   } finally {
     mesgul.value = false
   }
@@ -197,18 +208,18 @@ async function sil(k: Konaklama) {
 
 <template>
   <section>
-    <div class="sayfa-baslik"><h1>Konaklama</h1></div>
+    <SayfaBasligi baslik="Konaklama" />
     <p class="soluk">
       Dış garda iki nöbet arası uzun bekleyen personel için konaklama önerilir; öneriler
       kaydedilmedikçe hiçbir şey yazılmaz. Konaklama atama kurallarını etkilemez.
     </p>
 
     <form class="arac-cubugu" @submit.prevent="yukle">
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="kon-bas">Başlangıç</label>
         <input id="kon-bas" v-model="bas" type="date" required />
       </div>
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="kon-bit">Bitiş</label>
         <input id="kon-bit" v-model="bit" type="date" required />
       </div>
@@ -224,10 +235,19 @@ async function sil(k: Konaklama) {
       <button type="submit" class="btn btn-birincil" :disabled="mesgul">Getir</button>
     </form>
 
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
+    <VeriDurumu v-if="hata" durum="hata" :metin="hata">
+      <template #eylem>
+        <button type="button" class="btn" :disabled="mesgul" @click="yukle">Yeniden dene</button>
+      </template>
+    </VeriDurumu>
+    <VeriDurumu v-else-if="!yuklendi" durum="yukleniyor" metin="Yükleniyor…" />
 
     <h2>Öneriler ({{ oneriler.length }})</h2>
-    <p v-if="yuklendi && oneriler.length === 0" class="soluk">Bu aralıkta konaklama önerisi yok.</p>
+    <VeriDurumu
+      v-if="yuklendi && oneriler.length === 0"
+      durum="bos"
+      metin="Bu aralıkta konaklama önerisi yok."
+    />
     <div v-else-if="oneriler.length > 0" class="tablo-kap">
       <table class="tablo" aria-label="Konaklama önerileri">
         <thead>
@@ -251,9 +271,13 @@ async function sil(k: Konaklama) {
             <td class="sayisal">{{ sureMetni(o.sureDk) }}</td>
             <td class="sayisal">{{ o.gece }}</td>
             <td>
-              <span v-if="o.kayitli" class="rozet" data-test="kayitli"
-                ><span aria-hidden="true">✓</span> Kayıtlı</span
-              >
+              <Rozet
+                v-if="o.kayitli"
+                ton="basari"
+                simge="basari"
+                metin="Kayıtlı"
+                data-test="kayitli"
+              />
               <span v-else class="soluk">Kayıt yok</span>
             </td>
             <td>
@@ -264,7 +288,7 @@ async function sil(k: Konaklama) {
                 :aria-label="`${o.adSoyad} için öneriyi forma al`"
                 @click="oneriyiKullan(o)"
               >
-                Kaydet
+                Forma al
               </button>
             </td>
           </tr>
@@ -277,44 +301,85 @@ async function sil(k: Konaklama) {
       <p v-if="islemHata" class="bildirim bildirim-hata" role="alert">{{ islemHata }}</p>
       <p v-if="bilgi" class="bildirim bildirim-bilgi" role="status">{{ bilgi }}</p>
     </div>
-    <form class="kart kon-form" @submit.prevent="kaydet">
-      <div class="alan">
+    <form ref="formKok" class="kart kon-form" novalidate @submit.prevent="kaydet">
+      <div class="alan alan-zorunlu">
         <label for="kon-makinist">Personel</label>
-        <select id="kon-makinist" v-model="form.makinistId" :disabled="duzenleniyor" required>
+        <select
+          id="kon-makinist"
+          v-model="form.makinistId"
+          :disabled="duzenleniyor"
+          required
+          :aria-invalid="!!alanHatalari.makinistId"
+          :aria-describedby="alanHatalari.makinistId ? 'kon-makinist-hata' : undefined"
+        >
           <option :value="0" disabled>Seçin…</option>
           <option v-for="m in makinistler" :key="m.id" :value="m.id">
             {{ m.sicil }} · {{ m.adSoyad }}
           </option>
         </select>
-        <p v-if="alanHatalari.makinistId" class="alan-hata">{{ alanHatalari.makinistId }}</p>
+        <AlanHatasi id="kon-makinist-hata" :metin="alanHatalari.makinistId" />
       </div>
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="kon-gar">Gar</label>
-        <select id="kon-gar" v-model="form.garId" required>
+        <select
+          id="kon-gar"
+          v-model="form.garId"
+          required
+          :aria-invalid="!!alanHatalari.garId"
+          :aria-describedby="alanHatalari.garId ? 'kon-gar-hata' : undefined"
+        >
           <option :value="0" disabled>Seçin…</option>
           <option v-for="g in garlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
         </select>
-        <p v-if="alanHatalari.garId" class="alan-hata">{{ alanHatalari.garId }}</p>
+        <AlanHatasi id="kon-gar-hata" :metin="alanHatalari.garId" />
       </div>
       <div class="alan">
         <label for="kon-yer">Yer tipi</label>
-        <select id="kon-yer" v-model="form.yerTipi">
+        <select
+          id="kon-yer"
+          v-model="form.yerTipi"
+          :aria-invalid="!!alanHatalari.yerTipi"
+          :aria-describedby="alanHatalari.yerTipi ? 'kon-yer-hata' : undefined"
+        >
           <option v-for="(etiket, k) in YER_ETIKETLERI" :key="k" :value="k">{{ etiket }}</option>
         </select>
+        <AlanHatasi id="kon-yer-hata" :metin="alanHatalari.yerTipi" />
       </div>
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="kon-giris">Giriş</label>
-        <input id="kon-giris" v-model="form.giris" type="datetime-local" required />
-        <p v-if="alanHatalari.giris" class="alan-hata">{{ alanHatalari.giris }}</p>
+        <input
+          id="kon-giris"
+          v-model="form.giris"
+          type="datetime-local"
+          required
+          :aria-invalid="!!alanHatalari.giris"
+          :aria-describedby="alanHatalari.giris ? 'kon-giris-hata' : undefined"
+        />
+        <AlanHatasi id="kon-giris-hata" :metin="alanHatalari.giris" />
       </div>
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="kon-cikis">Çıkış</label>
-        <input id="kon-cikis" v-model="form.cikis" type="datetime-local" required />
-        <p v-if="alanHatalari.cikis" class="alan-hata">{{ alanHatalari.cikis }}</p>
+        <input
+          id="kon-cikis"
+          v-model="form.cikis"
+          type="datetime-local"
+          required
+          :aria-invalid="!!alanHatalari.cikis"
+          :aria-describedby="alanHatalari.cikis ? 'kon-cikis-hata' : undefined"
+        />
+        <AlanHatasi id="kon-cikis-hata" :metin="alanHatalari.cikis" />
       </div>
       <div class="alan">
         <label for="kon-not">Not (isteğe bağlı)</label>
-        <input id="kon-not" v-model="form.notu" type="text" maxlength="200" />
+        <input
+          id="kon-not"
+          v-model="form.notu"
+          type="text"
+          maxlength="200"
+          :aria-invalid="!!alanHatalari.notu"
+          :aria-describedby="alanHatalari.notu ? 'kon-not-hata' : undefined"
+        />
+        <AlanHatasi id="kon-not-hata" :metin="alanHatalari.notu" />
       </div>
       <div class="eylemler">
         <button type="submit" class="btn btn-birincil" :disabled="mesgul">
@@ -325,7 +390,11 @@ async function sil(k: Konaklama) {
     </form>
 
     <h2>Kayıtlar ({{ kayitlar.length }})</h2>
-    <p v-if="yuklendi && kayitlar.length === 0" class="soluk">Bu aralıkta konaklama kaydı yok.</p>
+    <VeriDurumu
+      v-if="yuklendi && kayitlar.length === 0"
+      durum="bos"
+      metin="Bu aralıkta konaklama kaydı yok."
+    />
     <div v-else-if="kayitlar.length > 0" class="tablo-kap">
       <table class="tablo" aria-label="Konaklama kayıtları">
         <thead>
@@ -379,8 +448,8 @@ async function sil(k: Konaklama) {
 .kon-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: var(--aralik-4);
+  margin-bottom: var(--aralik-6);
 }
 .kon-form .eylemler {
   grid-column: 1 / -1;

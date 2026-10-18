@@ -1,142 +1,233 @@
 /*
  * Makinist telefon görünümü (MK-31). Mobil-önce; YALNIZ .benim kapsamı: masaüstü stilleri (temel.css) ve atamacı ekranları etkilenmez, temel.css'e @media eklenmez.
- * Hedef: 375 px, dokunma hedefi >= 44 px, girdi yazısı >= 16 px (iOS yakınlaştırmaz), durum yalnız renkle değil metin + simgeyle.
+ * Hedef: 320-375 px, dokunma hedefi >= 44 px, girdi yazısı >= 16 px (iOS yakınlaştırmaz), durum yalnız renkle değil metin + simgeyle (Rozet).
+ * Kartlar `.kart` (temel.css) + `.benim-kart`; rozetler `Rozet` bileşeni; yükleniyor/boş/hata `VeriDurumu`.
  */
+html:has(.benim) {
+  scroll-padding-bottom: 5rem; /* odaklanan öğe alt sekme çubuğunun altında kalmasın */
+}
 .benim {
   min-height: 100vh;
-  padding-bottom: 5rem; /* alt sekme çubuğunun altında içerik kalmasın */
-  max-width: 640px;
+  font-size: var(--yazi-lg);
+  padding-bottom: calc(
+    5rem + env(safe-area-inset-bottom, 0px)
+  ); /* alt sekme çubuğunun altında içerik kalmasın */
+  max-width: 40rem;
   margin: 0 auto;
 }
 .benim-ust {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--renk-yuzey);
-  border-bottom: 1px solid var(--renk-cizgi);
+  gap: var(--aralik-3);
+  padding: var(--aralik-3) var(--aralik-5);
+  background: var(--renk-menu-zemin);
+  color: var(--renk-menu-metin);
+  border-bottom: 1px solid var(--renk-menu-hover);
 }
 .benim-marka {
   display: block;
-  font-weight: 700;
+  font-weight: var(--yazi-agirlik-kalin);
+  color: var(--renk-n-0);
 }
 .benim-ad {
   display: block;
-  font-size: 0.9rem;
-  color: var(--renk-soluk);
+  font-size: var(--yazi-md);
+  color: var(--renk-menu-baslik);
   overflow-wrap: anywhere;
 }
+.benim-ust .btn {
+  background: transparent;
+  border-color: var(--renk-menu-baslik);
+  color: var(--renk-n-0);
+}
+.benim-ust :focus-visible {
+  outline-color: var(--renk-odak-koyu);
+}
 .benim-icerik {
-  padding: 1rem;
+  padding: var(--aralik-5);
 }
 .benim h1 {
-  font-size: 1.3rem;
+  font-size: var(--yazi-2xl);
+}
+.benim h2 {
+  font-size: var(--yazi-lg);
 }
 .benim .btn {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0.5rem 1rem;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: var(--aralik-3) var(--aralik-5);
 }
 .benim input,
 .benim select {
-  font-size: 16px;
-  min-height: 44px;
+  font-size: 1rem; /* 16 px: iOS yakınlaştırmaz */
+  min-height: 2.75rem;
   width: 100%;
 }
 .benim .alan label {
-  font-size: 1rem;
+  font-size: var(--yazi-lg);
 }
+.benim .rozet {
+  white-space: normal; /* dar ekranda uzun rozet metni sarar, taşmaz */
+}
+.benim .veri-durumu {
+  padding: var(--aralik-6) var(--aralik-3);
+}
+/* aria-live bölgesi: ekran okuyucuya okunur, ekranda görünmez (aynı bilgi sayfada zaten var) */
 .benim-rozet {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   margin: 0;
-  padding: 0 1rem;
-  font-size: 0.9rem;
-  color: var(--renk-soluk);
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
+
+/* alt sekme çubuğu: 4 sekme, her biri >= 56 px; aktif = dolgu + üst çizgi + kalın metin (renk tek başına değil) */
 .benim-sekmeler {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 5;
   display: flex;
-  max-width: 640px;
+  max-width: 40rem;
   margin: 0 auto;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--renk-yuzey);
   border-top: 1px solid var(--renk-cizgi);
 }
 .benim-sekmeler a {
   flex: 1;
-  min-height: 56px;
+  min-width: 0;
+  min-height: 3.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  font-size: 0.85rem;
+  gap: var(--aralik-1);
+  font-size: var(--yazi-md);
   text-decoration: none;
-  color: var(--renk-metin);
+  color: var(--renk-metin-ikincil);
   border-top: 3px solid transparent;
 }
 .benim-sekmeler a.router-link-active {
+  background: var(--renk-bilgi-zemin);
   border-top-color: var(--renk-birincil);
-  font-weight: 700;
+  color: var(--renk-bilgi-metin);
+  font-weight: var(--yazi-agirlik-kalin);
+}
+
+/* ikincil girişler (Konaklamam, Takas taleplerim): sekme altı değil, görev listesinin üstünde iki büyük hedef */
+.benim-kisayollar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  gap: var(--aralik-3);
+  margin-bottom: var(--aralik-4);
+}
+.benim-kisayol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--aralik-3);
+  min-height: 3rem;
+  padding: var(--aralik-3) var(--aralik-4);
+  background: var(--renk-yuzey);
+  border: 1px solid var(--renk-kontrol-kenar);
+  border-radius: var(--yaricap);
+  color: var(--renk-metin);
+  font-weight: var(--yazi-agirlik-orta);
+  text-decoration: none;
+}
+.benim-kisayol:hover {
+  background: var(--renk-n-100);
 }
 
 /* görev kartları */
 .benim-gun {
-  margin: 1.25rem 0 0.5rem;
-  font-size: 1.05rem;
+  margin: var(--aralik-6) 0 var(--aralik-3);
 }
 .benim-kart {
-  background: var(--renk-yuzey);
-  border: 1px solid var(--renk-cizgi);
-  border-radius: var(--yaricap);
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: var(--aralik-4);
+  padding: var(--aralik-4) var(--aralik-5);
   overflow-wrap: anywhere;
 }
-.benim-kart.iptal {
-  border-color: var(--renk-tehlike);
+.benim-kart p {
+  margin: 0 0 var(--aralik-3);
+}
+.benim-kart p:last-child {
+  margin-bottom: 0;
+}
+/* durum şeridi: sol çizgi (YENİ mavi, DEĞİŞTİ sarı, İPTAL/kaldırılan kırmızı) + rozet metni; çizgi süstür, anlam rozette */
+.benim-kart.yeni {
+  border-left: 4px solid var(--renk-birincil);
+}
+.benim-kart.degisti {
+  border-left: 4px solid var(--renk-uyari-cizgi);
+}
+.benim-kart.iptal,
+.benim-kart.kalem {
+  border-color: var(--renk-engel-dolu);
+  border-left-width: 4px;
   background: var(--renk-hata-zemin);
 }
+.benim-kart.yanit-bekliyor {
+  border-left: 4px solid var(--renk-uyari-cizgi);
+}
+.benim-kart.iptal .benim-saat {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
 .benim-saat {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: var(--yazi-2xl);
+  font-weight: var(--yazi-agirlik-kalin);
+  line-height: var(--satir-baslik);
   font-variant-numeric: tabular-nums;
 }
-.benim-etiket {
-  display: inline-block;
-  margin-right: 0.4rem;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--renk-cizgi);
-  font-size: 0.85rem;
+.benim-guzergah {
+  font-size: var(--yazi-lg);
 }
-.benim-etiket.iptal {
-  border-color: var(--renk-tehlike);
-  color: var(--renk-tehlike);
-  font-weight: 700;
+.benim-satir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--aralik-2) var(--aralik-3);
 }
-.benim-etiket.gecikme {
-  border-color: var(--renk-uyari-cizgi);
+.degisiklik-ozeti {
+  padding: var(--aralik-3);
+  border-radius: var(--yaricap-sm);
   background: var(--renk-uyari-zemin);
+  color: var(--renk-uyari-metin);
+  font-size: var(--yazi-md);
 }
-/* F2b: yolcu görevi sürüş değildir; renkle değil metinle de ayrılır ("Yolcu" etiketi + açıklama) */
-.benim-etiket.yolcu {
-  color: var(--renk-soluk, inherit);
-  border-style: dashed;
+.benim-kart > .btn {
+  width: 100%;
 }
+.benim-kart > .btn + .btn {
+  margin-top: var(--aralik-3);
+}
+.benim-takas-dugmeleri {
+  display: flex;
+  gap: var(--aralik-3);
+  margin-top: var(--aralik-3);
+}
+.benim-takas-dugmeleri .btn {
+  flex: 1;
+}
+
+/* belge / izin / konaklama listeleri */
 .benim-liste {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 .benim-liste li {
-  background: var(--renk-yuzey);
-  border: 1px solid var(--renk-cizgi);
-  border-radius: var(--yaricap);
-  padding: 0.6rem 0.9rem;
-  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--aralik-2);
+  margin-bottom: var(--aralik-3);
+  padding: var(--aralik-4);
   overflow-wrap: anywhere;
 }
 .benim-liste li.yaklasiyor {
@@ -145,92 +236,58 @@
 }
 .benim-liste li.doldu {
   background: var(--renk-hata-zemin);
-  border-color: var(--renk-tehlike);
+  border-color: var(--renk-engel-dolu);
 }
+.benim-liste li.yaklasiyor small,
+.benim-liste li.doldu small {
+  color: var(--renk-metin-ikincil); /* renkli zeminde soluk gri kontrastı düşürür */
+}
+.benim-not {
+  display: block;
+}
+
+/* aylık özet */
 .benim-ozet-izgara {
   display: grid;
   grid-template-columns: repeat(
     auto-fit,
     minmax(min(10rem, 100%), 1fr)
   ); /* yazı 200 % büyüyünce tek sütuna iner; min(.., 100%) kapsayıcıdan geniş sütun açmaz (320 px'te de taşmaz) */
-  gap: 0.6rem;
+  gap: var(--aralik-3);
+  margin: 0 0 var(--aralik-4);
 }
 .benim-ozet-izgara > div {
   min-width: 0;
   background: var(--renk-yuzey);
   border: 1px solid var(--renk-cizgi);
   border-radius: var(--yaricap);
-  padding: 0.6rem 0.8rem;
+  padding: var(--aralik-3) var(--aralik-4);
 }
 .benim-ozet-izgara dt {
-  font-size: 0.85rem;
-  color: var(--renk-soluk);
+  font-size: var(--yazi-md);
+  color: var(--renk-metin-ikincil);
 }
 .benim-ozet-izgara dd {
   margin: 0;
   overflow-wrap: anywhere;
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: var(--yazi-2xl);
+  font-weight: var(--yazi-agirlik-kalin);
   font-variant-numeric: tabular-nums;
-}
-.benim-bos {
-  padding: 1.5rem 0.5rem;
-  text-align: center;
-  color: var(--renk-soluk);
-}
-
-/* "Gördüm" (F2a-2): durum yalnız renkle değil metin + simgeyle verilir; düğme tam genişlikte, >= 44 px */
-.benim-etiket.yeni {
-  border-color: var(--renk-uyari-cizgi);
-  background: var(--renk-uyari-zemin);
-  font-weight: 700;
-}
-.benim-etiket.degisti {
-  border-color: var(--renk-tehlike);
-  color: var(--renk-tehlike);
-  font-weight: 700;
-}
-.benim-etiket.goruldu {
-  font-weight: 600;
-}
-.benim-etiket.kaldirildi {
-  border-color: var(--renk-tehlike);
-  color: var(--renk-tehlike);
-  font-weight: 700;
-}
-.benim-kart.kalem {
-  border-color: var(--renk-tehlike);
-}
-.degisiklik-ozeti {
-  font-size: 0.95rem;
-}
-.benim-kart > .btn {
-  width: 100%;
 }
 .benim-ozet-izgara dd small {
   display: block;
-  font-size: 0.8rem;
-  font-weight: 400;
+  font-size: var(--yazi-sm);
+  font-weight: var(--yazi-agirlik-normal);
 }
-
-/* Takas / bırakma (F2a-3): bağlantı ve düğmeler >= 44 px; durum yalnız renkle değil metin + simgeyle */
-.benim-takas-baglanti a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
+.benim-alt-eylem {
+  margin: var(--aralik-6) 0 0;
 }
-.benim-takas-dugmeleri {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+.benim-tam {
+  width: 100%;
 }
-.benim-takas-dugmeleri .btn {
-  flex: 1;
+.benim-sekmeler a:focus-visible {
+  outline-offset: -4px; /* ekran kenarında halka kırpılmasın */
 }
-.benim-kart.yanit-bekliyor {
-  border-color: var(--renk-uyari-cizgi);
-}
-.benim-kart > .btn + .btn {
-  margin-top: 0.5rem;
+.benim-kart > .btn + p {
+  margin-top: var(--aralik-3);
 }

@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import type { Ihlal, Tarih } from '@/api/tipler'
 import { NEDEN_ETIKETLERI, type AtamaNedeni } from '@/features/atama/atamaApi'
 import NobetNotu from '@/features/atama/NobetNotu.vue'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import Dugme from '@/bilesenler/Dugme.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import { makinistApi, type MakinistOzet } from '@/features/makinist/makinistApi'
 import { tanimApi, type TanimDto } from '@/features/tanim/tanimApi'
 import {
@@ -64,9 +68,10 @@ const baslik = computed(
 )
 const nobetMetinleri = computed(() => [...ihlaller.value.map((i) => i.metin), genelHata.value])
 
-const dialog = ref<HTMLDialogElement | null>(null)
+// sunucu/kural hatası ya da yükleme hatası: tek bantta
+const hataMetni = computed(() => genelHata.value || yuklemeHatasi.value)
+
 onMounted(async () => {
-  dialog.value?.showModal()
   if (props.kip === 'iptal') return
   try {
     ;[makinistler.value, garlar.value] = await Promise.all([
@@ -172,188 +177,202 @@ async function onayla() {
 </script>
 
 <template>
-  <dialog
-    ref="dialog"
+  <Diyalog
     class="intikal-dialog"
-    aria-labelledby="intikal-dlg-baslik"
-    @cancel.prevent="vazgec"
+    :baslik="baslik"
+    boyut="orta"
+    :form="true"
+    @kapat="vazgec"
+    @gonder="onayla"
   >
-    <form @submit.prevent="onayla">
-      <h2 id="intikal-dlg-baslik">{{ baslik }}</h2>
+    <template v-if="kip === 'iptal' && intikal">
+      <p>
+        <strong>{{ intikal.adSoyad }} ({{ intikal.sicil }})</strong>: {{ intikal.kalkisGar }} →
+        {{ intikal.varisGar }}
+      </p>
+      <p class="soluk">
+        İntikal silinmez, "iptal" olarak kalır ve kurallara girmez. İptal sonrası komşu görevler
+        kırmızı olabilir; sonuç ekranda bildirilir.
+      </p>
+      <div class="alan">
+        <label for="intikal-neden">İptal nedeni</label>
+        <select
+          id="intikal-neden"
+          v-model="neden"
+          required
+          :aria-invalid="!!alanHatalari.neden"
+          :aria-describedby="alanHatalari.neden ? 'intikal-neden-hata' : undefined"
+        >
+          <option value="">Seçin…</option>
+          <option v-for="(etiket, k) in NEDEN_ETIKETLERI" :key="k" :value="k">
+            {{ etiket }}
+          </option>
+        </select>
+        <AlanHatasi id="intikal-neden-hata" :metin="alanHatalari.neden" />
+      </div>
+      <div v-if="neden === 'DIGER'" class="alan">
+        <label for="intikal-neden-notu">Neden notu (zorunlu)</label>
+        <textarea
+          id="intikal-neden-notu"
+          v-model="nedenNotu"
+          required
+          :aria-invalid="!!alanHatalari.nedenNotu"
+          :aria-describedby="alanHatalari.nedenNotu ? 'intikal-neden-notu-hata' : undefined"
+        ></textarea>
+        <AlanHatasi id="intikal-neden-notu-hata" :metin="alanHatalari.nedenNotu" />
+      </div>
+    </template>
 
-      <template v-if="kip === 'iptal' && intikal">
-        <p>
-          <strong>{{ intikal.adSoyad }} ({{ intikal.sicil }})</strong>: {{ intikal.kalkisGar }} →
-          {{ intikal.varisGar }}
-        </p>
-        <p class="soluk">
-          İntikal silinmez, "iptal" olarak kalır ve kurallara girmez. İptal sonrası komşu görevler
-          kırmızı olabilir; sonuç ekranda bildirilir.
-        </p>
+    <template v-else>
+      <p class="soluk">
+        Servis, otobüs ya da taksi ile gar değiştirme. Kural motoru bunu yolculuk gibi görür: konum
+        ve dinlenme kuralları işler, çalışma süresine
+        <code>yolculuk.calisma_sayilir</code> ayarı kadar girer.
+      </p>
+      <div class="alan">
+        <label for="intikal-makinist">Personel</label>
+        <select
+          id="intikal-makinist"
+          v-model="form.makinistId"
+          :disabled="kip === 'duzelt'"
+          required
+          :aria-invalid="!!alanHatalari.makinistId"
+          :aria-describedby="alanHatalari.makinistId ? 'intikal-makinist-hata' : undefined"
+        >
+          <option :value="0" disabled>Seçin…</option>
+          <option v-for="m in makinistler" :key="m.id" :value="m.id">
+            {{ m.sicil }} · {{ m.adSoyad }}
+          </option>
+          <option
+            v-if="
+              kip === 'duzelt' && intikal && !makinistler.some((m) => m.id === intikal!.makinistId)
+            "
+            :value="intikal.makinistId"
+          >
+            {{ intikal.sicil }} · {{ intikal.adSoyad }}
+          </option>
+        </select>
+        <AlanHatasi id="intikal-makinist-hata" :metin="alanHatalari.makinistId" />
+      </div>
+      <div class="satir-iki">
         <div class="alan">
-          <label for="intikal-neden">İptal nedeni</label>
-          <select id="intikal-neden" v-model="neden" required :aria-invalid="!!alanHatalari.neden">
-            <option value="">Seçin…</option>
-            <option v-for="(etiket, k) in NEDEN_ETIKETLERI" :key="k" :value="k">
+          <label for="intikal-kalkis-gar">Kalkış garı</label>
+          <select
+            id="intikal-kalkis-gar"
+            v-model="form.kalkisGarId"
+            required
+            :aria-invalid="!!alanHatalari.kalkisGarId"
+            :aria-describedby="alanHatalari.kalkisGarId ? 'intikal-kalkis-gar-hata' : undefined"
+          >
+            <option :value="0" disabled>Seçin…</option>
+            <option v-for="g in garlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
+          </select>
+          <AlanHatasi id="intikal-kalkis-gar-hata" :metin="alanHatalari.kalkisGarId" />
+        </div>
+        <div class="alan">
+          <label for="intikal-varis-gar">Varış garı</label>
+          <select
+            id="intikal-varis-gar"
+            v-model="form.varisGarId"
+            required
+            :aria-invalid="!!alanHatalari.varisGarId"
+            :aria-describedby="alanHatalari.varisGarId ? 'intikal-varis-gar-hata' : undefined"
+          >
+            <option :value="0" disabled>Seçin…</option>
+            <option v-for="g in garlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
+          </select>
+          <AlanHatasi id="intikal-varis-gar-hata" :metin="alanHatalari.varisGarId" />
+        </div>
+      </div>
+      <div class="satir-iki">
+        <div class="alan">
+          <label for="intikal-kalkis">Kalkış</label>
+          <input
+            id="intikal-kalkis"
+            v-model="form.kalkis"
+            type="datetime-local"
+            required
+            :aria-invalid="!!alanHatalari.kalkis"
+            :aria-describedby="alanHatalari.kalkis ? 'intikal-kalkis-hata' : undefined"
+          />
+          <AlanHatasi id="intikal-kalkis-hata" :metin="alanHatalari.kalkis" />
+        </div>
+        <div class="alan">
+          <label for="intikal-varis">Varış</label>
+          <input
+            id="intikal-varis"
+            v-model="form.varis"
+            type="datetime-local"
+            required
+            :aria-invalid="!!alanHatalari.varis"
+            :aria-describedby="alanHatalari.varis ? 'intikal-varis-hata' : undefined"
+          />
+          <AlanHatasi id="intikal-varis-hata" :metin="alanHatalari.varis" />
+        </div>
+      </div>
+      <div class="satir-iki">
+        <div class="alan">
+          <label for="intikal-arac">Araç</label>
+          <select id="intikal-arac" v-model="form.aracTuru">
+            <option v-for="(etiket, k) in ARAC_ETIKETLERI" :key="k" :value="k">
               {{ etiket }}
             </option>
           </select>
-          <p v-if="alanHatalari.neden" class="alan-hata">{{ alanHatalari.neden }}</p>
-        </div>
-        <div v-if="neden === 'DIGER'" class="alan">
-          <label for="intikal-neden-notu">Neden notu (zorunlu)</label>
-          <textarea id="intikal-neden-notu" v-model="nedenNotu" required></textarea>
-          <p v-if="alanHatalari.nedenNotu" class="alan-hata">{{ alanHatalari.nedenNotu }}</p>
-        </div>
-      </template>
-
-      <template v-else>
-        <p class="soluk">
-          Servis, otobüs ya da taksi ile gar değiştirme. Kural motoru bunu yolculuk gibi görür:
-          konum ve dinlenme kuralları işler, çalışma süresine
-          <code>yolculuk.calisma_sayilir</code> ayarı kadar girer.
-        </p>
-        <p v-if="yuklemeHatasi" class="bildirim bildirim-hata" role="alert">{{ yuklemeHatasi }}</p>
-        <div class="alan">
-          <label for="intikal-makinist">Personel</label>
-          <select
-            id="intikal-makinist"
-            v-model="form.makinistId"
-            :disabled="kip === 'duzelt'"
-            required
-            :aria-invalid="!!alanHatalari.makinistId"
-          >
-            <option :value="0" disabled>Seçin…</option>
-            <option v-for="m in makinistler" :key="m.id" :value="m.id">
-              {{ m.sicil }} · {{ m.adSoyad }}
-            </option>
-            <option
-              v-if="
-                kip === 'duzelt' &&
-                intikal &&
-                !makinistler.some((m) => m.id === intikal!.makinistId)
-              "
-              :value="intikal.makinistId"
-            >
-              {{ intikal.sicil }} · {{ intikal.adSoyad }}
-            </option>
-          </select>
-          <p v-if="alanHatalari.makinistId" class="alan-hata">{{ alanHatalari.makinistId }}</p>
-        </div>
-        <div class="satir-iki">
-          <div class="alan">
-            <label for="intikal-kalkis-gar">Kalkış garı</label>
-            <select
-              id="intikal-kalkis-gar"
-              v-model="form.kalkisGarId"
-              required
-              :aria-invalid="!!alanHatalari.kalkisGarId"
-            >
-              <option :value="0" disabled>Seçin…</option>
-              <option v-for="g in garlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
-            </select>
-            <p v-if="alanHatalari.kalkisGarId" class="alan-hata">{{ alanHatalari.kalkisGarId }}</p>
-          </div>
-          <div class="alan">
-            <label for="intikal-varis-gar">Varış garı</label>
-            <select
-              id="intikal-varis-gar"
-              v-model="form.varisGarId"
-              required
-              :aria-invalid="!!alanHatalari.varisGarId"
-            >
-              <option :value="0" disabled>Seçin…</option>
-              <option v-for="g in garlar" :key="g.id" :value="g.id">{{ g.ad }}</option>
-            </select>
-            <p v-if="alanHatalari.varisGarId" class="alan-hata">{{ alanHatalari.varisGarId }}</p>
-          </div>
-        </div>
-        <div class="satir-iki">
-          <div class="alan">
-            <label for="intikal-kalkis">Kalkış</label>
-            <input
-              id="intikal-kalkis"
-              v-model="form.kalkis"
-              type="datetime-local"
-              required
-              :aria-invalid="!!alanHatalari.kalkis"
-            />
-            <p v-if="alanHatalari.kalkis" class="alan-hata">{{ alanHatalari.kalkis }}</p>
-          </div>
-          <div class="alan">
-            <label for="intikal-varis">Varış</label>
-            <input
-              id="intikal-varis"
-              v-model="form.varis"
-              type="datetime-local"
-              required
-              :aria-invalid="!!alanHatalari.varis"
-            />
-            <p v-if="alanHatalari.varis" class="alan-hata">{{ alanHatalari.varis }}</p>
-          </div>
-        </div>
-        <div class="satir-iki">
-          <div class="alan">
-            <label for="intikal-arac">Araç</label>
-            <select id="intikal-arac" v-model="form.aracTuru">
-              <option v-for="(etiket, k) in ARAC_ETIKETLERI" :key="k" :value="k">
-                {{ etiket }}
-              </option>
-            </select>
-          </div>
-          <div class="alan">
-            <label for="intikal-not">Not (isteğe bağlı; makinistte görünmez)</label>
-            <input id="intikal-not" v-model="form.notu" type="text" maxlength="200" />
-            <p v-if="alanHatalari.notu" class="alan-hata">{{ alanHatalari.notu }}</p>
-          </div>
         </div>
         <div class="alan">
-          <label for="intikal-gerekce">Gerekçe (kural uyarısı çıkarsa zorunlu)</label>
-          <textarea
-            id="intikal-gerekce"
-            v-model="form.gerekce"
-            :aria-invalid="!!alanHatalari.gerekce"
-          ></textarea>
-          <p v-if="alanHatalari.gerekce" class="alan-hata">{{ alanHatalari.gerekce }}</p>
+          <label for="intikal-not">Not (isteğe bağlı; makinistte görünmez)</label>
+          <input
+            id="intikal-not"
+            v-model="form.notu"
+            type="text"
+            maxlength="200"
+            :aria-invalid="!!alanHatalari.notu"
+            :aria-describedby="alanHatalari.notu ? 'intikal-not-hata' : undefined"
+          />
+          <AlanHatasi id="intikal-not-hata" :metin="alanHatalari.notu" />
         </div>
-      </template>
+      </div>
+      <div class="alan">
+        <label for="intikal-gerekce">Gerekçe (kural uyarısı çıkarsa zorunlu)</label>
+        <textarea
+          id="intikal-gerekce"
+          v-model="form.gerekce"
+          :aria-invalid="!!alanHatalari.gerekce"
+          :aria-describedby="alanHatalari.gerekce ? 'intikal-gerekce-hata' : undefined"
+        ></textarea>
+        <AlanHatasi id="intikal-gerekce-hata" :metin="alanHatalari.gerekce" />
+      </div>
+    </template>
 
-      <div role="alert">
-        <p v-if="genelHata" class="hata-mesaji">{{ genelHata }}</p>
-        <ul v-if="ihlaller.length > 0" class="ihlal-listesi hata-mesaji">
+    <div role="alert">
+      <div v-if="hataMetni || ihlaller.length > 0" class="bildirim bildirim-hata">
+        <p v-if="hataMetni">{{ hataMetni }}</p>
+        <ul v-if="ihlaller.length > 0" class="ihlal-listesi">
           <li v-for="(ih, i) in ihlaller" :key="i">
-            <span aria-hidden="true">{{ ih.siddet === 'ENGEL' ? '⛔' : '⚠' }}</span> {{ ih.metin }}
+            <Simge :ad="ih.siddet === 'ENGEL' ? 'engel' : 'uyari'" boyut="1em" /> {{ ih.metin }}
           </li>
         </ul>
       </div>
-      <NobetNotu :metinler="nobetMetinleri" />
+    </div>
+    <NobetNotu :metinler="nobetMetinleri" />
 
-      <div class="eylemler">
-        <button
-          type="submit"
-          class="btn"
-          :class="kip === 'iptal' ? 'btn-tehlike' : 'btn-birincil'"
-          :disabled="mesgul"
-        >
-          {{ kip === 'iptal' ? 'İntikali iptal et' : kip === 'duzelt' ? 'Güncelle' : 'Kaydet' }}
-        </button>
-        <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
-      </div>
-    </form>
-  </dialog>
+    <template #eylemler>
+      <Dugme :varyant="kip === 'iptal' ? 'tehlike' : 'birincil'" tip="submit" :disabled="mesgul">
+        {{ kip === 'iptal' ? 'İntikali iptal et' : kip === 'duzelt' ? 'Güncelle' : 'Kaydet' }}
+      </Dugme>
+      <Dugme :disabled="mesgul" @click="vazgec">Vazgeç</Dugme>
+    </template>
+  </Diyalog>
 </template>
 
 <style scoped>
-.intikal-dialog {
-  min-width: min(560px, 94vw);
-}
 .satir-iki {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.75rem;
+  gap: var(--aralik-4);
 }
 .ihlal-listesi {
-  margin: 0.25rem 0 0;
+  margin: var(--aralik-2) 0 0;
   padding-left: 0;
   list-style: none;
 }

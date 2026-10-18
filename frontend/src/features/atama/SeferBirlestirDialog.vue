@@ -4,6 +4,8 @@ import { ApiHata } from '@/api/istemci'
 import { saatBicimle } from '@/lib/tarih'
 import { sayiBicimle } from '@/lib/sayi'
 import { seferApi } from '@/features/sefer/seferApi'
+import Diyalog from '@/bilesenler/Diyalog.vue'
+import Simge from '@/bilesenler/Simge.vue'
 import { atamaApi, type BirlestirSonucu } from './atamaApi'
 
 /**
@@ -27,9 +29,7 @@ const mesgul = ref(true)
 const genelHata = ref('')
 let hataOldu = false
 
-const dialog = ref<HTMLDialogElement | null>(null)
 onMounted(async () => {
-  dialog.value?.showModal()
   try {
     versiyon.value = (await seferApi.getir(props.seferId)).versiyon
     onizleme.value = await atamaApi.birlestir(props.seferId, {
@@ -42,6 +42,12 @@ onMounted(async () => {
   } finally {
     mesgul.value = false
   }
+})
+
+// Birincil eylem kapalıyken nedeni söylenir (Diyalog neden slotu).
+const nedenMetni = computed(() => {
+  if (onizleme.value) return ''
+  return mesgul.value ? 'Önizleme yükleniyor.' : 'Önizleme alınamadığı için birleştirilemez.'
 })
 
 function vazgec() {
@@ -82,70 +88,70 @@ function sureMetni(s: BirlestirSonucu['sefer']): string {
 </script>
 
 <template>
-  <dialog ref="dialog" aria-labelledby="birlestir-dlg-baslik" @cancel.prevent="vazgec">
-    <form @submit.prevent="birlestir">
-      <h2 id="birlestir-dlg-baslik">Seferi birleştir</h2>
-      <p>{{ seferEtiketi }}</p>
-      <p class="bildirim bildirim-uyari">
-        <span>
-          <span aria-hidden="true">⚠</span> Parça 2..N satırları ve atamaları silinir; geri
-          alınamaz. Bölünmüş mü Excel'den mi gelen tren olduğu ayrılmaz: yalnız bölme hatasını geri
-          almak için kullanın.
-        </span>
-      </p>
+  <Diyalog baslik="Seferi birleştir" boyut="orta" form @kapat="vazgec" @gonder="birlestir">
+    <p>{{ seferEtiketi }}</p>
+    <p class="bildirim bildirim-uyari">
+      <span>
+        <Simge ad="uyari" boyut="1em" /> Parça 2..N satırları ve atamaları silinir; geri alınamaz.
+        Bölünmüş mü Excel'den mi gelen tren olduğu ayrılmaz: yalnız bölme hatasını geri almak için
+        kullanın.
+      </span>
+    </p>
 
-      <template v-if="onizleme">
-        <div class="tablo-kap onizleme-kap">
-          <table class="tablo onizleme-tablo" aria-label="Önizleme: birleşik sefer">
-            <thead>
-              <tr>
-                <th>Güzergâh</th>
-                <th>Saat</th>
-                <th>Süre</th>
-                <th>KM</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{{ onizleme.sefer.kalkisGar }}→{{ onizleme.sefer.varisGar }}</td>
-                <td>
-                  {{ saatBicimle(onizleme.sefer.guncelKalkis) }}–{{
-                    saatBicimle(onizleme.sefer.guncelVaris)
-                  }}
-                </td>
-                <td>{{ sureMetni(onizleme.sefer) }}</td>
-                <td>
-                  {{ onizleme.sefer.km != null ? `${sayiBicimle(onizleme.sefer.km)} km` : '' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p>{{ onizleme.silinenSeferIdler.length }} parça satırı silinecek.</p>
-        <div v-if="yeniKirmizi.length > 0" data-test="yeni-kirmizi" class="bildirim bildirim-uyari">
-          <p>
-            <span aria-hidden="true">⛔</span> Birleştirme şu atamaları kontrol bekler hâle getirir:
-          </p>
-          <ul>
-            <li v-for="k in yeniKirmizi" :key="k.atamaId">
-              {{ k.trenNo }}: {{ k.nedenler.join('; ') }}
-            </li>
-          </ul>
-        </div>
-      </template>
-
-      <div role="alert">
-        <p v-if="genelHata" class="hata-mesaji">{{ genelHata }}</p>
+    <template v-if="onizleme">
+      <div class="tablo-kap onizleme-kap">
+        <table class="tablo onizleme-tablo" aria-label="Önizleme: birleşik sefer">
+          <thead>
+            <tr>
+              <th>Güzergâh</th>
+              <th>Saat</th>
+              <th>Süre</th>
+              <th>KM</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ onizleme.sefer.kalkisGar }}→{{ onizleme.sefer.varisGar }}</td>
+              <td>
+                {{ saatBicimle(onizleme.sefer.guncelKalkis) }}–{{
+                  saatBicimle(onizleme.sefer.guncelVaris)
+                }}
+              </td>
+              <td>{{ sureMetni(onizleme.sefer) }}</td>
+              <td>
+                {{ onizleme.sefer.km != null ? `${sayiBicimle(onizleme.sefer.km)} km` : '' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-
-      <div class="eylemler">
-        <button type="submit" class="btn btn-birincil" :disabled="!onizleme || mesgul">
-          Birleştir
-        </button>
-        <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
+      <p>{{ onizleme.silinenSeferIdler.length }} parça satırı silinecek.</p>
+      <div v-if="yeniKirmizi.length > 0" data-test="yeni-kirmizi" class="bildirim bildirim-uyari">
+        <p>
+          <Simge ad="engel" boyut="1em" /> Birleştirme şu atamaları kontrol bekler hâle getirir:
+        </p>
+        <ul>
+          <li v-for="k in yeniKirmizi" :key="k.atamaId">
+            {{ k.trenNo }}: {{ k.nedenler.join('; ') }}
+          </li>
+        </ul>
       </div>
-    </form>
-  </dialog>
+    </template>
+
+    <div role="alert">
+      <div v-if="genelHata" class="bildirim bildirim-hata">
+        <p>{{ genelHata }}</p>
+      </div>
+    </div>
+
+    <template v-if="nedenMetni" #neden>{{ nedenMetni }}</template>
+    <template #eylemler>
+      <button type="submit" class="btn btn-birincil" :disabled="!onizleme || mesgul">
+        Birleştir
+      </button>
+      <button type="button" class="btn" :disabled="mesgul" @click="vazgec">Vazgeç</button>
+    </template>
+  </Diyalog>
 </template>
 
 <style scoped>

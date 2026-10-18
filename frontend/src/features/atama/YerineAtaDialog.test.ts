@@ -80,8 +80,9 @@ describe('YerineAtaDialog', () => {
     expect(satirlar[0]!.text()).toContain('100,5')
     expect(satirlar[0]!.text()).toContain('5000')
     expect(satirlar[0]!.text()).toContain('Gerekçe 1')
-    expect(satirlar[0]!.text()).not.toContain('⚠')
-    expect(satirlar[1]!.text()).toContain('⚠ Günlük 9 s > 8 s')
+    expect(satirlar[0]!.find('svg[data-simge="uyari"]').exists()).toBe(false)
+    expect(satirlar[1]!.text()).toContain('Günlük 9 s > 8 s')
+    expect(satirlar[1]!.find('svg[data-simge="uyari"]').exists()).toBe(true)
   })
 
   it('Seç: öneriyi yayınlar', async () => {
@@ -114,7 +115,10 @@ describe('YerineAtaDialog', () => {
     )
     const w = await kur()
     expect(w.get('[role="alert"]').text()).toBe('Sunucuya ulaşılamadı.')
-    await w.get('button[type="button"]').trigger('click')
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Kapat')!
+      .trigger('click')
     expect(w.emitted('kapat')).toHaveLength(1)
   })
 })

@@ -1,6 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import Dugme from '@/bilesenler/Dugme.vue'
+import type { Ton } from '@/bilesenler/durum'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import type { SimgeAdi } from '@/bilesenler/simgeler'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { yoneticiMi } from '@/composables/oturum'
 import { tarihBicimle } from '@/lib/tarih'
 import KuralKurucuDialog from './KuralKurucuDialog.vue'
@@ -16,28 +23,47 @@ import {
 const kurallar = ref<OzelKuralDto[]>([])
 const katalog = ref<OlcuDto[]>([])
 const yuklemeHatasi = ref('')
+const yukleniyor = ref(true)
 /** Açık diyalog: `kural` null ise yeni kural. */
 const diyalog = ref<{ kural: OzelKuralDto | null } | null>(null)
 
 const sutunSayisi = computed(() => (yoneticiMi.value ? 7 : 6))
 
+/** Şiddet rozeti: ton + simge + metin (renk tek başına anlam taşımaz). */
+const SIDDET_GORUNUMU: Record<string, { ton: Ton; simge: SimgeAdi }> = {
+  ENGEL: { ton: 'engel', simge: 'engel' },
+  UYARI: { ton: 'uyari', simge: 'uyari' },
+  KAPALI: { ton: 'notr', simge: 'daire' },
+}
+
 async function yukle() {
   yuklemeHatasi.value = ''
+  yukleniyor.value = true
   try {
     const [l, k] = await Promise.all([ozelKuralApi.liste(), ozelKuralApi.katalog()])
     kurallar.value = l
     katalog.value = k
   } catch (e) {
     yuklemeHatasi.value = e instanceof ApiHata ? e.detail : 'Özel kurallar yüklenemedi.'
+  } finally {
+    yukleniyor.value = false
   }
 }
 
 onMounted(yukle)
 
-function kaydedildi(k: OzelKuralDto) {
+/** Kayıt/güncelleme sonrası görünür ve duyurulan bildirim (QA BUG-3; diyalog kapanınca odak düğmeye döner). */
+const bilgi = ref('')
+
+function listeyeIsle(k: OzelKuralDto) {
   const i = kurallar.value.findIndex((x) => x.id === k.id)
   if (i >= 0) kurallar.value[i] = k
   else kurallar.value.push(k)
+}
+
+function kaydedildi(k: OzelKuralDto) {
+  listeyeIsle(k)
+  bilgi.value = `Kural kaydedildi: ${k.kod} ${k.ad}.`
 }
 
 const gecerlilik = (k: OzelKuralDto) =>
@@ -49,10 +75,17 @@ const kapatNeden = ref('')
 const kapatMesgul = ref(false)
 const kapatHata = ref('')
 
+/** Kapatma nedeni kutusuna odak (açılınca ve hata sonrası). */
+async function kapatOdagi() {
+  await nextTick()
+  document.getElementById(`ozel-kapat-neden-${kapatId.value}`)?.focus()
+}
+
 function kapatAc(k: OzelKuralDto) {
   kapatId.value = k.id
   kapatNeden.value = ''
   kapatHata.value = ''
+  void kapatOdagi()
 }
 
 async function kapat() {
@@ -67,12 +100,14 @@ async function kapat() {
       versiyon: k.versiyon,
       neden: kapatNeden.value.trim(),
     })
-    kaydedildi(g)
+    listeyeIsle(g)
+    bilgi.value = `Kural kapatıldı: ${g.kod}.`
     kapatId.value = null
   } catch (e) {
     kapatHata.value = e instanceof ApiHata ? e.detail : 'Kural kapatılamadı.'
     // Sürüm çakıştı: güncel sürümle tekrar denenebilsin.
     if (e instanceof ApiHata && e.cakismaMi) await yukle()
+    void kapatOdagi()
   } finally {
     kapatMesgul.value = false
   }
@@ -81,9 +116,18 @@ async function kapat() {
 
 <template>
   <section>
-    <div class="sayfa-baslik">
-      <h1 id="ozel-kural-baslik">Özel kurallar</h1>
-    </div>
+    <SayfaBasligi baslik="Özel kurallar">
+      <template v-if="yoneticiMi && kurallar.length > 0" #eylemler>
+        <Dugme
+          varyant="birincil"
+          simge="ekle"
+          :disabled="katalog.length === 0"
+          @click="diyalog = { kural: null }"
+        >
+          Yeni kural
+        </Dugme>
+      </template>
+    </SayfaBasligi>
     <p class="soluk">
       Ayarlar sayfasındaki kurallarla bu sayfadaki kuralların hepsine birlikte uyulur. Kapatılan
       kural silinmez, yalnız uygulanmaz.
@@ -93,22 +137,32 @@ async function kapat() {
       önce "Dene" ile bakın. Kırmızı olan bir atamayı masada "Yerine ata" ile değiştirebilir ya da
       kaldırabilirsiniz.
     </p>
-    <p v-if="yuklemeHatasi" class="bildirim bildirim-hata" role="alert">
-      {{ yuklemeHatasi }}
-    </p>
-    <p v-if="yoneticiMi && kurallar.length > 0">
-      <button
-        type="button"
-        class="btn btn-birincil"
-        :disabled="katalog.length === 0"
-        @click="diyalog = { kural: null }"
-      >
-        Yeni kural
-      </button>
-    </p>
 
-    <div class="tablo-kap">
-      <table class="tablo" aria-labelledby="ozel-kural-baslik">
+    <div role="status">
+      <p v-if="bilgi" class="bildirim bildirim-basari">{{ bilgi }}</p>
+    </div>
+
+    <VeriDurumu v-if="yukleniyor" durum="yukleniyor" metin="Özel kurallar yükleniyor…" />
+    <VeriDurumu v-else-if="yuklemeHatasi" durum="hata" :metin="yuklemeHatasi">
+      <template #eylem>
+        <Dugme @click="yukle">Yeniden dene</Dugme>
+      </template>
+    </VeriDurumu>
+    <VeriDurumu v-else-if="kurallar.length === 0" durum="bos" metin="Henüz özel kural yok.">
+      <template v-if="yoneticiMi" #eylem>
+        <Dugme
+          varyant="birincil"
+          simge="ekle"
+          :disabled="katalog.length === 0"
+          @click="diyalog = { kural: null }"
+        >
+          Yeni kural
+        </Dugme>
+      </template>
+    </VeriDurumu>
+
+    <div v-else class="tablo-kap">
+      <table class="tablo" aria-label="Özel kurallar">
         <thead>
           <tr>
             <th>Kod</th>
@@ -123,16 +177,23 @@ async function kapat() {
         <tbody>
           <template v-for="k in kurallar" :key="k.id">
             <tr>
-              <td>{{ k.kod }}</td>
+              <td class="kod-hucre">{{ k.kod }}</td>
               <td>{{ k.ad }}</td>
               <td>{{ k.ozet }}</td>
-              <td>{{ SIDDET_ETIKETLERI[k.siddet] }}</td>
-              <td>{{ gecerlilik(k) }}</td>
+              <td>
+                <Rozet
+                  boyut="sm"
+                  :ton="SIDDET_GORUNUMU[k.siddet]?.ton"
+                  :simge="SIDDET_GORUNUMU[k.siddet]?.simge"
+                  :metin="SIDDET_ETIKETLERI[k.siddet]"
+                />
+              </td>
+              <td class="tarih-hucre">{{ gecerlilik(k) }}</td>
               <td>{{ k.gerekce }}{{ k.kaynak ? ` · ${k.kaynak}` : '' }}</td>
               <td v-if="yoneticiMi" class="eylem-hucre">
                 <button
                   type="button"
-                  class="btn"
+                  class="btn btn-kucuk"
                   :aria-label="`${k.kod} kuralını düzenle`"
                   @click="diyalog = { kural: k }"
                 >
@@ -141,7 +202,7 @@ async function kapat() {
                 <button
                   v-if="k.siddet !== 'KAPALI'"
                   type="button"
-                  class="btn"
+                  class="btn btn-kucuk"
                   :aria-label="`${k.kod} kuralını kapat`"
                   @click="kapatAc(k)"
                 >
@@ -151,7 +212,7 @@ async function kapat() {
             </tr>
             <tr v-if="kapatId === k.id">
               <td :colspan="sutunSayisi">
-                <div class="kapat-alani">
+                <div class="kapat-alani alan-zorunlu">
                   <label :for="`ozel-kapat-neden-${k.id}`"
                     >{{ k.kod }} kapatma nedeni (zorunlu)</label
                   >
@@ -159,6 +220,8 @@ async function kapat() {
                     :id="`ozel-kapat-neden-${k.id}`"
                     v-model="kapatNeden"
                     maxlength="500"
+                    :aria-invalid="kapatHata !== ''"
+                    :aria-describedby="kapatHata ? `ozel-kapat-hata-${k.id}` : undefined"
                     @keydown.enter.prevent="kapat"
                   />
                   <button
@@ -172,27 +235,11 @@ async function kapat() {
                   <button type="button" class="btn" :disabled="kapatMesgul" @click="kapatId = null">
                     Vazgeç
                   </button>
-                  <p v-if="kapatHata" class="alan-hata" role="alert">
-                    {{ kapatHata }}
-                  </p>
+                  <AlanHatasi :id="`ozel-kapat-hata-${k.id}`" :metin="kapatHata" />
                 </div>
               </td>
             </tr>
           </template>
-          <tr v-if="kurallar.length === 0">
-            <td :colspan="sutunSayisi" class="bos-durum">
-              Henüz özel kural yok.
-              <button
-                v-if="yoneticiMi"
-                type="button"
-                class="btn btn-birincil"
-                :disabled="katalog.length === 0"
-                @click="diyalog = { kural: null }"
-              >
-                Yeni kural
-              </button>
-            </td>
-          </tr>
         </tbody>
       </table>
     </div>
@@ -212,17 +259,22 @@ async function kapat() {
   white-space: nowrap;
 }
 .eylem-hucre .btn + .btn {
-  margin-left: 0.5rem;
+  margin-left: var(--aralik-3);
+}
+.kod-hucre,
+.tarih-hucre {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .kapat-alani {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--aralik-3);
 }
 .kapat-alani label {
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: var(--yazi-agirlik-orta);
+  font-size: var(--yazi-md);
 }
 .kapat-alani input {
   flex: 1;

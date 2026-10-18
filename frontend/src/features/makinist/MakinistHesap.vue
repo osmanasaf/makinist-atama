@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
+import Rozet from '@/bilesenler/Rozet.vue'
 import { makinistApi, type HesapDurumu, type MakinistDurumu } from './makinistApi'
 
 const props = defineProps<{ makinistId: number; durum: MakinistDurumu }>()
@@ -70,10 +71,10 @@ const pasif = () => props.durum === 'PASIF'
 </script>
 
 <template>
-  <section class="kart" style="margin-top: 1rem" aria-labelledby="hesap-baslik">
+  <section class="kart hesap-kutusu" aria-labelledby="hesap-baslik">
     <h2 id="hesap-baslik">Hesap (telefon girişi)</h2>
     <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
-    <p v-if="yukHatasi" class="soluk" role="status">{{ yukHatasi }}</p>
+    <p v-if="yukHatasi" class="bildirim bildirim-uyari" role="status">{{ yukHatasi }}</p>
     <p v-if="bilgi" class="bildirim bildirim-bilgi" role="status">{{ bilgi }}</p>
 
     <div v-if="geciciParola" class="bildirim bildirim-uyari" role="alert">
@@ -96,7 +97,10 @@ const pasif = () => props.durum === 'PASIF'
       <p v-else>
         Giriş adı (sicil): <strong>{{ hesap.girisAdi }}</strong>
         <span v-if="hesap.parolaDegistirmeli"> · ilk giriş bekleniyor (geçici parola)</span>
-        <span v-if="hesap.kilitli"> · ⚠ hesap kilitli (çok fazla hatalı deneme)</span>
+        <span v-if="hesap.kilitli">
+          ·
+          <Rozet ton="uyari" simge="uyari" metin="hesap kilitli (çok fazla hatalı deneme)" />
+        </span>
         <span v-if="!hesap.aktif"> · hesap pasif</span>
       </p>
       <div class="eylemler">
@@ -124,3 +128,9 @@ const pasif = () => props.durum === 'PASIF'
     </template>
   </section>
 </template>
+
+<style scoped>
+.hesap-kutusu {
+  margin-top: var(--aralik-5);
+}
+</style>

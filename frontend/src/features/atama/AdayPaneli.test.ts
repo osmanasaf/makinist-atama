@@ -56,14 +56,20 @@ function kur(adaylar: Aday[]) {
 const satir = (w: ReturnType<typeof kur>, i: number) => w.findAll('tr[data-aday]')[i]!
 
 describe('AdayPaneli', () => {
-  it('uygun olmayan satır soluk: aria-disabled, ⛔ simgesi ve TÜM ihlal metinleri görünür; seçilemez', async () => {
+  it('uygun olmayan satır soluk: aria-disabled, engel simgesi; ilk ihlal açık, kalanı kapalı ayrıntıda (DOM içinde); seçilemez', async () => {
     const w = kur([aday({}), engelli])
     const s = satir(w, 1)
     expect(s.attributes('aria-disabled')).toBe('true')
     expect(s.classes()).toContain('soluk')
-    expect(s.text()).toContain('⛔')
-    expect(s.text()).toContain('Hat yetkisi yok: Ankara–Eskişehir')
-    expect(s.text()).toContain('Dinlenme 8 s < 11 s')
+    expect(s.find('svg[data-simge="engel"]').exists()).toBe(true)
+    expect(s.find('.rozet-engel').text()).toBe('Uygun değil')
+    // GÖRÜNÜR olan: ilk ihlal ayrıntı dışında; ikincisi kapalı <details> içinde (DOM'da var, kullanıcı açana dek görünmez)
+    const acikMetin = s.findAll('.ihlal-listesi:not(details *) li').map((li) => li.text())
+    expect(acikMetin).toEqual(['Hat yetkisi yok: Ankara–Eskişehir'])
+    const ayrinti = s.get('details.ihlal-daha')
+    expect((ayrinti.element as HTMLDetailsElement).open).toBe(false)
+    expect(ayrinti.text()).toContain('Dinlenme 8 s < 11 s')
+    expect(s.text()).toContain('Dinlenme 8 s < 11 s') // jsdom kapalı details içeriğini de verir: bu satır yalnız "DOM'da" demektir
     await s.trigger('click')
     await s.trigger('keydown', { key: 'Enter' })
     expect(w.emitted('sec')).toBeUndefined()
@@ -82,11 +88,60 @@ describe('AdayPaneli', () => {
     expect(w.emitted('sec')).toEqual([[a], [a]])
   })
 
-  it('yalnız UYARI içeren aday seçilebilir ve ⚠ simgesi ile uyarı metni görünür', async () => {
+  it('birden çok ihlalde ilki açık, kalanlar "+N ihlal daha" ayrıntısında (hepsi DOM içinde); ayrıntıyı açmak satırı seçmez', async () => {
+    const w = kur([engelli])
+    const s = satir(w, 0)
+    expect(s.find('.ihlal-listesi li').text()).toContain('Hat yetkisi yok')
+    const d = s.get('details.ihlal-daha')
+    expect(d.get('summary').text()).toBe('+1 ihlal daha')
+    expect(d.text()).toContain('Dinlenme 8 s < 11 s')
+    await d.get('summary').trigger('click')
+    expect(w.emitted('sec')).toBeUndefined()
+    expect(satir(w, 0).find('details').exists()).toBe(true)
+  })
+
+  it('W2: "+N ihlal daha" özetinde Enter/Boşluk ayrıntıyı açar, aday SEÇMEZ (olay satıra kabarsa da)', async () => {
+    const w = kur([{ ...engelli, uygun: true }]) // seçilebilir olsun: hata varsa sec yayılırdı
+    const ozet = satir(w, 0).get('summary')
+    const olay = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    ozet.element.dispatchEvent(olay)
+    expect(olay.defaultPrevented).toBe(false) // tarayıcının varsayılan eylemi (özeti aç/kapat) engellenmez
+    expect(w.emitted('sec')).toBeUndefined()
+    const bosluk = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true })
+    ozet.element.dispatchEvent(bosluk)
+    expect(bosluk.defaultPrevented).toBe(false)
+  })
+
+  it('W2: satırın kendisinde Enter seçer; satır içindeki Yolculuk öner düğmesinde Enter satırı seçmez', async () => {
+    const konum = aday({
+      makinistId: 9,
+      adSoyad: 'Konum Uyarılı',
+      ihlaller: [{ kod: 'K-20', siddet: 'UYARI', olculen: 0, esik: 0, birim: '', metin: 'Konum' }],
+    })
+    const w = kur([konum])
+    const dugme = satir(w, 0).get('button')
+    const olay = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    dugme.element.dispatchEvent(olay)
+    expect(olay.defaultPrevented).toBe(false)
+    expect(w.emitted('sec')).toBeUndefined()
+    await satir(w, 0).trigger('keydown', { key: 'Enter' })
+    expect(w.emitted('sec')).toEqual([[konum]])
+  })
+
+  it('tek ihlalde "daha" ayrıntısı çizilmez', () => {
+    expect(
+      satir(kur([uyarili]), 0)
+        .find('details')
+        .exists(),
+    ).toBe(false)
+  })
+
+  it('yalnız UYARI içeren aday seçilebilir ve uyarı simgesi ile uyarı metni görünür', async () => {
     const w = kur([uyarili])
     const s = satir(w, 0)
     expect(s.attributes('aria-disabled')).toBeUndefined()
-    expect(s.text()).toContain('⚠')
+    expect(s.find('svg[data-simge="uyari"]').exists()).toBe(true)
+    expect(s.find('.rozet-uyari').text()).toBe('Uyarı var')
     expect(s.text()).toContain('Günlük 9 s > 8 s')
     await s.trigger('click')
     expect(w.emitted('sec')).toEqual([[uyarili]])

@@ -1,5 +1,7 @@
 import { api, sorguMetni } from '@/api/istemci'
 import type { Tarih, Zaman } from '@/api/tipler'
+import type { Ton } from '@/bilesenler/durum'
+import type { SimgeAdi } from '@/bilesenler/simgeler'
 
 export type MakinistDurumu = 'AKTIF' | 'ASKIDA' | 'PASIF'
 export type IzinTuru = 'YILLIK' | 'RAPOR' | 'DIGER'
@@ -25,6 +27,13 @@ export const IZIN_DURUM_ETIKETLERI: Record<string, string> = {
   TALEP: 'Talep',
   ONAY: 'Onaylı',
   RED: 'Reddedildi',
+}
+
+/** İzin durumu -> rozet: anlam ton + simge + metinle birlikte taşınır (yalnız renk değil). */
+export const IZIN_DURUM_GORUNUMU: Record<string, { ton: Ton; simge: SimgeAdi }> = {
+  TALEP: { ton: 'uyari', simge: 'saat' },
+  ONAY: { ton: 'basari', simge: 'basari' },
+  RED: { ton: 'engel', simge: 'iptal' },
 }
 
 export interface MakinistOzet {

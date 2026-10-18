@@ -5,7 +5,7 @@ const routes: RouteRecordRaw[] = [
     path: '/makinistler',
     name: 'makinistler',
     component: () => import('./MakinistListesi.vue'),
-    meta: { menu: { ad: 'Personel', sira: 10 } },
+    meta: { menu: { ad: 'Personel', sira: 10, grup: 'Personel', simge: 'kisi' } },
   },
   {
     path: '/makinistler/yeni',

@@ -117,7 +117,8 @@ describe('AtamaMasasi: kırmızı, uyarı, sayaç', () => {
     const { w } = await kur()
     const s = satirlar(w)
     expect(s[1]!.classes()).toContain('kirmizi')
-    expect(s[1]!.text()).toContain('⛔ KONTROL')
+    expect(s[1]!.text()).toContain('KONTROL')
+    expect(s[1]!.find('.rozet-engel svg[data-simge="engel"]').exists()).toBe(true)
     expect(s[1]!.text()).toContain('Dinlenme 9 s 30 dk < 11 s')
     expect(s[0]!.classes()).not.toContain('kirmizi')
     expect(s[0]!.text()).not.toContain('KONTROL')
@@ -132,10 +133,11 @@ describe('AtamaMasasi: kırmızı, uyarı, sayaç', () => {
     expect(s.text()).toContain('Eski atama iptal seferde duruyor')
   })
 
-  it('UYARI ile atanmış görevli: "⚠ Uyarı" işareti + metin, satır kırmızı değil', async () => {
+  it('UYARI ile atanmış görevli: "Uyarı" simgesi + metin, satır kırmızı değil', async () => {
     const { w } = await kur()
     const s = satirlar(w)[3]!
-    expect(s.text()).toContain('⚠ Uyarı')
+    expect(s.text()).toContain('Uyarı')
+    expect(s.find('.uyari-notu svg[data-simge="uyari"]').exists()).toBe(true)
     expect(s.text()).toContain('Günlük 9 s > 8 s')
     expect(s.classes()).not.toContain('kirmizi')
     expect(s.text()).not.toContain('KONTROL')
@@ -145,7 +147,8 @@ describe('AtamaMasasi: kırmızı, uyarı, sayaç', () => {
   it('üst çubuktaki "Kırmızı: N sefer" rozeti seçili gün + 7 gün için sorulur', async () => {
     const { w } = await kur()
     expect(atamaApi.kirmiziSayisi).toHaveBeenCalledWith('2026-10-12', '2026-10-19')
-    expect(w.get('[data-test="kirmizi-sayac"]').text()).toBe('⛔ Kırmızı: 3 sefer')
+    expect(w.get('[data-test="kirmizi-sayac"]').text()).toBe('Kırmızı: 3 sefer')
+    expect(w.find('[data-test="kirmizi-sayac"] svg[data-simge="engel"]').exists()).toBe(true)
     expect(w.get('[data-test="kirmizi-sayac"]').attributes('title')).toContain('4 atama')
   })
 

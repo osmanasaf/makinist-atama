@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { sayiBicimle } from '@/lib/sayi'
+import Simge from '@/bilesenler/Simge.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import type { PuantajYaniti } from './puantajApi'
 
 /** Puantaj tablosu + "ön hesap / demo" etiketleri (rapor ve yazdırma sayfası ortak). */
@@ -22,7 +24,7 @@ const kmBilinmeyenler = computed(() =>
 <template>
   <div>
     <p v-if="rapor.demo" class="bildirim bildirim-uyari demo-bant" role="status">
-      <span aria-hidden="true">⚠</span> DEMO – gerçek değil
+      <Simge ad="uyari" boyut="1.1em" />DEMO – gerçek değil
     </p>
     <p class="etiket">{{ rapor.etiket }}</p>
     <p v-if="!rapor.saatUcretiGirildi || !rapor.kmBirimGirildi" class="bildirim bildirim-uyari">
@@ -30,22 +32,23 @@ const kmBilinmeyenler = computed(() =>
       Ayarlar ekranından girin.
     </p>
 
-    <p v-if="rapor.satirlar.length === 0" class="soluk">Bu ay için kayıt yok.</p>
+    <p v-if="rapor.satirlar.length === 0 && yazdir" class="soluk">Bu ay için kayıt yok.</p>
+    <VeriDurumu v-else-if="rapor.satirlar.length === 0" durum="bos" metin="Bu ay için kayıt yok." />
     <div v-else :class="yazdir ? 'yazdir-tablo-kap' : 'tablo-kap'">
       <table :class="yazdir ? 'yazdir-tablo' : 'tablo'" aria-label="Puantaj ön hesabı">
         <thead>
           <tr>
             <th>Sicil</th>
             <th>Ad soyad</th>
-            <th>Çalışılan gün</th>
-            <th>Fiili saat</th>
-            <th>Ücretlendirilen saat</th>
-            <th>Fazla mesai saati</th>
-            <th>Gece saati</th>
-            <th>Km</th>
-            <th>Fazla mesai TL</th>
-            <th>Gece TL</th>
-            <th>Km TL</th>
+            <th class="sayisal">Çalışılan gün</th>
+            <th class="sayisal">Fiili saat</th>
+            <th class="sayisal">Ücretlendirilen saat</th>
+            <th class="sayisal">Fazla mesai saati</th>
+            <th class="sayisal">Gece saati</th>
+            <th class="sayisal">Km</th>
+            <th class="sayisal">Fazla mesai TL</th>
+            <th class="sayisal">Gece TL</th>
+            <th class="sayisal">Km TL</th>
           </tr>
         </thead>
         <tbody>
@@ -76,13 +79,16 @@ const kmBilinmeyenler = computed(() =>
 
 <style scoped>
 .demo-bant {
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: var(--aralik-3);
+  font-weight: var(--yazi-agirlik-kalin);
 }
 .etiket {
-  font-weight: 600;
-  margin: 0 0 0.5rem;
+  font-weight: var(--yazi-agirlik-orta);
+  margin: 0 0 var(--aralik-3);
 }
 .dipnot {
-  margin-top: 0.5rem;
+  margin-top: var(--aralik-3);
 }
 </style>

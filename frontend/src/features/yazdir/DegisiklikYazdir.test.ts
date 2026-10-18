@@ -84,11 +84,12 @@ describe('DegisiklikYazdir', () => {
     expect(alt).toContain('Yazdıran: Ayşe Kaya')
   })
 
-  it('bölümler renksiz okunur: uyarılı satırda "⚠ Uyarılı: gerekçe", boş bölümde "Kayıt yok."', async () => {
+  it('bölümler renksiz okunur: uyarılı satırda uyarı simgesi + "Uyarılı: gerekçe", boş bölümde "Kayıt yok."', async () => {
     const w = await kur()
     expect(w.findAll('section.bolum')).toHaveLength(2)
     expect(w.text()).toContain('Atamalar (1)')
-    expect(w.text()).toContain('⚠ Uyarılı: Amir onayı')
+    expect(w.text()).toContain('Uyarılı: Amir onayı')
+    expect(w.find('.uyarili svg[data-simge="uyari"]').exists()).toBe(true)
     expect(w.text()).toContain('Uyaran kural: Ö-002: Görev sayısı: 4 > 3 (Kural: Gün sınırı)')
     expect(w.text()).toContain('Sefer iptalleri (0)')
     expect(w.text()).toContain('Kayıt yok.')

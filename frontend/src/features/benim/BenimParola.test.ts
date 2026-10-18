@@ -88,4 +88,22 @@ describe('BenimParola', () => {
     expect(w.get('#eski-parola-hata').text()).toBe('Eski parola hatalı.')
     expect((w.get('#eski-parola').element as HTMLInputElement).value).toBe('')
   })
+
+  it('QA BUG-6: doğrulama hatasında odak ilk geçersiz alana gider ve hata metni role=alert ile duyurulur', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/giris', name: 'giris', component: { template: '<div />' } }],
+    })
+    const w = mount(BenimParola, { global: { plugins: [router] }, attachTo: document.body })
+    await w.get('#eski-parola').setValue('eski-parola-1')
+    await w.get('#yeni-parola').setValue('kisa')
+    await w.get('#tekrar-parola').setValue('kisa')
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(document.activeElement).toBe(w.get('#yeni-parola').element)
+    const hata = w.get('#yeni-parola-hata')
+    expect(hata.attributes('role')).toBe('alert')
+    expect(w.get('#yeni-parola').attributes('aria-describedby')).toBe('yeni-parola-hata')
+    w.unmount()
+  })
 })

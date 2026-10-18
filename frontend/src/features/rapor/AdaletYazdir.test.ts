@@ -40,7 +40,8 @@ describe('AdaletYazdir', () => {
     expect(w.get('h1').text()).toBe('Adalet raporu')
     expect(w.get('.yazdir-filtre').text()).toBe('Ay: 2026-10')
     expect(w.get('table').classes()).toContain('yazdir-tablo')
-    expect(w.text()).toContain('⚠ 0 saat')
+    expect(w.text()).toContain('0 saat')
+    expect(w.find('.sifir svg[data-simge="uyari"]').exists()).toBe(true)
     const alt = w.get('footer').text().replace(/\s+/g, ' ')
     expect(alt).toContain('Son güncelleme: 12.10.2026 10:20')
     expect(alt).toContain('Kayıt sayısı: 3')
@@ -69,6 +70,11 @@ describe('AdaletYazdir', () => {
     expect(props(r)).toEqual({ ay: '2026-10' })
     expect(router.resolve('/rapor/yedek').name).toBe('rapor-yedek')
     expect(router.resolve('/izin').name).toBe('izin')
-    expect(router.resolve('/rapor/adalet').meta.menu).toEqual({ ad: 'Adalet Raporu', sira: 42 })
+    expect(router.resolve('/rapor/adalet').meta.menu).toEqual({
+      ad: 'Adalet Raporu',
+      sira: 42,
+      grup: 'Raporlar',
+      simge: 'rapor',
+    })
   })
 })

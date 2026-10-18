@@ -212,6 +212,9 @@ describe('KadroTahmini (F3a, OK-22 doluluk eğrisi)', () => {
     expect(u).toContain('İyileştirmeli plan')
     expect(u).toContain('eğrisi süre sınırından etkilenmez')
     expect(u).not.toContain('gerçek ihtiyaç daha düşük')
+    // varsayılan deneyimde sakin not: bildirim bandı değil (H, orkestratör (8))
+    expect(w.get('[data-test=sure-uyarisi]').classes()).not.toContain('bildirim')
+    expect(w.get('[data-test=sure-uyarisi] svg').attributes('data-simge')).toBe('bilgi')
   })
 
   it('yalnız analitik: simülasyon bölümü ve başlık kutusu yok', async () => {
@@ -379,5 +382,19 @@ describe('KadroTahmini (F3a, OK-22 doluluk eğrisi)', () => {
     await flushPromises()
 
     expect(raporApi.kadroExcel).toHaveBeenCalledWith(r)
+  })
+
+  it('QA BUG-10: başlık düzeyi atlamaz (h1 > h2; özet kartları h3 değil)', async () => {
+    vi.mocked(raporApi.kadro).mockResolvedValue(rapor())
+    const w = kur()
+    await duzenle()
+    await w.get('[data-test=hesapla]').trigger('click')
+    await flushPromises()
+    const duzeyler = w.findAll('h1, h2, h3, h4').map((h) => Number(h.element.tagName[1]))
+    duzeyler.reduce((onceki, d) => {
+      expect(d - onceki).toBeLessThanOrEqual(1) // h1 → h3 gibi atlama yok
+      return d
+    }, 0)
+    expect(duzeyler.includes(3)).toBe(false)
   })
 })

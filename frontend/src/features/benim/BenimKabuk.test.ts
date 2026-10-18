@@ -49,13 +49,12 @@ describe('BenimKabuk (makinist telefon kabuğu)', () => {
     const w = await kur('MAKINIST', '/benim/gorevler')
     expect(w.find('.ust-cubuk').exists()).toBe(false)
     expect(w.find('nav[aria-label="Ana menü"]').exists()).toBe(false)
-    const sekmeler = w.findAll('nav[aria-label="Personel menüsü"] a').map((a) =>
-      a
-        .text()
-        .replace(/^\S+\s/, '')
-        .trim(),
-    )
+    const sekmeler = w.findAll('nav[aria-label="Personel menüsü"] a').map((a) => a.text())
     expect(sekmeler).toEqual(['Görevler', 'Belgeler', 'İzin', 'Özet'])
+    const simgeler = w
+      .findAll('nav[aria-label="Personel menüsü"] a svg[data-simge]')
+      .map((s) => s.attributes('data-simge'))
+    expect(simgeler).toEqual(['tren', 'belge', 'izin', 'rapor'])
     expect(w.get('.benim-ad').text()).toBe('Ali Veli')
     expect(w.findAll('button').map((b) => b.text())).toContain('Çıkış')
   })

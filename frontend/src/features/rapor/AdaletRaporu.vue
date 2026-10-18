@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
 import { bugun, zamanBicimle } from '@/lib/tarih'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import AdaletTablosu from './AdaletTablosu.vue'
 import { TUR_ETIKETLERI, type PersonelTuru } from '@/features/makinist/makinistApi'
 import { raporApi, type AdaletRaporu } from './raporApi'
@@ -16,13 +19,18 @@ const uygulananTur = ref<PersonelTuru>('MAKINIST')
 /** Makinist grubu varsayılandır: tür yalnız kondüktör için gönderilir (bugünkü istek birebir aynı). */
 const turArgi = (t: PersonelTuru): [PersonelTuru?] => (t === 'KONDUKTOR' ? [t] : [])
 const hata = ref('')
+const ayHata = ref('')
+const ayAlani = ref<HTMLInputElement | null>(null)
 const mesgul = ref(false)
 
 async function getir() {
   if (mesgul.value) return
   hata.value = ''
+  ayHata.value = ''
   if (!ay.value) {
-    hata.value = 'Ay seçin.'
+    ayHata.value = 'Ay seçin.'
+    await nextTick()
+    ayAlani.value?.focus()
     return
   }
   const secilen = ay.value
@@ -60,13 +68,40 @@ async function excelIndir() {
 </script>
 
 <template>
-  <section>
-    <div class="sayfa-baslik"><h1>Adalet raporu</h1></div>
+  <section class="rapor-sayfa">
+    <SayfaBasligi baslik="Adalet raporu">
+      <template v-if="rapor" #eylemler>
+        <button type="button" class="btn" @click="excelIndir">Excel indir</button>
+        <RouterLink
+          class="btn"
+          :to="{
+            name: 'yazdir-adalet',
+            query: {
+              ay: uygulanan,
+              ...(uygulananTur === 'KONDUKTOR' ? { tur: uygulananTur } : {}),
+            },
+          }"
+          target="_blank"
+          rel="noopener"
+        >
+          Yazdır
+        </RouterLink>
+      </template>
+    </SayfaBasligi>
 
     <form class="arac-cubugu" @submit.prevent="getir">
-      <div class="alan">
+      <div class="alan alan-zorunlu">
         <label for="adalet-ay">Ay</label>
-        <input id="adalet-ay" v-model="ay" type="month" required />
+        <input
+          id="adalet-ay"
+          ref="ayAlani"
+          v-model="ay"
+          type="month"
+          required
+          :aria-invalid="ayHata ? 'true' : undefined"
+          :aria-describedby="ayHata ? 'adalet-ay-hata' : undefined"
+        />
+        <AlanHatasi id="adalet-ay-hata" :metin="ayHata" />
       </div>
       <div class="alan">
         <label for="adalet-tur">Personel türü</label>
@@ -77,8 +112,9 @@ async function excelIndir() {
       <button type="submit" class="btn btn-birincil" :disabled="mesgul">Raporu getir</button>
     </form>
 
-    <p v-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
-    <p v-if="mesgul" class="soluk">Rapor hazırlanıyor…</p>
+    <VeriDurumu v-if="mesgul" durum="yukleniyor" metin="Rapor hazırlanıyor…" />
+    <VeriDurumu v-else-if="hata && !rapor" durum="hata" :metin="hata" />
+    <p v-else-if="hata" class="bildirim bildirim-hata" role="alert">{{ hata }}</p>
 
     <template v-if="rapor">
       <div class="kart ozet" data-test="ozet">
@@ -86,23 +122,6 @@ async function excelIndir() {
           Üretim zamanı: <strong>{{ zamanBicimle(rapor.uretimZamani) }}</strong> · Üreten:
           <strong>{{ rapor.ureten }}</strong>
         </p>
-        <div class="eylemler">
-          <button type="button" class="btn" @click="excelIndir">Excel indir</button>
-          <RouterLink
-            class="btn"
-            :to="{
-              name: 'yazdir-adalet',
-              query: {
-                ay: uygulanan,
-                ...(uygulananTur === 'KONDUKTOR' ? { tur: uygulananTur } : {}),
-              },
-            }"
-            target="_blank"
-            rel="noopener"
-          >
-            Yazdır
-          </RouterLink>
-        </div>
       </div>
       <AdaletTablosu :rapor="rapor" />
     </template>
@@ -110,10 +129,7 @@ async function excelIndir() {
 </template>
 
 <style scoped>
-.ozet {
-  margin-bottom: 1rem;
-}
 .ozet p {
-  margin: 0 0 0.25rem;
+  margin: 0;
 }
 </style>

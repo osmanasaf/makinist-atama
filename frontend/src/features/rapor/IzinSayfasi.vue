@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import Rozet from '@/bilesenler/Rozet.vue'
+import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
+import Simge from '@/bilesenler/Simge.vue'
+import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import {
   IZIN_DURUM_ETIKETLERI,
+  IZIN_DURUM_GORUNUMU,
   IZIN_ETIKETLERI,
   makinistApi,
   type IzinEtkisiSatiri,
   type IzinTuru,
   type MakinistOzet,
 } from '@/features/makinist/makinistApi'
+import { ilkHataliyaOdaklan, odakYedegi } from '@/lib/odak'
 import { tarihBicimle, zamanBicimle } from '@/lib/tarih'
 import { ROL_ETIKETLERI } from '@/features/atama/atamaApi'
 import { raporApi, type IzinDurumu, type IzinKaydi, type YedekGunu } from './raporApi'
@@ -21,12 +28,12 @@ const SUZGECLER: { kod: Suzgec; ad: string }[] = [
   { kod: 'ONAY', ad: 'Onaylı' },
   { kod: 'RED', ad: 'Reddedildi' },
 ]
-const DURUM_SIMGELERI: Record<IzinDurumu, string> = { TALEP: '⏳', ONAY: '✔', RED: '✖' }
-
 const makinistler = ref<MakinistOzet[]>([])
 const form = reactive({ makinistId: 0, baslangic: '', bitis: '', tur: 'YILLIK' as IzinTuru })
 const alanHatalari = ref<Record<string, string>>({})
 const formHata = ref('')
+const bilgi = ref('')
+const formKok = ref<HTMLFormElement | null>(null)
 
 const suzgec = ref<Suzgec>('TALEP')
 const liste = ref<IzinKaydi[]>([])
@@ -76,26 +83,37 @@ async function talepEt() {
   if (mesgul.value) return
   alanHatalari.value = {}
   formHata.value = ''
-  if (!form.makinistId || !form.baslangic || !form.bitis) {
-    formHata.value = 'Makinist, başlangıç ve bitiş tarihi gerekli.'
-    return
-  }
-  if (form.bitis < form.baslangic) {
-    alanHatalari.value = { bitis: 'Bitiş tarihi başlangıçtan önce olamaz.' }
+  bilgi.value = ''
+  const eksik: Record<string, string> = {}
+  if (!form.makinistId) eksik.makinistId = 'Personel seçin.'
+  if (!form.baslangic) eksik.baslangic = 'Başlangıç tarihi gerekli.'
+  if (!form.bitis) eksik.bitis = 'Bitiş tarihi gerekli.'
+  else if (form.baslangic && form.bitis < form.baslangic)
+    eksik.bitis = 'Bitiş tarihi başlangıçtan önce olamaz.'
+  if (Object.keys(eksik).length > 0) {
+    alanHatalari.value = eksik
+    await ilkHataliyaOdaklan(formKok.value)
     return
   }
   mesgul.value = true
   try {
     await raporApi.izinTalep({ ...form })
     form.baslangic = form.bitis = ''
+    bilgi.value = 'İzin talebi kaydedildi.'
     await listeYukle()
   } catch (e) {
     if (e instanceof ApiHata) {
       alanHatalari.value = e.alanlar ?? {}
       formHata.value = e.detail
     } else formHata.value = 'Talep kaydedilemedi.'
+    await ilkHataliyaOdaklan(formKok.value)
   } finally {
     mesgul.value = false
+    // Gönder düğmesi meşgulken devre dışıydı: odak BODY'ye düşmüş olabilir (QA YENİ-1 d), düğmeye döndür.
+    await nextTick()
+    const a = document.activeElement
+    if (!a || a === document.body)
+      formKok.value?.querySelector<HTMLElement>('[type="submit"]')?.focus()
   }
 }
 
@@ -134,6 +152,8 @@ async function karar(izin: IzinKaydi, onay: boolean) {
     hata.value = hataMetni(e, 'İşlem başarısız oldu.')
   } finally {
     mesgul.value = false
+    await nextTick()
+    odakYedegi() // karar verilen satır listeden düşmüş olabilir (QA YENİ-1)
   }
 }
 
@@ -142,44 +162,74 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
 
 <template>
   <section>
-    <div class="sayfa-baslik"><h1>İzinler</h1></div>
+    <SayfaBasligi baslik="İzinler" />
 
-    <form class="kart talep-formu" aria-labelledby="izin-talep-baslik" @submit.prevent="talepEt">
+    <form
+      ref="formKok"
+      class="kart talep-formu"
+      aria-labelledby="izin-talep-baslik"
+      novalidate
+      @submit.prevent="talepEt"
+    >
       <h2 id="izin-talep-baslik">İzin talebi</h2>
       <div class="form-izgara">
-        <div class="alan">
+        <div class="alan alan-zorunlu">
           <label for="izin-makinist">Personel</label>
-          <select id="izin-makinist" v-model.number="form.makinistId" required>
+          <select
+            id="izin-makinist"
+            v-model.number="form.makinistId"
+            required
+            :aria-invalid="!!alanHatalari.makinistId"
+            :aria-describedby="alanHatalari.makinistId ? 'izin-makinist-hata' : undefined"
+          >
             <option :value="0" disabled>Seçin</option>
             <option v-for="m in makinistler" :key="m.id" :value="m.id">
               {{ m.sicil }} — {{ m.adSoyad }}
             </option>
           </select>
-          <small v-if="alanHatalari.makinistId" class="alan-hata">{{
-            alanHatalari.makinistId
-          }}</small>
+          <AlanHatasi id="izin-makinist-hata" :metin="alanHatalari.makinistId" />
         </div>
-        <div class="alan">
+        <div class="alan alan-zorunlu">
           <label for="izin-bas">Başlangıç</label>
-          <input id="izin-bas" v-model="form.baslangic" type="date" required />
-          <small v-if="alanHatalari.baslangic" class="alan-hata">{{
-            alanHatalari.baslangic
-          }}</small>
+          <input
+            id="izin-bas"
+            v-model="form.baslangic"
+            type="date"
+            required
+            :aria-invalid="!!alanHatalari.baslangic"
+            :aria-describedby="alanHatalari.baslangic ? 'izin-bas-hata' : undefined"
+          />
+          <AlanHatasi id="izin-bas-hata" :metin="alanHatalari.baslangic" />
         </div>
-        <div class="alan">
+        <div class="alan alan-zorunlu">
           <label for="izin-bit">Bitiş</label>
-          <input id="izin-bit" v-model="form.bitis" type="date" required />
-          <small v-if="alanHatalari.bitis" class="alan-hata">{{ alanHatalari.bitis }}</small>
+          <input
+            id="izin-bit"
+            v-model="form.bitis"
+            type="date"
+            required
+            :aria-invalid="!!alanHatalari.bitis"
+            :aria-describedby="alanHatalari.bitis ? 'izin-bit-hata' : undefined"
+          />
+          <AlanHatasi id="izin-bit-hata" :metin="alanHatalari.bitis" />
         </div>
-        <div class="alan">
+        <div class="alan alan-zorunlu">
           <label for="izin-tur">Tür</label>
-          <select id="izin-tur" v-model="form.tur">
+          <select
+            id="izin-tur"
+            v-model="form.tur"
+            :aria-invalid="!!alanHatalari.tur"
+            :aria-describedby="alanHatalari.tur ? 'izin-tur-hata' : undefined"
+          >
             <option v-for="(ad, k) in IZIN_ETIKETLERI" :key="k" :value="k">{{ ad }}</option>
           </select>
-          <small v-if="alanHatalari.tur" class="alan-hata">{{ alanHatalari.tur }}</small>
+          <AlanHatasi id="izin-tur-hata" :metin="alanHatalari.tur" />
         </div>
       </div>
       <p v-if="formHata" class="bildirim bildirim-hata" role="alert">{{ formHata }}</p>
+      <div role="status">
+        <p v-if="bilgi" class="bildirim bildirim-bilgi" data-test="izin-bilgi">{{ bilgi }}</p>
+      </div>
       <div class="eylemler">
         <button type="submit" class="btn btn-birincil" :disabled="mesgul">Talep et</button>
       </div>
@@ -192,7 +242,6 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
           :key="s.kod"
           type="button"
           class="btn"
-          :class="{ 'btn-birincil': suzgec === s.kod }"
           :aria-pressed="suzgec === s.kod"
           @click="suzgecSec(s.kod)"
         >
@@ -218,7 +267,7 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
         <p v-if="etki.seferHata" class="bildirim bildirim-hata">{{ etki.seferHata }}</p>
         <template v-else-if="etki.seferler && etki.seferler.length > 0">
           <p data-test="sefer-etkisi">
-            <span aria-hidden="true">⚠</span> Bu izin {{ etki.seferler.length }} atanmış seferi
+            <Simge ad="uyari" boyut="1em" /> Bu izin {{ etki.seferler.length }} atanmış seferi
             kırmızı yaptı → Atama Masası'ndan düzeltin
           </p>
           <ul>
@@ -232,12 +281,12 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
           </ul>
         </template>
         <p v-else-if="etki.seferler" data-test="sefer-yok">
-          <span aria-hidden="true">✔</span> İzin aralığında atanmış sefer yok.
+          <Simge ad="basari" boyut="1em" /> İzin aralığında atanmış sefer yok.
         </p>
 
         <p v-if="etki.yedekHata" class="bildirim bildirim-hata">{{ etki.yedekHata }}</p>
         <template v-else-if="etki.acikGunler && etki.acikGunler.length > 0">
-          <p data-test="yedek-acigi"><span aria-hidden="true">⚠</span> Yedek açığı olan günler:</p>
+          <p data-test="yedek-acigi"><Simge ad="uyari" boyut="1em" /> Yedek açığı olan günler:</p>
           <ul>
             <li v-for="g in etki.acikGunler" :key="g.tarih">
               {{ tarihBicimle(g.tarih) }} — {{ g.acik }} eksik
@@ -248,6 +297,7 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
       </div>
     </div>
 
+    <VeriDurumu v-if="!yuklendi" durum="yukleniyor" metin="Yükleniyor…" />
     <div class="tablo-kap">
       <table class="tablo" aria-label="İzin listesi">
         <thead>
@@ -260,7 +310,7 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
             <th>Durum</th>
             <th>Talep eden</th>
             <th>Karar veren</th>
-            <th><span class="sr-only">İşlemler</span></th>
+            <th><span class="gorunmez">İşlemler</span></th>
           </tr>
         </thead>
         <tbody>
@@ -271,8 +321,11 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
             <td>{{ tarihBicimle(i.bitis) }}</td>
             <td>{{ IZIN_ETIKETLERI[i.tur] }}</td>
             <td>
-              <span aria-hidden="true">{{ DURUM_SIMGELERI[i.durum] }}</span>
-              {{ IZIN_DURUM_ETIKETLERI[i.durum] ?? i.durum }}
+              <Rozet
+                :ton="IZIN_DURUM_GORUNUMU[i.durum]?.ton ?? 'notr'"
+                :simge="IZIN_DURUM_GORUNUMU[i.durum]?.simge"
+                :metin="IZIN_DURUM_ETIKETLERI[i.durum] ?? i.durum"
+              />
             </td>
             <td>{{ i.olusturan }}</td>
             <td>{{ i.kararVeren ?? '—' }}</td>
@@ -300,7 +353,7 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
             </td>
           </tr>
           <tr v-if="yuklendi && liste.length === 0">
-            <td colspan="9" class="bos-durum">İzin kaydı yok.</td>
+            <td colspan="9"><VeriDurumu durum="bos" metin="İzin kaydı yok." /></td>
           </tr>
         </tbody>
       </table>
@@ -310,28 +363,16 @@ const saat = (z: string) => zamanBicimle(z).slice(-5)
 
 <style scoped>
 .talep-formu {
-  margin-bottom: 1rem;
+  margin-bottom: var(--aralik-5);
 }
 .talep-formu h2 {
   margin-top: 0;
-  font-size: 1.1rem;
-}
-.suzgec {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
+  font-size: var(--yazi-xl);
 }
 .etki-paneli {
-  margin-bottom: 1rem;
+  margin-bottom: var(--aralik-5);
 }
 .satir-eylem {
   margin-top: 0;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
 }
 </style>

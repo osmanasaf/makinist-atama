@@ -27,10 +27,13 @@ describe('SeferDegisiklikDialog', () => {
       const w = kur('iptal')
       expect(w.text()).toContain('Seferi iptal et')
       expect(w.text()).toContain('Bu işlem geri alınamaz')
+      expect(w.find('svg[data-simge="uyari"]').exists()).toBe(true)
       expect(w.find('#sefer-kalkis-gecikme').exists()).toBe(false)
       expect(onay(w).attributes('disabled')).toBeDefined()
+      expect(w.get('.diyalog-neden').text()).toBe('Önce neden seçin.')
       await w.get('#sefer-neden').setValue('HASTALIK')
       expect(onay(w).attributes('disabled')).toBeUndefined()
+      expect(w.find('.diyalog-neden').exists()).toBe(false)
       await w.get('form').trigger('submit')
       await flushPromises()
       expect(atamaApi.seferIptal).toHaveBeenCalledWith(11, {
@@ -66,7 +69,7 @@ describe('SeferDegisiklikDialog', () => {
       await flushPromises()
       expect(w.get('[role="alert"]').text()).toBe('Sefer zaten iptal edilmiş.')
       expect(w.emitted('tamam')).toBeUndefined()
-      await w.get('button[type="button"]').trigger('click')
+      await w.get('button[type="button"]:not([aria-label="Kapat"])').trigger('click')
       expect(w.emitted('kapat')).toEqual([[true]])
     })
   })
@@ -157,7 +160,7 @@ describe('SeferDegisiklikDialog', () => {
 
   it('Vazgeç hatasız kapatır (yenileme istemez)', async () => {
     const w = kur('iptal')
-    await w.get('button[type="button"]').trigger('click')
+    await w.get('button[type="button"]:not([aria-label="Kapat"])').trigger('click')
     expect(w.emitted('kapat')).toEqual([[false]])
   })
 })

@@ -78,11 +78,14 @@ describe('AtamaDialog', () => {
     vi.mocked(atamaApi.ata).mockResolvedValue(sonuc)
     const w = kur({ aday: uyarili })
     expect(w.text()).toContain('Günlük 9 s > 8 s')
+    expect(w.find('svg[data-simge="uyari"]').exists()).toBe(true)
     expect(onay(w).attributes('disabled')).toBeDefined()
+    expect(w.get('.diyalog-neden').text()).toBe('Önce gerekçeyi yazın.')
     await w.get('#atama-gerekce').setValue('   ')
     expect(onay(w).attributes('disabled')).toBeDefined()
     await w.get('#atama-gerekce').setValue('Vardiya amiri onayladı')
     expect(onay(w).attributes('disabled')).toBeUndefined()
+    expect(w.find('.diyalog-neden').exists()).toBe(false)
     await w.get('form').trigger('submit')
     await flushPromises()
     expect(atamaApi.ata).toHaveBeenCalledWith(11, {
@@ -97,10 +100,12 @@ describe('AtamaDialog', () => {
     const w = kur({ aday: temiz, mevcut })
     expect(w.text()).toContain('Eski Kişi (D009)')
     expect(onay(w).attributes('disabled')).toBeDefined()
+    expect(w.get('.diyalog-neden').text()).toBe('Önce neden seçin.')
     await w.get('#atama-neden').setValue('HASTALIK')
     expect(onay(w).attributes('disabled')).toBeUndefined()
     await w.get('#atama-neden').setValue('DIGER')
     expect(onay(w).attributes('disabled')).toBeDefined()
+    expect(w.get('.diyalog-neden').text()).toBe('Neden notu zorunlu.')
     await w.get('#atama-neden-notu').setValue('Aile acili')
     expect(onay(w).attributes('disabled')).toBeUndefined()
     await w.get('form').trigger('submit')
@@ -157,10 +162,12 @@ describe('AtamaDialog', () => {
     const uyari = w.get('[role="alert"]').text()
     expect(uyari).toContain('Dinlenme 8 s < 11 s')
     expect(uyari).toContain('Hat yetkisi yok')
+    expect(w.get('[role="alert"]').find('svg[data-simge="engel"]').exists()).toBe(true) // iki ihlal de ENGEL
+    expect(w.get('[role="alert"]').find('svg[data-simge="uyari"]').exists()).toBe(false)
     expect(w.emitted('tamam')).toBeUndefined()
     expect(w.get('dialog').attributes('open')).toBeDefined()
     // Vazgeçince masa sunucu durumunu yeniden okusun diye yenile=true yayılır.
-    await w.get('button[type="button"]').trigger('click')
+    await w.get('button[type="button"]:not([aria-label="Kapat"])').trigger('click')
     expect(w.emitted('kapat')).toEqual([[true]])
   })
 
@@ -282,7 +289,7 @@ describe('AtamaDialog', () => {
 
   it('Vazgeç hatasız kapatır (yenileme istemez)', async () => {
     const w = kur({ aday: temiz })
-    await w.get('button[type="button"]').trigger('click')
+    await w.get('button[type="button"]:not([aria-label="Kapat"])').trigger('click')
     expect(w.emitted('kapat')).toEqual([[false]])
   })
 })

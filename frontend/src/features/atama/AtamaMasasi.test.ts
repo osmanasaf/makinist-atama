@@ -239,7 +239,11 @@ describe('AtamaMasasi', () => {
   describe('tek sütun düzeni (BUG-9)', () => {
     const kaydir = vi.fn()
     function ekran(dar: boolean) {
-      vi.stubGlobal('matchMedia', (q: string) => ({ matches: dar, media: q }))
+      // hareket azaltma tercihi (prefers-reduced-motion) kapalı: yalnız tek sütun sorgusu dar ekrana göre eşleşir
+      vi.stubGlobal('matchMedia', (q: string) => ({
+        matches: q.includes('reduced-motion') ? false : dar,
+        media: q,
+      }))
       Element.prototype.scrollIntoView = kaydir
     }
     afterEach(() => {
