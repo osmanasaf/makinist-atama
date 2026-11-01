@@ -89,4 +89,11 @@ interface AtamaRepository extends JpaRepository<Atama, Long> {
             where s.planlananVaris <= :simdi and s.durum <> com.makinistatama.sefer.SeferDurumu.IPTAL and a.rol <> com.makinistatama.atama.AtamaRol.YOLCU
             group by a.makinistId, s.hatId""")
     List<OncekiSurus> gerceklesenSonSurus(@Param("simdi") java.time.Instant simdi);
+
+    /**
+     * Bu işlemde (SET LOCAL) hazırlanmış ifadeler her çağrıda ÖZEL planla çalışır. PostgreSQL ~5. çalıştırmadan sonra GENEL plana geçer; {@link #aralik} gibi 3.000+ parametreli
+     * {@code makinist_id in (...)} + tarih aralığı sorgularında genel plan tarih aralığını %0,5 sanıp sefer'i dıştan gezer ve her sefer için diziyi tarar (özel plan ~9 ms, genel ~160-900 ms).
+     */
+    @Query(value = "select set_config('plan_cache_mode', 'force_custom_plan', true)", nativeQuery = true)
+    String ozelPlan();
 }

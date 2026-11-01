@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
+import { kurumAdi, kurumAdiGirildi, logoAdresi } from '@/composables/kurum'
 import { kullanici } from '@/composables/oturum'
 import { zamanBicimle } from '@/lib/tarih'
 
@@ -32,6 +33,10 @@ withDefaults(
       </button>
       <RouterLink class="btn" :to="geri">Geri</RouterLink>
     </div>
+    <p v-if="kurumAdiGirildi || logoAdresi" class="yazdir-kurum" data-test="yazdir-kurum">
+      <img v-if="logoAdresi" class="yazdir-logo" :src="logoAdresi" alt="" />
+      {{ kurumAdi }}
+    </p>
     <h1>{{ baslik }}</h1>
     <p class="yazdir-filtre">{{ filtre }}</p>
     <slot />

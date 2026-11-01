@@ -30,12 +30,14 @@ public class AtamaController {
     private final GunListesiServisi gunListesi;
     private final OtomatikAtamaServisi otomatik;
     private final YolculukServisi yolculuk;
+    private final YakinlikServisi yakinlik;
 
-    AtamaController(AtamaServisi servis, GunListesiServisi gunListesi, OtomatikAtamaServisi otomatik, YolculukServisi yolculuk) {
+    AtamaController(AtamaServisi servis, GunListesiServisi gunListesi, OtomatikAtamaServisi otomatik, YolculukServisi yolculuk, YakinlikServisi yakinlik) {
         this.servis = servis;
         this.gunListesi = gunListesi;
         this.otomatik = otomatik;
         this.yolculuk = yolculuk;
+        this.yakinlik = yakinlik;
     }
 
     /** "Yerine ata": mevcut makinist hariç en uygun ilk 3 aday gerekçesiyle (atama yine {@code POST /sefer/{id}} ile yapılır). */
@@ -86,6 +88,18 @@ public class AtamaController {
     @PostMapping("/otomatik")
     public OtomatikAtamaDto otomatikAta(@Valid @RequestBody OtomatikAtamaIstegi istek) {
         return istek.uygula() ? otomatik.uygula(istek) : otomatik.onizle(istek);
+    }
+
+    /** F3 (MK-174): adaylar için sınıra yakınlık + yorgunluk BİLGİSİ (aday havuzu {@code adaylar} ile aynı; kural motoru çağrılmaz, {@code AdayDto} değişmez). */
+    @GetMapping("/sefer/{seferId}/yakinlik")
+    public YakinlikDto adayYakinlik(@PathVariable long seferId, @RequestParam(defaultValue = "ASIL") AtamaRol rol) {
+        return yakinlik.aday(seferId, rol);
+    }
+
+    /** F3 (MK-174): günün atamaları için sınıra yakınlık + yorgunluk BİLGİSİ ({@code GunListesiDto} değişmez). */
+    @GetMapping("/yakinlik")
+    public YakinlikDto gunYakinlik(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tarih) {
+        return yakinlik.gun(tarih);
     }
 
     @GetMapping("/sefer/{seferId}/adaylar")

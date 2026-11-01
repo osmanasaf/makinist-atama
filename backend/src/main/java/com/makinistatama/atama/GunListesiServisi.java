@@ -107,6 +107,7 @@ public class GunListesiServisi {
      * UX-13: ASIL'ı olmayan, iptal ve geçmiş olmayan her sefer için, kurallara tam uyan (ihlalsiz) makinist yoksa "0/N uygun: ..." özeti (otomatik atamayla
      * aynı ölçüt ve özet). Bir günün tek yüklemesiyle hesaplanır; seferi boş olup adayı olanlar listede yoktur.
      */
+    @SuppressWarnings("unchecked") // List<Ihlal> dizisi
     private Map<Long, String> bosNedenleri(List<SeferDto> liste, Map<Long, List<Atama>> atamaMap) {
         List<SeferDto> bos = liste.stream().filter(s -> s.durum() != SeferDurumu.IPTAL && atamaMap.getOrDefault(s.id(), List.of()).stream().noneMatch(a -> a.rol() == AtamaRol.ASIL)).toList();
         if (bos.isEmpty()) {
@@ -116,27 +117,53 @@ public class GunListesiServisi {
         LocalDate gun = bos.getFirst().tarih();
         Yuk y = yukleyici.yukleAralik(gun, gun, aktif);
         Map<Long, String> sonuc = new java.util.HashMap<>();
+        // Kural girdisi birebir aynı makinistler (kayıt, belge, bröve, izin, yüklenen görevler) aynı sınıfta: sefer başına yalnız sınıfın temsilcisi değerlendirilir, sonuç sınıfa paylaşılır
+        // (kimse uygun değilken de seferler × makinist yerine seferler × sınıf; çıktı aynı çünkü kurallar makinist kimliğini okumaz). Özet sınıf ağırlıklarıyla toplanır (aynı sayılar).
+        // ponytail: görevi olan makinistin sınıfı tekil kalır (görev kimlikleri farklı); o yolda kazanç yok, gerekirse satır anahtarı kimliksiz yapılır.
+        Map<Yuk.Sinif, Integer> sinifNo = new java.util.HashMap<>();
+        List<MakinistDto> temsilci = new ArrayList<>();
+        List<Integer> adetListesi = new ArrayList<>();
+        for (MakinistDto m : aktif) {
+            Integer no = sinifNo.putIfAbsent(y.sinif(m), temsilci.size());
+            if (no == null) {
+                no = temsilci.size();
+                temsilci.add(m);
+                adetListesi.add(0);
+            }
+            adetListesi.set(no, adetListesi.get(no) + 1);
+        }
+        int[] adet = adetListesi.stream().mapToInt(Integer::intValue).toArray();
+        // Önceki seferlerde uygun çıkan sınıflar: bir sonraki seferde ÖNCE onlar denenir. Yalnız "uygun var mı" soru olduğundan sonuç sıradan bağımsızdır.
+        java.util.Set<Integer> uygunlar = new java.util.LinkedHashSet<>();
         for (SeferDto s : bos) {
             if (!s.guncelKalkis().toInstant().isAfter(y.simdi())) {
                 continue;
             }
-            List<List<Ihlal>> elenenler = new ArrayList<>();
-            boolean uygunVar = false;
-            for (MakinistDto m : aktif) {
-                boolean zatenGorevli = y.satirlar(m.id()).stream().anyMatch(sr -> sr.seferId().equals(s.id()));
-                List<Ihlal> ihlaller = zatenGorevli ? List.of(new Ihlal("K-10", Siddet.ENGEL, 0, 0, "", "Makinist bu seferde zaten görevli"))
-                        : KuralMotoru.degerlendirYazma(y.baglamZincirli(m, s));
-                if (ihlaller.isEmpty()) {
-                    uygunVar = true;
+            List<Ihlal>[] ihlalSirasi = new List[temsilci.size()];
+            Integer uygun = null;
+            for (int c : uygunlar) {
+                if ((ihlalSirasi[c] = ihlaller(y, temsilci.get(c), s)).isEmpty()) {
+                    uygun = c;
                     break;
                 }
-                elenenler.add(ihlaller);
             }
-            if (!uygunVar) {
-                sonuc.put(s.id(), NedenOzeti.ozet(aktif.size(), NedenOzeti.birincil(elenenler), y.parametreler()));
+            for (int c = 0; uygun == null && c < ihlalSirasi.length; c++) {
+                if (ihlalSirasi[c] == null && (ihlalSirasi[c] = ihlaller(y, temsilci.get(c), s)).isEmpty()) {
+                    uygun = c;
+                }
+            }
+            if (uygun != null) {
+                uygunlar.add(uygun);
+            } else {
+                sonuc.put(s.id(), NedenOzeti.ozet(aktif.size(), NedenOzeti.birincil(List.of(ihlalSirasi), adet), adet, y.parametreler()));
             }
         }
         return sonuc;
+    }
+
+    private static List<Ihlal> ihlaller(Yuk y, MakinistDto m, SeferDto s) {
+        boolean zatenGorevli = y.satirlar(m.id()).stream().anyMatch(sr -> sr.seferId().equals(s.id()));
+        return zatenGorevli ? List.of(new Ihlal("K-10", Siddet.ENGEL, 0, 0, "", "Makinist bu seferde zaten görevli")) : KuralMotoru.degerlendirYazma(y.baglamZincirli(m, s));
     }
 
     /** Aralıkta (iki uç dahil) kırmızı sefer / atama sayısı: üst çubuk rozeti (varsayılan: seçili gün + sonraki 7 gün, istemci seçer). */
@@ -149,6 +176,33 @@ public class GunListesiServisi {
         List<SeferDto> kirmiziSeferler = liste.stream().filter(s -> atamaMap.getOrDefault(s.id(), List.of()).stream().anyMatch(a -> durum.get(a.id()).kirmizi())).toList();
         LocalDate ilkKirmiziGun = kirmiziSeferler.stream().map(SeferDto::tarih).min(LocalDate::compareTo).orElse(null);
         return new KirmiziSayisiDto(bas, bit, kirmiziSeferler.size(), kirmiziAtama, intikaller.kirmiziSayisi(bas, bit), ilkKirmiziGun);
+    }
+
+    /**
+     * F5 (MK-177): {@link #kirmiziSayisi}'nın AYNI hesabı (aynı liste, aynı {@code KirmiziAtamaHesabi}), sayı yerine kırmızı atama kimlikleri; aylık çizelge hücre bayrağı. Aralık sınırı
+     * ({@code EN_COK_ARALIK_GUN}) aynıdır. Salt okuma.
+     */
+    public java.util.Set<Long> kirmiziAtamaKimlikleri(LocalDate bas, LocalDate bit) {
+        aralikDogrula(bas, bit);
+        List<SeferDto> liste = seferler.aralikListesi(bas, bit);
+        return kirmiziHesabi.hesapla(liste, atamalar(liste)).entrySet().stream().filter(e -> e.getValue().kirmizi()).map(Map.Entry::getKey).collect(Collectors.toSet());
+    }
+
+    /** Aylık çizelge (D-4): {@link #kirmiziSayisi}'ndaki kırmızı SERBEST intikal sayısının kimlik kümesi (aynı hesap; çizelge hücresinde intikal görevinin {@code seferId}'si {@code -kimlik}). */
+    public java.util.Set<Long> kirmiziIntikalKimlikleri(LocalDate bas, LocalDate bit) {
+        return intikaller.kirmiziKimlikleri(bas, bit);
+    }
+
+    /**
+     * F4 (MK-180): aralıkta (iki uç dahil) iptal OLMAYAN sefer sayısı ve kaçının ASIL'ı olduğu / olmadığı. "BOŞ" tanımı gün listesindeki ({@code bosNedenleri}, atamacı "Atanmamış" sayacı) ile aynıdır:
+     * iptal değil ∧ ASIL yok (yalnız yardımcı/kondüktör/yolcu olan sefer de boştur). Aralık sınırı {@code kirmiziSayisi} ile aynı. Salt okuma, iki sorgu.
+     */
+    public DolulukOzeti doluluk(LocalDate bas, LocalDate bit) {
+        aralikDogrula(bas, bit);
+        List<SeferDto> liste = seferler.aralikListesi(bas, bit).stream().filter(s -> s.durum() != SeferDurumu.IPTAL).toList();
+        Map<Long, List<Atama>> atamaMap = atamalar(liste);
+        Map<Boolean, Long> bolunmus = liste.stream().collect(Collectors.partitioningBy(s -> atamaMap.getOrDefault(s.id(), List.of()).stream().anyMatch(a -> a.rol() == AtamaRol.ASIL), Collectors.counting()));
+        return new DolulukOzeti(liste.size(), bolunmus.get(true).intValue(), bolunmus.get(false).intValue());
     }
 
     private static void aralikDogrula(LocalDate bas, LocalDate bit) {

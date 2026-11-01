@@ -206,6 +206,28 @@ describe('AtamaMasasi: hızlı doldurma', () => {
     expect(document.activeElement).not.toBe(document.body) // odak kaybolmaz
   })
 
+  it('N-1 (MK-182): "Atama kaldırıldı." bilgisi şeritle AYNI sabit konumlu bildirimdir; şerit kapanınca akışta satır doğmaz', async () => {
+    vi.mocked(atamaApi.kaldir).mockImplementation(() => {
+      durum[0]!.makinistler = []
+      return Promise.resolve(undefined)
+    })
+    const w = await kur()
+    await satirlar(w)[0]!.trigger('click')
+    await flushPromises()
+    await temizSatir(w).trigger('click')
+    await flushPromises()
+    const serit = w.get('[data-test="geri-al-seridi"]')
+    await w.get('[data-test="geri-al"]').trigger('click')
+    await flushPromises()
+    const bilgi = w.get('[role="status"] .bildirim')
+    expect(bilgi.text()).toBe('Atama kaldırıldı.')
+    expect(bilgi.classes()).toEqual(
+      expect.arrayContaining(serit.classes().filter((s) => s !== 'bildirim')),
+    )
+    expect(bilgi.classes()).toContain('geri-al-seridi')
+    expect(w.get('[role="status"]').attributes('role')).toBe('status')
+  })
+
   it('YARIŞ (OK-37): araya başka atama girdi → sunucu 409; "Atama bu arada değişti; geri alınmadı." ve masa yenilenir', async () => {
     vi.mocked(atamaApi.kaldir).mockRejectedValue(new ApiHata(409, 'ATAMA_DEGISTI', 'sunucu'))
     const w = await kur()

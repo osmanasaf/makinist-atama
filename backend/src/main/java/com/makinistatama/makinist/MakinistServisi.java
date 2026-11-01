@@ -19,6 +19,7 @@ import com.makinistatama.degisiklik.DegisiklikServisi;
 import com.makinistatama.degisiklik.DegisiklikServisi.Kayit;
 import com.makinistatama.degisiklik.DegisiklikTuru;
 import com.makinistatama.ortak.AramaMetni;
+import com.makinistatama.ortak.MetinDenetimi;
 import com.makinistatama.ortak.UygulamaHatasi;
 import com.makinistatama.parametre.ParametreServisi;
 import com.makinistatama.tanim.TanimServisi;
@@ -85,6 +86,11 @@ public class MakinistServisi {
         }
     }
 
+    /** Var olan tüm sicil kodları (toplu içe aktarma "zaten var" denetimi). */
+    public Set<String> tumSiciller() {
+        return new HashSet<>(depo.tumSiciller());
+    }
+
     /** Veritabanında demo makinist ({@code Demo Makinist NN}, FR-14) var mı: raporlar "DEMO – gerçek değil" etiketi koyar. */
     public boolean demoVerisiVarMi() {
         return depo.existsByAdSoyadStartingWith("Demo Makinist ");
@@ -148,7 +154,15 @@ public class MakinistServisi {
 
     @Transactional
     public MakinistDto olustur(MakinistIstegi istek) {
+        return dto(ekle(istek));
+    }
+
+    /** Tek doğrulama + yazma yolu ({@link #olustur} ve toplu içe aktarma): DTO kurmaz (satır başına parametre/tanım okuması toplu yüklemeyi yavaşlatırdı). */
+    @Transactional
+    Makinist ekle(MakinistIstegi istek) {
         String sicil = sicil(istek.sicil());
+        metinDenetle("sicil", "Sicil", sicil);
+        metinDenetle("adSoyad", "Ad soyad", istek.adSoyad().strip());
         if (depo.existsBySicil(sicil)) {
             throw sicilTekrari(sicil);
         }
@@ -164,7 +178,7 @@ public class MakinistServisi {
         }
         broveYaz(m.id(), istek);
         degisiklik.kaydet(Kayit.of(DegisiklikTuru.MAKINIST_EKLE, "MAKINIST", m.id()).makinist(m.id()).degisim(null, sicil));
-        return dto(m);
+        return m;
     }
 
     @Transactional
@@ -185,6 +199,7 @@ public class MakinistServisi {
                     "Kartın personel türü sonradan değiştirilemez; yanlış açıldıysa kartı pasife alıp yenisini açın.", null);
         }
         gecerliMi(istek, m.tur());
+        metinDenetle("adSoyad", "Ad soyad", istek.adSoyad().strip());
 
         Map<String, Object[]> fark = new LinkedHashMap<>();
         farkEkle(fark, "adSoyad", m.adSoyad(), istek.adSoyad().strip());
@@ -299,6 +314,13 @@ public class MakinistServisi {
             throw new IllegalArgumentException("Personel türü kümesi boş olamaz.");
         }
         return turler;
+    }
+
+    /** Yön denetim (bidi) ve sıfır genişlik karakteri: çizelgede ad ters görünür, sicil görsel olarak aynı iki ayrı kayıt üretir (QA tur 2 YENİ-3). */
+    private static void metinDenetle(String alan, String etiket, String deger) {
+        if (MetinDenetimi.gorunumBozanKarakterVar(deger)) {
+            throw UygulamaHatasi.dogrulama(alan, etiket + " kontrol ya da yön denetim karakteri içeremez.");
+        }
     }
 
     private static String sicil(String ham) {

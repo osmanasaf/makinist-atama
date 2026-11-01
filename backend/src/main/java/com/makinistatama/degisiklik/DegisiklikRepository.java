@@ -11,5 +11,7 @@ interface DegisiklikRepository extends JpaRepository<DegisiklikKaydi, Long> {
 
     List<DegisiklikKaydi> findBySeferIdInAndTurInOrderByIdAsc(java.util.Collection<Long> seferIdler, java.util.Collection<DegisiklikTuru> turler);
 
+    long countByTur(DegisiklikTuru tur);
+
     long countByZamanGreaterThanEqualAndZamanLessThan(Instant bas, Instant bit);
 }

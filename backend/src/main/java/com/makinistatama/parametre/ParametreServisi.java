@@ -111,8 +111,97 @@ public class ParametreServisi {
         return KuralSiddetDto.of(k);
     }
 
+    // ------------------------------------------------------------------ toplu uygulama (profil, MK-164)
+
+    /** Toplu yazmanın sonucu: gerçekten değişen ayar ve kural sayısı. */
+    public record TopluSonuc(int parametre, int siddet) {
+    }
+
+    /**
+     * Profil uygulaması: değerler ve şiddetler TEK işlemde yazılır (tüm-ya-hiç). Her değer {@link #degerDogrula} ile (tür, aralık, üstel yazım) doğrulanır; çapraz tutarlılık
+     * tek tek değil NİHAİ durum üzerinden denetlenir ({@link CaprazDenetim#tumu}); K-10 yazılamaz. Değişmeyen anahtar için kayıt yazılmaz; değişen her anahtar için mevcut
+     * {@code PARAMETRE_DEGISTI} kaydı düşer (eski -> yeni, {@code neden}). Herhangi bir kontrol başarısızsa hiçbir şey yazılmaz.
+     */
+    @Transactional
+    public TopluSonuc topluUygula(Map<String, String> degerler, Map<String, Siddet> yeniSiddetler, String neden) {
+        Map<String, KuralParametre> mevcut = parametreler.findAllByOrderByAnahtar().stream().collect(java.util.stream.Collectors.toMap(KuralParametre::anahtar, p -> p));
+        Map<String, String> degisenDegerler = new LinkedHashMap<>();
+        for (var e : degerler.entrySet()) {
+            KuralParametre p = mevcut.get(e.getKey());
+            if (p == null) {
+                throw UygulamaHatasi.dogrulama("parametreler", "Bilinmeyen ayar: " + e.getKey());
+            }
+            String yeni = degerDogrula(p, e.getValue().strip());
+            if (!ayniDeger(p, p.deger(), yeni)) {
+                degisenDegerler.put(e.getKey(), yeni);
+            }
+        }
+        Map<String, KuralSiddet> mevcutSiddet = siddetler.findAllByOrderByKod().stream().collect(java.util.stream.Collectors.toMap(KuralSiddet::kod, k -> k));
+        Map<String, Siddet> degisenSiddetler = new LinkedHashMap<>();
+        for (var e : yeniSiddetler.entrySet()) {
+            if (e.getKey().equals("K-10")) {
+                throw UygulamaHatasi.dogrulama("siddetler", "K-10 (çakışma) fiziksel bir kuraldır, değiştirilemez.");
+            }
+            KuralSiddet k = mevcutSiddet.get(e.getKey());
+            if (k == null) {
+                throw UygulamaHatasi.dogrulama("siddetler", "Bilinmeyen kural: " + e.getKey());
+            }
+            if (k.siddet() != e.getValue()) {
+                degisenSiddetler.put(e.getKey(), e.getValue());
+            }
+        }
+        List<CaprazDenetim.Cakisma> cakismalar = caprazlar(mevcut, mevcutSiddet, degisenDegerler, degisenSiddetler);
+        if (!cakismalar.isEmpty()) {
+            throw new UygulamaHatasi(org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY, "PROFIL_GECERSIZ",
+                    cakismalar.stream().map(CaprazDenetim.Cakisma::mesaj).collect(java.util.stream.Collectors.joining(" ")), null);
+        }
+        for (var e : degisenDegerler.entrySet()) {
+            KuralParametre p = mevcut.get(e.getKey());
+            String eski = p.deger();
+            p.degerYaz(e.getValue());
+            parametreler.flush();
+            degisiklik.kaydet(Kayit.of(DegisiklikTuru.PARAMETRE_DEGISTI, "PARAMETRE", null).degisim(eski, e.getValue())
+                    .neden(Neden.DIGER, neden).ayrinti("{\"anahtar\":\"" + e.getKey() + "\"}"));
+        }
+        for (var e : degisenSiddetler.entrySet()) {
+            KuralSiddet k = mevcutSiddet.get(e.getKey());
+            Siddet eski = k.siddet();
+            k.siddetYaz(e.getValue());
+            siddetler.flush();
+            degisiklik.kaydet(Kayit.of(DegisiklikTuru.PARAMETRE_DEGISTI, "KURAL_SIDDET", null).degisim(eski, e.getValue())
+                    .neden(Neden.DIGER, neden).ayrinti("{\"anahtar\":\"" + e.getKey() + "\"}"));
+        }
+        return new TopluSonuc(degisenDegerler.size(), degisenSiddetler.size());
+    }
+
+    /**
+     * Önizleme için (yazmaz): verilen kanonik DEĞİŞEN değer ve şiddetler uygulanırsa ortaya çıkacak nihai durumdaki çelişki mesajları. Önceden var olan, değişenlere
+     * dokunmayan tutarsızlık sayılmaz.
+     */
+    public List<String> caprazMesajlari(Map<String, String> degisenDegerler, Map<String, Siddet> degisenSiddetler) {
+        Map<String, KuralParametre> mevcut = parametreler.findAllByOrderByAnahtar().stream().collect(java.util.stream.Collectors.toMap(KuralParametre::anahtar, p -> p));
+        Map<String, KuralSiddet> mevcutSiddet = siddetler.findAllByOrderByKod().stream().collect(java.util.stream.Collectors.toMap(KuralSiddet::kod, k -> k));
+        return caprazlar(mevcut, mevcutSiddet, degisenDegerler, degisenSiddetler).stream().map(CaprazDenetim.Cakisma::mesaj).toList();
+    }
+
+    private static List<CaprazDenetim.Cakisma> caprazlar(Map<String, KuralParametre> mevcut, Map<String, KuralSiddet> mevcutSiddet, Map<String, String> degisenDegerler,
+            Map<String, Siddet> degisenSiddetler) {
+        Map<String, Double> sayilar = new java.util.HashMap<>();
+        mevcut.forEach((a, p) -> {
+            String d = degisenDegerler.getOrDefault(a, p.deger());
+            if (p.tip().equals("SAYI") && !d.isEmpty()) {
+                sayilar.put(a, Double.parseDouble(d.replace(',', '.')));
+            }
+        });
+        Map<String, Siddet> siddetler = new java.util.HashMap<>();
+        mevcutSiddet.forEach((k, s) -> siddetler.put(k, degisenSiddetler.getOrDefault(k, s.siddet())));
+        return CaprazDenetim.tumu(sayilar, siddetler).stream()
+                .filter(c -> degisenDegerler.containsKey(c.kucuk()) || degisenDegerler.containsKey(c.buyuk()) || c.sart() != null && degisenSiddetler.containsKey(c.sart()))
+                .toList();
+    }
+
     /** Sayıda metin değil değer karşılaştırılır ("0.10" == "0.1"): kanonik olmayan tohum yüzünden sahte değişiklik kaydı yazılmaz. */
-    private static boolean ayniDeger(KuralParametre p, String eski, String yeni) {
+    static boolean ayniDeger(KuralParametre p, String eski, String yeni) {
         if (eski.equals(yeni)) {
             return true;
         }
@@ -124,7 +213,7 @@ public class ParametreServisi {
     }
 
     /** Türüne göre doğrular ve saklanacak kanonik metni döner ("0,50" -> "0.5", "270" -> "270"). */
-    private static String degerDogrula(KuralParametre p, String ham) {
+    static String degerDogrula(KuralParametre p, String ham) {
         String alan = "deger";
         if (ham.isEmpty()) {
             if (ISTEGE_BAGLI.contains(p.anahtar())) {

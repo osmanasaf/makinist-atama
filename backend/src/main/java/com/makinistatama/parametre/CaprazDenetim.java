@@ -1,7 +1,9 @@
 package com.makinistatama.parametre;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 
@@ -62,6 +64,36 @@ final class CaprazDenetim {
             return String.format(java.util.Locale.ROOT, kucukYaziliyor ? k.kucukMesaj() : k.buyukMesaj(), say(diger), say(kucukYaziliyor ? sag / k.kCarpan() : diger));
         }
         return null;
+    }
+
+    /** Toplu denetimde çelişen bir kural: hangi ayarlar (küçük/büyük) ve hangi şiddet koşulu (sart, olmayabilir) ile kullanıcı mesajı. */
+    record Cakisma(String kucuk, String buyuk, String sart, String mesaj) {
+    }
+
+    /**
+     * Toplu uygulama (MK-164): aynı {@link #KURALLAR} tablosunu NİHAİ değer ve şiddet haritaları üzerinde bir kez gezer (yeni kural yok); tek tek sırayla yazılırsa ilk adımda
+     * yanlış reddedilecek bağımlı değişiklikler birlikte kabul edilir. {@code degerler}: sayısal ayarlar (anahtar -> değer); haritada olmayan ayarın kuralı atlanır.
+     * Çağıran, yalnız DEĞİŞEN ayarlara dokunan çelişkileri süzer (önceden var olan tutarsızlık profile yüklenmez).
+     */
+    static List<Cakisma> tumu(Map<String, Double> degerler, Map<String, Siddet> siddetler) {
+        List<Cakisma> sonuc = new ArrayList<>();
+        for (Kural k : KURALLAR) {
+            if (k.sart() != null && siddetler.get(k.sart()) == Siddet.KAPALI) {
+                continue;
+            }
+            Double kucuk = degerler.get(k.kucuk());
+            Double buyuk = degerler.get(k.buyuk());
+            if (kucuk == null || buyuk == null || k.sifirKapatir() && kucuk == 0) {
+                continue;
+            }
+            double sol = kucuk * k.kCarpan();
+            double sag = buyuk * k.bCarpan();
+            if (k.kesin() ? sol < sag - EPS : sol <= sag + EPS) {
+                continue;
+            }
+            sonuc.add(new Cakisma(k.kucuk(), k.buyuk(), k.sart(), String.format(java.util.Locale.ROOT, k.kucukMesaj(), say(buyuk), say(sag / k.kCarpan()))));
+        }
+        return sonuc;
     }
 
     /** Kapalı {@code kod} kuralı UYARI/ENGEL'e açılırken, bağlı ayarlar çelişiyorsa mesaj (kural yeniden devrede), değilse {@code null}. */

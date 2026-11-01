@@ -120,13 +120,18 @@ public class AdaletServisi {
     }
 
     public byte[] excel(AdaletRaporuDto r) {
+        return TabloExcel.yaz(excelSayfalari(r));
+    }
+
+    /** Excel sayfaları (F4, MK-181): denetim paketinin "Adalet" sayfası aynı üretimi kullanır; {@link #excel} çıktısı bununla birebir aynıdır. */
+    List<TabloExcel.Sayfa> excelSayfalari(AdaletRaporuDto r) {
         List<List<Object>> satirlar = r.satirlar().stream().map(s -> Arrays.<Object>asList(s.sicil(), s.adSoyad(), s.seferSayisi(), s.gorevSaat(), s.km(),
                 s.kmBilinmeyenSefer(), s.geceSaat(), s.izinGunu(), s.farkYuzde(), s.sifirSaat() ? "0 saat" : "", s.yolculukSayisi())).toList();
         List<List<Object>> bilgi = List.of(List.of("Ay", r.ay()), List.of("Üretim zamanı", r.uretimZamani().toLocalDateTime().toString().replace('T', ' ')),
                 List.of("Üreten", r.ureten()), List.of("Personel türü", r.tur().name()), List.of(r.tur() == PersonelTuru.MAKINIST ? "AKTIF makinist sayısı" : "AKTIF kondüktör sayısı", r.makinistSayisi()), List.of("Ortalama görev saati", r.ortalamaSaat()),
                 List.of("Ortalama km", r.ortalamaKm()), List.of("Km bilinmeyen sefer", r.kmBilinmeyenSefer()), List.of("Gece saati penceresi", r.geceSaatiPenceresi()),
                 List.of("Dipnot", "Sefer sayısı yalnız sürüş seferleridir; yolcu olarak gidilen seferler Yolculuk sütununda ayrı sayılır (süresi yolculuk.calisma_sayilir ayarına göre görev saatine girer, km'si hiçbir zaman girmez). Km bilinmeyen seferler km toplamına girmez. Gecikme (kalkış dahil) görev saatine dahildir, iptal seferler sayılmaz. Ay sınırını aşan vardiya gece yarısından bölünür; sefer sayısı ve km seferin planlanan gününün ayına yazılır. Gece saati puantajla aynı hesaptır."));
-        return TabloExcel.yaz(List.of(new TabloExcel.Sayfa("Adalet", List.of("Sicil", "Ad soyad", "Sefer", "Görev saati", "Km", "Km bilinmeyen sefer", "Gece saati",
-                "İzin günü", "Ortalamadan fark %", "Not", "Yolculuk"), satirlar), new TabloExcel.Sayfa("Rapor bilgisi", List.of("Alan", "Değer"), bilgi)));
+        return List.of(new TabloExcel.Sayfa("Adalet", List.of("Sicil", "Ad soyad", "Sefer", "Görev saati", "Km", "Km bilinmeyen sefer", "Gece saati",
+                "İzin günü", "Ortalamadan fark %", "Not", "Yolculuk"), satirlar), new TabloExcel.Sayfa("Rapor bilgisi", List.of("Alan", "Değer"), bilgi));
     }
 }

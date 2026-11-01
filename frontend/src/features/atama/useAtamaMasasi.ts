@@ -11,6 +11,7 @@ import {
   type GordumOzeti,
   type GunListesi,
   type KirmiziSayisi,
+  type YakinlikYaniti,
 } from './atamaApi'
 
 const hataMetni = (e: unknown, varsayilan: string) => (e instanceof ApiHata ? e.detail : varsayilan)
@@ -31,6 +32,10 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
   const gordum = ref<GordumOzeti | null>(null)
   /** Atamacı onayı bekleyen takas / bırakma talebi sayısı (rozet "Bekleyen talep"); yüklenemezse null. */
   const takasBekleyen = ref<number | null>(null)
+  /** F3: günün atamaları için sınıra yakınlık (ayrı uç; gün başına tek istek). Yüklenemezse null: masa işaretsiz çizilir. */
+  const gunYakinlik = ref<YakinlikYaniti | null>(null)
+  /** F3: seçili sefer + rol için aday yakınlığı; `adaylar` ile birlikte gelir (yüklenemezse null). */
+  const adayYakinlik = ref<YakinlikYaniti | null>(null)
 
   const satirlar = computed(() => gun.value?.satirlar ?? [])
   const seciliSatir = computed(
@@ -50,10 +55,31 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
   let kirmiziSayac = 0
   let gordumSayac = 0
   let takasSayac = 0
+  let gunYakinlikSayac = 0
+
+  async function gunYakinlikYukle() {
+    const sira = ++gunYakinlikSayac
+    try {
+      const sonuc = await atamaApi.gunYakinlik(tarih.value)
+      if (sira === gunYakinlikSayac) gunYakinlik.value = sonuc ?? null
+    } catch {
+      if (sira === gunYakinlikSayac) gunYakinlik.value = null // yalnız bilgi: hata sessiz, masa işaretsiz çizilir
+    }
+  }
+
+  /** Aday yakınlığı: hata sessiz düşer (null). Yalnız bilgi: aday listesi bunu BEKLEMEZ (`adaylariYukle`), yavaş/takılan uç atamayı geciktirmez. */
+  async function adayYakinligiGetir(seferId: number, r: AtamaRolu): Promise<YakinlikYaniti | null> {
+    try {
+      return (await atamaApi.adayYakinlik(seferId, r)) ?? null
+    } catch {
+      return null
+    }
+  }
 
   async function gunuYukle() {
     const sira = ++gunSayac
     gunHatasi.value = ''
+    void gunYakinlikYukle()
     try {
       const sonuc = await atamaApi.gun(tarih.value)
       if (sira === gunSayac) gun.value = sonuc
@@ -69,12 +95,17 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
     adayHatasi.value = ''
     if (seciliId.value === null) {
       adaylar.value = []
+      adayYakinlik.value = null
       adayAnahtari.value = ''
       adayYukleniyor.value = false
       return
     }
     adayYukleniyor.value = true
     const anahtar = `${seciliId.value}:${rol.value}`
+    if (anahtar !== adayAnahtari.value) adayYakinlik.value = null // başka sefer/rol: eski listenin yakınlığı yeni adaylara yapışmasın
+    void adayYakinligiGetir(seciliId.value, rol.value).then((yak) => {
+      if (sira === adaySayac) adayYakinlik.value = yak // geç gelirse işaretler sonradan belirir (O-1)
+    })
     try {
       const sonuc = await atamaApi.adaylar(seciliId.value, rol.value)
       if (sira === adaySayac) {
@@ -84,6 +115,7 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
     } catch (e) {
       if (sira !== adaySayac) return
       adaylar.value = []
+      adayYakinlik.value = null
       adayAnahtari.value = ''
       adayHatasi.value = hataMetni(e, 'Adaylar yüklenemedi.')
     } finally {
@@ -132,7 +164,7 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
     } catch {
       // bir sonraki yoklamada yeniden denenir
     }
-    await Promise.all([kirmiziYukle(), gordumYukle(), takasYukle()])
+    await Promise.all([kirmiziYukle(), gordumYukle(), takasYukle(), gunYakinlikYukle()])
   }
 
   /** Atama/kaldırma/iptal/gecikme sonrası: gün listesi, sayaçlar ve (seçili sefer varsa) aday listesi yeniden okunur. */
@@ -164,6 +196,8 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
     kirmizi,
     gordum,
     takasBekleyen,
+    gunYakinlik,
+    adayYakinlik,
     takasYukle,
     sessizYenile,
     gunuYukle,

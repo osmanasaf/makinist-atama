@@ -1,0 +1,18 @@
+{
+  "kod": "ab-2005-47",
+  "ad": "AB 2005/47 referansı (örnek)",
+  "aciklama": "Dinlenme süresini bağlı garda 12 saate çıkarır, dış merkezde 8 saate indirir ve bir hatta sürüş yapmadan geçebilecek süreyi 12 aya çeker. Değerler projedeki kaynak notlarında 'AB' olarak geçen satırlardan alınmıştır; kurumunuzun güncel mevzuatıyla karşılaştırın.",
+  "etiket": "Örnek başlangıç — kurum mevzuatıyla doğrulanmalı. Karar destek aracıdır.",
+  "oneri": {
+    "parametreler": {
+      "dinlenme.ev_saat": "12",
+      "dinlenme.dis_merkez_saat": "8",
+      "hat.ara_max_ay": "12"
+    }
+  },
+  "dayanak": {
+    "dinlenme.ev_saat": "AB 12",
+    "dinlenme.dis_merkez_saat": "AB 8",
+    "hat.ara_max_ay": "AB'de 12"
+  }
+}

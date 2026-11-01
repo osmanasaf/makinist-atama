@@ -14,6 +14,7 @@ import com.makinistatama.degisiklik.DegisiklikServisi;
 import com.makinistatama.degisiklik.DegisiklikServisi.Kayit;
 import com.makinistatama.degisiklik.DegisiklikTuru;
 import com.makinistatama.ortak.AramaMetni;
+import com.makinistatama.ortak.MetinDenetimi;
 import com.makinistatama.ortak.UygulamaHatasi;
 
 /**
@@ -100,7 +101,11 @@ public class TanimServisi {
     }
 
     private static String temizle(String ad) {
-        return ad.strip().replaceAll("\\s+", " ");
+        String temiz = ad.strip().replaceAll("\\s+", " ");
+        if (MetinDenetimi.gorunumBozanKarakterVar(temiz)) {
+            throw UygulamaHatasi.dogrulama("ad", "Ad kontrol ya da yön denetim karakteri içeremez.");
+        }
+        return temiz;
     }
 
     private static UygulamaHatasi tekrar(String ad) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
 import { kaydirmaDavranisi } from '@/lib/odak'
@@ -30,9 +30,10 @@ import type { Aday, AtamaRolu, GunMakinisti, GunSatiri, Oneri, UygunSefer } from
 import { useYoklama } from '@/features/benim/useYoklama'
 import { atanmamisMi } from '@/features/ana/yapilacaklar'
 import { hizliAtanabilir, sonrakiBos } from './hizliDoldur'
-import { suzgecOku, type MasaSuzgeci } from './masaBaglantisi'
+import { seferOku, suzgecOku, type MasaSuzgeci } from './masaBaglantisi'
 import { useAtamaMasasi } from './useAtamaMasasi'
-import { useGeriAl } from './useGeriAl'
+import { atamaHaritasi, isaretMetinleri, isaretlerMetni } from './yakinlik'
+import { GERI_AL_SURESI_MS, useGeriAl } from './useGeriAl'
 import ZamanSeridi, { type CubukDurumu } from './ZamanSeridi.vue'
 import {
   cubuk as cubukHesapla,
@@ -55,6 +56,13 @@ const tarih = computed(() => {
 
 const masa = useAtamaMasasi(tarih)
 const { satirlar, seciliId, seciliSatir, rol, adaylar } = masa
+/** F3: atanan makinistin "sınıra yakın" bilgi işareti metni (yoksa boş). Satırın kırmızı/uyarı durumunu ETKİLEMEZ. */
+const yakinlikAtamalari = computed(() => atamaHaritasi(masa.gunYakinlik.value))
+const yakinlikMetni = (m: GunMakinisti) =>
+  isaretlerMetni(yakinlikAtamalari.value.get(m.atamaId)?.yakinlik ?? [])
+/** Gizli (erişilebilir ad) metni: rozetin görünür "Sınıra yakın"ından sonra yalnız ölçümler; metin biçimine string değiştirmeyle bağlı değil (D-12). */
+const yakinlikOlcumu = (m: GunMakinisti) =>
+  isaretMetinleri(yakinlikAtamalari.value.get(m.atamaId)?.yakinlik ?? [])
 void masa.gunuYukle()
 void masa.kirmiziYukle()
 void masa.gordumYukle()
@@ -68,7 +76,9 @@ useYoklama(() => {
 })
 
 function gunDegistir(t: string) {
-  if (TARIH_DESENI.test(t)) void router.replace({ query: { ...route.query, tarih: t } })
+  // ?sefer= yalnız ilk açılışın derin bağlantısıdır: gün değişince düşer (eski seçim yeni güne taşınmaz)
+  if (TARIH_DESENI.test(t))
+    void router.replace({ query: { ...route.query, tarih: t, sefer: undefined } })
 }
 
 const TEK_SUTUN = '(max-width: 1100px)' // stildeki medya sorgusuyla aynı olmalı
@@ -87,6 +97,22 @@ async function seferSec(id: number) {
   await nextTick()
   gorunurKil(panel.value)
 }
+
+// F5 derin bağlantı (AK-5.6): `?sefer=<id>` — ilk gün listesi gelince (bir kez) o sefer seçilir ve satırı görünür kılınır; o günde yoksa ya da bozuksa yok sayılır.
+let derinSefer = seferOku(route.query.sefer)
+watch(
+  satirlar,
+  async (l) => {
+    if (derinSefer === null || l.length === 0) return
+    const id = derinSefer
+    derinSefer = null
+    if (!l.some((s) => s.seferId === id)) return
+    await seferSec(id)
+    await nextTick()
+    gorunurKil(liste.value?.querySelector<HTMLElement>('tr.secili') ?? null)
+  },
+  { immediate: true },
+)
 
 /** QA BUG-2: seçili sefer varken aday panelinin başlığına odak (satırdan → ya da "Adaylara geç"); ~300 Tab gerekmez. */
 const panelBasligi = ref<HTMLElement | null>(null)
@@ -261,6 +287,13 @@ type DigerDiyalog =
 const diyalog = ref<DiyalogDurumu | null>(null)
 const diger = ref<DigerDiyalog | null>(null)
 const bilgi = ref('')
+// N-1 (MK-182): bilgi, Geri al şeridiyle aynı sabit konumlu kapta görünür (akışta yer tutmaz, tablo kaymaz); şerit gibi 10 sn sonra kalkar.
+let bilgiZamanlayici: ReturnType<typeof setTimeout> | undefined
+watch(bilgi, (b) => {
+  clearTimeout(bilgiZamanlayici)
+  if (b) bilgiZamanlayici = setTimeout(() => (bilgi.value = ''), GERI_AL_SURESI_MS)
+})
+onBeforeUnmount(() => clearTimeout(bilgiZamanlayici))
 
 const geriAl = useGeriAl()
 /** Hızlı atama sürerken ikinci tetik (çift Enter) yok sayılır; sunucu `ZATEN_ATANMIS` ikinci savunma. */
@@ -677,7 +710,7 @@ async function kapat(yenile: boolean) {
           <Simge ad="geri-al" boyut="1.1em" />Geri al
         </button>
       </div>
-      <p v-else-if="bilgi" class="bildirim bildirim-bilgi">{{ bilgi }}</p>
+      <p v-else-if="bilgi" class="bildirim bildirim-bilgi geri-al-seridi">{{ bilgi }}</p>
     </div>
     <p v-if="hizliHata" class="bildirim bildirim-hata" role="alert">{{ hizliHata }}</p>
     <p v-if="masa.gunHatasi.value" class="bildirim bildirim-hata" role="alert">
@@ -819,6 +852,16 @@ async function kapat(yenile: boolean) {
                         >hesap yok</span
                       ></span
                     >
+                    <span
+                      v-if="yakinlikMetni(m)"
+                      class="yakinlik-isareti"
+                      data-test="yakinlik"
+                      :title="yakinlikMetni(m)"
+                      ><Rozet ton="bilgi" simge="bilgi" metin="Sınıra yakın" boyut="sm" /><span
+                        class="gorunmez"
+                        >: {{ yakinlikOlcumu(m) }}</span
+                      ></span
+                    >
                     <button
                       type="button"
                       :tabindex="tb(s)"
@@ -857,6 +900,14 @@ async function kapat(yenile: boolean) {
                       :title="cizelgede ? `Uyarı: ${m.uyarilar.join('; ')}` : undefined"
                     >
                       <Simge ad="uyari" boyut="1em" />Uyarı: {{ m.uyarilar.join('; ') }}
+                    </div>
+                    <div
+                      v-if="yakinlikMetni(m) && aktifId === s.seferId"
+                      class="soluk yakinlik-ayrinti"
+                      data-test="yakinlik-ayrinti"
+                      aria-hidden="true"
+                    >
+                      {{ yakinlikMetni(m) }}
                     </div>
                     <div v-if="s.durum === 'IPTAL'" class="soluk iptal-notu">
                       Eski atama iptal seferde duruyor; "Kaldır" ile kaldırın.
@@ -987,6 +1038,7 @@ async function kapat(yenile: boolean) {
             ref="adayPaneli"
             v-model:rol="rol"
             :adaylar="adaylar"
+            :yakinlik="masa.adayYakinlik.value"
             :yukleniyor="masa.adayYukleniyor.value"
             :hata="masa.adayHatasi.value"
             @sec="adayAta"
@@ -1357,6 +1409,7 @@ button.cip:hover {
     padding: 0;
   }
   .masa-tablo--cizelge .kirmizi-neden,
+  .masa-tablo--cizelge .yakinlik-ayrinti,
   .masa-tablo--cizelge .uyari-notu,
   .masa-tablo--cizelge .iptal-notu {
     flex: 1 1 100%; /* notlar kendi satırında */
@@ -1564,11 +1617,17 @@ button.cip:hover {
   color: var(--renk-rol-konduktor-metin);
   border-style: dashed;
 }
+.yakinlik-isareti {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
 .gosterge-hesap {
   border-color: transparent;
   color: var(--renk-metin-soluk);
 }
 .kirmizi-neden,
+.yakinlik-ayrinti,
 .uyari-notu,
 .iptal-notu {
   flex-basis: 100%;

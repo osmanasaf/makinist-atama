@@ -10,11 +10,25 @@
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
+.yazdir-kurum {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+  font-weight: bold;
+}
+.yazdir-logo {
+  height: 1.25cm;
+  width: auto;
+  max-width: 5cm;
+  object-fit: contain;
+}
 .yazdir-filtre {
   margin: 0 0 0.75rem;
 }
 /* Dar ekranda tablo sayfayı taşırmasın; kaydırma yalnız ekranda, yazdırmada kapsayıcı görünmez. */
 .yazdir-tablo-kap {
+  position: relative; /* görünmez (.gorunmez) hücre adları kabın dışına taşıp sayfayı yatay kaydırmasın (%200) */
   overflow-x: auto;
 }
 .yazdir-tablo {

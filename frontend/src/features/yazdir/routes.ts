@@ -25,6 +25,25 @@ const routes: RouteRecordRaw[] = [
     },
     meta: { baslik: 'Değişiklik (denetim) raporu', yazdir: true },
   },
+  {
+    path: '/yazdir/cizelge',
+    name: 'yazdir-cizelge',
+    component: () => import('./CizelgeYazdir.vue'),
+    // F5 ilan baskısı: ?ay=YYYY-MM&boyut=A3|A4&tur=KONDUKTOR&garId=
+    props: (r) => {
+      const q = (k: string) => (typeof r.query[k] === 'string' ? (r.query[k] as string) : undefined)
+      return { ay: q('ay'), boyut: q('boyut'), tur: q('tur'), garId: q('garId') }
+    },
+    meta: { baslik: 'Aylık çizelge', yazdir: true },
+  },
+  {
+    path: '/yazdir/ozet',
+    name: 'yazdir-ozet',
+    component: () => import('./YonetimOzetiYazdir.vue'),
+    // F4 yönetim özeti baskısı: ?ay=YYYY-MM (yalnız yönetici; sunucu da 403 verir)
+    props: (r) => ({ ay: typeof r.query.ay === 'string' ? r.query.ay : undefined }),
+    meta: { baslik: 'Yönetim özeti', yazdir: true, rol: 'Y' },
+  },
 ]
 
 export default routes

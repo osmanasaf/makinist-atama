@@ -72,6 +72,7 @@ export const GRUPLAR: readonly { kod: string; baslik: string }[] = [
   { kod: 'KADRO', baslik: 'Kadro' },
   { kod: 'PERSONEL', baslik: 'Diğer personel' },
   { kod: 'MAKINIST', baslik: 'Makinist görünümü' },
+  { kod: 'MARJ', baslik: 'Sınıra yakınlık ve yorgunluk (bilgi)' },
 ]
 
 export const parametreApi = {

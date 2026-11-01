@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { ayrilabilirMi } from '@/composables/cikis-korumasi'
+import { kurumAdi, logoAdresi } from '@/composables/kurum'
 import { cikisYap, kullanici } from '@/composables/oturum'
 import { ROL_ETIKETLERI } from '@/api/tipler'
 import BenimKabuk from '@/features/benim/BenimKabuk.vue'
@@ -45,8 +46,9 @@ async function cik() {
     >
     <header v-if="kullanici && kabukVar()" class="ust-cubuk">
       <span class="marka">
-        <span class="marka-isaret"><Simge ad="tren" /></span>
-        Makinist Atama
+        <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" alt="" />
+        <span v-else class="marka-isaret"><Simge ad="tren" /></span>
+        {{ kurumAdi }}
       </span>
       <span class="kullanici-bilgisi">
         {{ kullanici.adSoyad }} <small>({{ ROL_ETIKETLERI[kullanici.rol] }})</small>

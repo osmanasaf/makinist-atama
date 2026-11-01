@@ -45,9 +45,15 @@ final class NedenOzeti {
      * herkesi engelliyorsa özette gerçek neden o görünür, kural koduna göre ilk sıradaki başka bir engel değil (BUG-4). Sayılar yine adayların toplamıdır.
      */
     static List<String> birincil(List<List<Ihlal>> adaylar) {
+        return birincil(adaylar, null);
+    }
+
+    /** {@code adet[i]}: {@code adaylar[i]} listesine sahip özdeş aday sayısı (null: her biri 1); sıklık bu ağırlıklarla sayılır, sonuç aday (sınıf) başınadır. */
+    static List<String> birincil(List<List<Ihlal>> adaylar, int[] adet) {
         Map<String, Integer> sikilik = new java.util.HashMap<>();
-        for (List<Ihlal> l : adaylar) {
-            l.stream().map(Ihlal::kod).distinct().forEach(k -> sikilik.merge(k, 1, Integer::sum));
+        for (int j = 0; j < adaylar.size(); j++) {
+            int a = adet == null ? 1 : adet[j];
+            adaylar.get(j).stream().map(Ihlal::kod).distinct().forEach(k -> sikilik.merge(k, a, Integer::sum));
         }
         List<String> sonuc = new ArrayList<>(adaylar.size());
         for (List<Ihlal> l : adaylar) {
@@ -72,18 +78,27 @@ final class NedenOzeti {
      * (çok olandan aza), sonra yetkisizlik nedenleri; ikisi birlikteyse başlıkta dağılım: {@code "0/38 uygun (yetkili 12, yetkisiz 26): haftalık süre 7, ..., hat yetkisi 20"}.
      */
     static String ozet(int toplam, Collection<String> ilkKodlar, Parametreler p) {
+        return ozet(toplam, List.copyOf(ilkKodlar), null, p);
+    }
+
+    /** {@code adet[i]}: {@code ilkKodlar[i]} koduna sahip özdeş makinist sayısı (null: her biri 1); {@link #birincil(List, int[])} ile birlikte kullanılır. */
+    static String ozet(int toplam, List<String> ilkKodlar, int[] adet, Parametreler p) {
         Map<String, Integer> kapasite = new TreeMap<>();
         Map<String, Integer> yetkisiz = new TreeMap<>();
         int yetkisizSayi = 0;
-        for (String kod : ilkKodlar) {
+        int sayi = 0;
+        for (int j = 0; j < ilkKodlar.size(); j++) {
+            String kod = ilkKodlar.get(j);
+            int a = adet == null ? 1 : adet[j];
+            sayi += a;
             if (yetkisizlik(kod)) {
-                yetkisiz.merge(etiket(kod, p), 1, Integer::sum);
-                yetkisizSayi++;
+                yetkisiz.merge(etiket(kod, p), a, Integer::sum);
+                yetkisizSayi += a;
             } else {
-                kapasite.merge(etiket(kod, p), 1, Integer::sum);
+                kapasite.merge(etiket(kod, p), a, Integer::sum);
             }
         }
-        int yetkiliSayi = ilkKodlar.size() - yetkisizSayi;
+        int yetkiliSayi = sayi - yetkisizSayi;
         StringBuilder sb = new StringBuilder("0/").append(toplam).append(" uygun");
         if (yetkiliSayi > 0 && yetkisizSayi > 0) {
             sb.append(" (yetkili ").append(yetkiliSayi).append(", yetkisiz ").append(yetkisizSayi).append(")");

@@ -7,14 +7,23 @@ import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import type { SimgeAdi } from '@/bilesenler/simgeler'
 import type { Ton } from '@/bilesenler/durum'
 import NobetNotu from './NobetNotu.vue'
-import { ROL_ETIKETLERI, type Aday, type AtamaRolu } from './atamaApi'
+import YakinlikNotu from './YakinlikNotu.vue'
+import YorgunlukOzeti from './YorgunlukOzeti.vue'
+import { ROL_ETIKETLERI, type Aday, type AtamaRolu, type YakinlikYaniti } from './atamaApi'
 import { onerilenAday, ortalamayaFark } from './hizliDoldur'
+import { adayHaritasi } from './yakinlik'
 
 const props = defineProps<{
   adaylar: Aday[]
   yukleniyor?: boolean
   hata?: string
+  /** F3: sınıra yakınlık + yorgunluk (ayrı uç; yoksa/kapalıysa hiçbir işaret çizilmez). Yalnız bilgi: sıralama, "Önerilen" ve seçim bundan etkilenmez. */
+  yakinlik?: YakinlikYaniti | null
 }>()
+const yakinlikHaritasi = computed(() => adayHaritasi(props.yakinlik))
+/** Engelli (uygun olmayan) ve bu seferde zaten görevli adayda işaret gösterilmez (AK-3.5). */
+const yakinlikSatiri = (a: Aday) =>
+  a.uygun && a.buSeferdeRol === null ? yakinlikHaritasi.value.get(a.makinistId) : undefined
 /** Sunucu sırasındaki ilk temiz aday (MK-151): satırda "Önerilen" rozeti; masa hızlı atamada bu satıra odak verir. */
 const onerilen = computed(() => onerilenAday(props.adaylar))
 /** OK-35: aday havuzu ortalamasına göre fark (yalnız bilgi; yolcuda yok). */
@@ -59,6 +68,14 @@ function durumEtiketi(a: Aday): string {
 
 const ihlalSimgesi = (i: Aday['ihlaller'][number]): SimgeAdi =>
   i.siddet === 'ENGEL' ? 'engel' : 'uyari'
+
+/** OK-47a: yorgunluk ayrıntısı yalnız odaklı adayda açılır (satıra ya da içindeki öğeye odak). */
+const acikSatir = ref<number | null>(null)
+function odakCikti(e: FocusEvent, i: number) {
+  const hedef = e.relatedTarget as Node | null
+  if (acikSatir.value === i && !(hedef && (e.currentTarget as HTMLElement).contains(hedef)))
+    acikSatir.value = null
+}
 
 // Yaylanan (roving) odak: satırlar ↑/↓ ile gezilir, Tab listeye tek durakla girer.
 const odak = ref(0)
@@ -141,6 +158,8 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
             :tabindex="i === odak ? 0 : -1"
             :aria-disabled="secilebilir(a) ? undefined : 'true'"
             @focus="odak = i"
+            @focusin="acikSatir = i"
+            @focusout="odakCikti($event, i)"
             @click="sec(a)"
             @keydown="tus($event, i, a)"
           >
@@ -149,7 +168,14 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
             </td>
             <td role="cell">
               <span class="aday-ad">{{ a.adSoyad }}</span>
-              <small class="alt-bilgi">{{ a.sicil }} · {{ a.bagliGar }}</small>
+              <small class="alt-bilgi"
+                >{{ a.sicil }} · {{ a.bagliGar
+                }}<YakinlikNotu
+                  v-if="yakinlik && yakinlikSatiri(a)"
+                  bolum="rozet"
+                  :satir="yakinlikSatiri(a)!"
+                  :esikler="yakinlik.esikler"
+              /></small>
             </td>
             <td role="cell" class="sayisal">{{ sayiBicimle(a.buAySaat) }}</td>
             <td role="cell" class="sayisal">{{ sayiBicimle(a.buAyKm) }}</td>
@@ -161,6 +187,18 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
                 boyut="sm"
               />
               <Rozet v-if="a === onerilen" ton="basari" metin="Önerilen" boyut="sm" />
+              <YakinlikNotu
+                v-if="yakinlik && yakinlikSatiri(a)"
+                bolum="ayrinti"
+                :satir="yakinlikSatiri(a)!"
+                :esikler="yakinlik.esikler"
+                :acik="acikSatir === i"
+              />
+              <YorgunlukOzeti
+                v-if="yakinlik && yakinlikSatiri(a)"
+                :yorgunluk="yakinlikSatiri(a)!.yorgunluk"
+                :esikler="yakinlik.esikler"
+              />
               <ul v-if="a.ihlaller.length > 0" class="ihlal-listesi">
                 <li>
                   <Simge :ad="ihlalSimgesi(a.ihlaller[0]!)" boyut="1em" />
@@ -205,6 +243,17 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
     </div>
     <p v-if="farkVar" class="soluk fark-notu">
       Fark: bu ay saatinin aday havuzu ortalamasına göre farkı; yalnız bilgi.
+    </p>
+    <p
+      v-if="yakinlik && yakinlikHaritasi.size > 0"
+      class="soluk fark-notu"
+      data-test="yakinlik-aciklama"
+    >
+      Sınıra yakınlık ve yorgunluk bilgi amaçlıdır; engel ya da uyarı üretmez, sıralamayı etkilemez.
+      Yorgunluk göstergesi bilimsel bir yorgunluk modeli değildir: son
+      {{ yakinlik.esikler.pencereGun }} günün üç ham değeridir (vurgu eşikleri: çalışma
+      {{ yakinlik.esikler.toplamSaat }} s üstü, gece nöbeti {{ yakinlik.esikler.geceAdet }} ve üstü,
+      en kısa dinlenme {{ yakinlik.esikler.dinlenmeSaat }} s altı).
     </p>
     <NobetNotu :metinler="ihlalMetinleri" />
   </div>
@@ -313,7 +362,7 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
   font-size: var(--yazi-xs);
 }
 .aday-tablo td.aday-durum {
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
   grid-row: 2;
   white-space: normal;
   margin-top: var(--aralik-2);

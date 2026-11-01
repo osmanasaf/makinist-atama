@@ -41,6 +41,11 @@ public class SeferServisi {
         this.degisiklik = degisiklik;
     }
 
+    /** Toplam sefer sayısı (kurulum durumu: "ilk sefer yüklendi mi"). */
+    public long sayi() {
+        return depo.count();
+    }
+
     /** Günün seferleri (planlanan gün), planlanan kalkış sırasıyla. */
     public List<SeferDto> gunListesi(LocalDate gun) {
         return dto(depo.findByTarihOrderByPlanlananKalkisAscTrenNoAsc(gun));

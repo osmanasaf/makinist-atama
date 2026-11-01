@@ -2,6 +2,7 @@
 import { nextTick, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import { kurumAdi, logoAdresi } from '@/composables/kurum'
 import { girisYap } from '@/composables/oturum'
 import Simge from '@/bilesenler/Simge.vue'
 
@@ -45,8 +46,9 @@ async function gonder() {
 <template>
   <section class="giris-kutusu" data-yogunluk="dokunma">
     <div class="giris-marka">
-      <span class="marka-isaret"><Simge ad="tren" boyut="1.5rem" /></span>
-      <h1>Makinist Atama</h1>
+      <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" alt="" />
+      <span v-else class="marka-isaret"><Simge ad="tren" boyut="1.5rem" /></span>
+      <h1>{{ kurumAdi }}</h1>
     </div>
     <p v-if="oturumBitti" class="bildirim bildirim-bilgi" role="status">
       Oturumunuz sona erdi. Kaldığınız yere dönmek için yeniden giriş yapın.

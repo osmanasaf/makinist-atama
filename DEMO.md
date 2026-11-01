@@ -1,6 +1,6 @@
 # Gösterim rehberi (15–20 dakika)
 
-Bu rehber, uygulamayı bir makinist atamacısına ya da TCDD'den bir yetkiliye gösterirken izleyeceğiniz yolu anlatır. Ekrandaki makinistler, seferler ve izinler tamamen uydurmadır (Demo Makinist 01 … 68); gerçek kişi verisi yoktur.
+Bu rehber, uygulamayı bir makinist atamacısına ya da bir kurum yetkilisine gösterirken izleyeceğiniz yolu anlatır. Ekrandaki makinistler, seferler ve izinler tamamen uydurmadır (Demo Makinist 01 … 68); gerçek kişi verisi yoktur.
 
 ## 0. Kısa senaryo: en etkileyici 10 adım (15 dakika)
 
@@ -180,6 +180,56 @@ Aynı kural motoru kondüktörü de planlar (bir yolcu trenine bir kondüktör).
 
 **Söylenecek önemli not:** Başlık artık "(%13 devamsızlık varsayımıyla)" der ve altında tek cümleyle açıklar: kadro tahmini temiz sayfadan, devamsızlıklı bir plandır; masadaki gerçek plan mevcut atamalarla ve demo verideki yalnız 15 izinle yapıldığı için daha dolu (%99+) görünür. Çelişki değil, varsayım farkı: "Devamsızlık (%)" kutusunu 0 yaparsanız fark kapanır. "Ek hesap süresi (sn)" yalnız ek hesapların (iyileştirmeli plan, konum kuralı kapalı plan) bütçesidir; başlıktaki eğri ondan etkilenmez. Aynı anda ikinci hesap "Başka bir kadro hesabı sürüyor" (429) der.
 
+## 2h. İlk kurulum, kurum adı/logosu ve Excel'den personel yükleme (4 dakika)
+
+Boş kurulumda (demo yüklemeden) yönetici olarak girin. Ürün hiçbir kurumun markasını taşımaz: kurum adı ve logo **müşterinin kendi verisidir** ve yalnız yönetici girer. Girilmemişken her yerde ürün adı ("Makinist Atama") görünür.
+
+| # | Yapın | Dikkat çekin |
+|---|-------|--------------|
+| a | **Ayarlar → Kurulum** (ya da Ana Sayfa'daki "Kurulumu tamamlayın" kartı → **Kuruluma devam et**). | Beş adım: kurum adı ve logo, tanımlar (en az 2 gar, 1 hat, 1 araç tipi), personel listesi, kural profili, ilk seferler. Durum **veriden hesaplanır**: sayfayı yenileyince kaldığı yerden devam eder; yapılan adım "Tamam", yapılmayan "Bekliyor" yazar. "Hatırlatmayı gizle" yalnız Ana Sayfa kartını kapatır. |
+| b | Birinci adımda kurum adı yazıp **Adı kaydet** (ör. "Örnek İşletme (demo)"), isterseniz küçük bir PNG/JPEG logo seçin. | Ad üst çubukta, giriş sayfasında, personel ekranında ve yazdırılan listelerin başlığında görünür. Logo yalnız PNG/JPEG, en fazla 256 KB ve 1024 × 1024 piksel; SVG/GIF/WebP kabul edilmez. Kendi kurumunuzun dışında bir logo yüklemeyin. |
+| c | **Tanımlar**'da garları, hat ve araç tiplerini ekleyin, **Kurulum**'a dönün. | Tanım ürettirmeyiz: Excel'deki ad Tanımlar'da yoksa satır hata olur ve eksik adlar ayrıca listelenir. |
+| d | Üçüncü adım: **Personeli Excel'den yükle** → **Şablonu indir**, doldurun (ya da şablonu inceleyin), dosyayı seçin. | Şablon üç sayfa: Makinistler, Araç Tipi Bröveleri, Hat Bröveleri. Dosya seçilince **önizleme** gelir; **Onayla ve yükle** denmeden hiçbir kayıt yazılmaz. Hatalı satırlar sayfa + satır no + sicil + neden ile listelenir ve atlanır; geçerli satırlar yüklenir. Şablondaki "ORNEK-" sicilli satırlar silinmeden yüklenemez. |
+| e | Aynı dosyayı **ikinci kez** seçin. | "Eklenecek: 0 · Atlanacak (zaten var): N": sicili sistemde olan personel **güncellenmez**, satırında "Atlandı: zaten var" yazar. Belge bitiş tarihi geçmişte olan satırda "belge süresi dolmuş" uyarısı çıkar (atama zaten engellenir). |
+| f | Dördüncü adım: **Kural profiline git**. | Hazır profiller "örnek başlangıç, kurum mevzuatıyla doğrulanmalı" etiketlidir; yasal uyum iddiası yoktur. Atlamak isterseniz varsayılan kurallarla devam edip hatırlatmayı gizleyebilirsiniz. |
+
+Personel yükleme yalnız **yönetici** içindir; atamacı personeli tek tek ekleyebilir. Yükleme **Denetim Raporu**'nda "Makinist Excel yüklemesi" ve her personel için "Makinist eklendi" olarak görünür.
+
+## 2i. Sınıra yakın bilgisi ve yorgunluk göstergesi (2 dakika)
+
+Atama Masası'nda boş bir sefere tıklayıp sağdaki aday paneline bakın. **Yalnız bilgidir**: atamayı engellemez, uyarı ya da kırmızı üretmez, sıralamayı değiştirmez (Ayarlar'daki "Sınıra yakınlık ve yorgunluk (bilgi)" grubundan kapatılır, eşikler oradadır).
+
+| # | Yapın | Dikkat çekin |
+|---|-------|--------------|
+| a | Aday satırına bakın. | Durum rozetinin yanında kısa **"Sınıra yakın"** rozeti (birden fazlaysa "Sınıra yakın (2)") ve tek satırlık yorgunluk özeti ("7 g: 38 s · 2 gece · en kısa dinlenme 11 s"). Ölçüm metinleri satırı uzatmaz. |
+| b | Aday satırına ok tuşlarıyla ya da tıklayarak gelin. | Yalnız **odaktaki** adayda ölçüm metinleri ve eşikler açılır ("Günlük süre: 10 s 20 dk / 11 s"). Ekran okuyucu rozetin adında tüm ölçümleri okur. |
+| c | Masada aynı kişinin satırına bakın. | Satırda görünür "Sınıra yakın" rozeti; klavyeyle odaklanınca ölçüm metni altında açılır. |
+
+Not: yorgunluk "bilimsel bir model" değildir, son 7 günün üç ham değeridir; makinistin kendi ekranında görünmez.
+
+## 2j. Aylık çizelge, resmi tatil ve ilan baskısı (3 dakika)
+
+Üst menüden **Aylık Çizelge** (Raporlar). Salt okunur ızgara: satırlarda personel, sütunlarda ayın günleri; hücrede kısa görev kodu, izin "İ/R/D" harfleri, gece görevi ay simgesi + metin. Sağdaki toplamlar **Adalet Raporu ile aynı** sayıdır.
+
+| # | Yapın | Dikkat çekin |
+|---|-------|--------------|
+| a | Çizelgeyi açın, bir hücrede **Enter**'a basın. | Hücre Atama Masası'nda o gün ve o sefer seçili olarak açılır. Klavyeyle ok tuşları hücreler arasında gezer; sayfa 50 personelde bir sayfalanır. |
+| b | **Tanımlar → Resmi tatiller**'den bir tarih ekleyin (ör. 29 Ekim). | Tatil yalnız gösterimdir: çizelge başlığında "Tatil" yazar, hiçbir hesabı (adalet, kırmızı, gün listesi) etkilemez. Kayıt Denetim Raporu'nda "Resmi tatil eklendi" olarak görünür. |
+| c | Çizelgede **Yazdır (A4)** ya da **A3** bağlantısı. | Menüsüz, yatay, başlıkta kurum adı; satır bölünmez, başlık her sayfada yinelenir. Panoya asılacak ilan için A3. Gerçek yazıcıda denemeden önce önizlemeye bakın. |
+
+## 2k. Yönetim özeti ve denetim paketi (3 dakika, yalnız yönetici)
+
+Üst menüden **Yönetim Özeti** (Raporlar; atamacı ve makinist menüde görmez, adrese yazsa da sunucu reddeder). Ay seçilir (takvim ayı), sayfa kendi kendine gelir.
+
+| # | Yapın | Dikkat çekin |
+|---|-------|--------------|
+| a | Özeti açın. | Sekiz kutu: doluluk, kural dışı (kırmızı) atama, uyarılı atama ve gerekçeleri, adalet dağılımı (ortalama, standart sapma, en az, en çok), fazla mesai, belge uyumu (**"Bugünkü durum"**: dönem bilgisi değil), değişiklik kayıtları ve nedenleri, yedek açığı. Dağılım çubukları süstür, sayı her zaman yanında yazar. Demo veride üstte "DEMO – gerçek değil" etiketi çıkar. |
+| b | Bir sayıyı ilgili raporla karşılaştırın (ör. Adalet Raporu'nun ortalaması, Atama Masası'ndaki kırmızı sayısı, Denetim Raporu'nun kayıt sayısı). | **Yeni formül yok**: özetteki her sayı mevcut raporun aynı sayısıdır. Standart sapma popülasyon sapmasıdır (n'e bölünür), formülü kutuda yazılıdır. |
+| c | **Yazdırılabilir sayfa**. | Menüsüz A4 yatay, siyah-beyaz; başlıkta kurum adı, altbilgide son güncelleme, yazdıran ve kayıt sayısı. |
+| d | **Denetim paketi (Excel)**. | Yedi sayfa: Özet, Değişiklik kayıtları (Denetim Raporu'yla aynı satırlar: atama, parametre, tatil, kurum ve profil değişiklikleri dahil), Uyarılı atamalar, Ayar değişiklikleri, Kural değerleri (o anki parametre, şiddet, ayar ve özel kurallar; kaynak ve güvenilirlikle), Adalet, Rapor bilgisi. Hücreler formül çalıştırmaz; demo veride "DEMO – gerçek değil" satırı vardır. Denetçiye "kim, ne zaman, hangi gerekçeyle, hangi kuralla" cevabı tek dosyada verir. |
+
+Önerilen sıra (kısa senaryoda 10. adımın yerine): Otomatik ata → bir uyarılı atama (gerekçeli) → **Yönetim Özeti** → **Denetim paketi (Excel)**.
+
 ## 3. Takılırsanız
 
 | Gördüğünüz | Ne yapın |
@@ -202,4 +252,5 @@ Aynı kural motoru kondüktörü de planlar (bir yolcu trenine bir kondüktör).
 
 - "Mevzuata uygundur" demeyin: ekran kendisi "karar destek aracıdır, mevzuata uyum garantisi vermez" diyor (Ayarlar sayfasında).
 - Puantaj ve tutarlar demo oranlarıyladır, gerçek ücret değildir.
-- Bu sürümde Excel'den sefer yükleme var (Seferler sayfası), ama hazır bir TCDD formatı yok; kendi Excel'iniz için sütunlar şablonda.
+- Yönetim özeti ve denetim paketi mevcut raporların sayılarıdır; yeni bir "başarı puanı" ya da uyum skoru yoktur, söylemeyin. Belge uyumu bugünkü durumdur, seçilen ayın değil.
+- Bu sürümde Excel'den sefer yükleme var (Seferler sayfası), ama hazır bir kurum formatı yok; kendi Excel'iniz için sütunlar şablonda. Personel listesi için de şablon vardır (Adım 2h).

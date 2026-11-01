@@ -30,7 +30,7 @@ public final class SabitTarihliDemo {
     }
 
     /** Demo tabloları (yalnız flyway geçmişi hariç: yükleme {@code puantaj.*} parametrelerini de yazar) ve ilk yüklemenin ardından alınan dizi değerleri; JVM (= fork = kendi veritabanı kabı) başına bir kez. */
-    private static final List<String> TOHUM_TABLOLARI = List.of("kural_parametre", "kural_siddet", "uygulama_ayar");
+    private static final List<String> TOHUM_TABLOLARI = List.of("kural_parametre", "kural_siddet", "uygulama_ayar", "kurum");
     private static List<String> yedekTablolar;
     private static List<Map<String, Object>> yedekDiziler;
 

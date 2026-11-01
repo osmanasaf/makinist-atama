@@ -79,7 +79,10 @@ async function yanitAl(
   const basliklar: Record<string, string> = { Accept: kabul }
   // FormData (dosya yükleme): Content-Type'ı (sınır dizesiyle) tarayıcı koyar, elle yazılırsa sınır kaybolur.
   const formMu = govde instanceof FormData
-  if (govde !== undefined && !formMu) basliklar['Content-Type'] = 'application/json'
+  // Blob/File (ham dosya gövdesi, ör. kurum logosu): olduğu gibi gider, içerik türü dosyanınkidir.
+  const hamMu = govde instanceof Blob
+  if (hamMu && govde.type) basliklar['Content-Type'] = govde.type
+  else if (govde !== undefined && !formMu && !hamMu) basliklar['Content-Type'] = 'application/json'
   if (yontem !== 'GET') {
     const token = xsrfToken()
     if (token) basliklar['X-XSRF-TOKEN'] = token
@@ -92,7 +95,7 @@ async function yanitAl(
     yanit = await fetch(yol, {
       method: yontem,
       headers: basliklar,
-      body: govde === undefined ? undefined : formMu ? govde : JSON.stringify(govde),
+      body: govde === undefined ? undefined : formMu || hamMu ? govde : JSON.stringify(govde),
       signal: denetci.signal,
     })
   } catch {

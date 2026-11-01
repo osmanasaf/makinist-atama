@@ -17,6 +17,11 @@ describe('durumOzellikleri (tek kaynak, MK-138)', () => {
     ['KONDUKTOR_EKSIK', 'bilgi'],
     ['BILGI', 'bilgi'],
     ['GECE', 'gece'],
+    ['DEGISIR', 'bilgi'],
+    ['AYNI', 'notr'],
+    ['GECERSIZ', 'engel'],
+    ['BILINMEYEN', 'uyari'],
+    ['PROFILDE_YOK', 'notr'],
   ])('%s -> ton %s, geçerli simge ve metin', (kod, ton) => {
     const o = durumOzellikleri(kod)
     expect(o.ton).toBe(ton)
