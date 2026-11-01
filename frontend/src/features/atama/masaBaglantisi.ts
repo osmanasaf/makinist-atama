@@ -15,7 +15,23 @@ export function suzgecOku(deger: unknown): MasaSuzgeci | null {
   return MASA_SUZGECLERI.find((s) => s === deger) ?? null
 }
 
-/** `/atama?tarih=…&suzgec=…`: ana sayfadaki "yapılacaklar" ve sayaç bağlantıları tek yerden üretilir. */
-export function masaBaglantisi(tarih: string, suzgec?: MasaSuzgeci): RouteLocationRaw {
-  return { name: 'atama', query: suzgec ? { tarih, suzgec } : { tarih } }
+/** Sorgudaki `sefer` değeri: pozitif tam sayı kimlik, aksi halde (bozuk, dizi, boş) null. */
+export function seferOku(deger: unknown): number | null {
+  const n = typeof deger === 'string' && /^\d+$/.test(deger) ? Number(deger) : 0
+  return Number.isSafeInteger(n) && n > 0 ? n : null
+}
+
+/**
+ * `/atama?tarih=…&suzgec=…&sefer=…`: ana sayfadaki "yapılacaklar", sayaç bağlantıları ve aylık çizelge hücreleri (F5, AK-5.6: gün + sefer seçili) tek yerden üretilir.
+ * `sefer`: gün yüklenince o sefer seçilir (o günde yoksa yok sayılır).
+ */
+export function masaBaglantisi(
+  tarih: string,
+  suzgec?: MasaSuzgeci,
+  seferId?: number,
+): RouteLocationRaw {
+  return {
+    name: 'atama',
+    query: { tarih, ...(suzgec ? { suzgec } : {}), ...(seferId ? { sefer: String(seferId) } : {}) },
+  }
 }

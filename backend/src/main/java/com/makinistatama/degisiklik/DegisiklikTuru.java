@@ -47,5 +47,7 @@ public enum DegisiklikTuru {
     PROFIL_UYGULA,
     KURUM_GUNCELLE,
     KURUM_LOGO,
-    MAKINIST_ICE_AKTAR
+    MAKINIST_ICE_AKTAR,
+    TATIL_EKLE,
+    TATIL_SIL
 }

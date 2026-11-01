@@ -96,6 +96,8 @@ public class DegisiklikRaporServisi {
         TUR_ADLARI.put(DegisiklikTuru.KURUM_GUNCELLE, "Kurum bilgisi güncellendi");
         TUR_ADLARI.put(DegisiklikTuru.KURUM_LOGO, "Kurum logosu değişti");
         TUR_ADLARI.put(DegisiklikTuru.MAKINIST_ICE_AKTAR, "Makinist Excel yüklemesi");
+        TUR_ADLARI.put(DegisiklikTuru.TATIL_EKLE, "Resmi tatil eklendi");
+        TUR_ADLARI.put(DegisiklikTuru.TATIL_SIL, "Resmi tatil silindi");
     }
 
     private static final Map<String, String> BOLUM_ADLARI = new LinkedHashMap<>();

@@ -8,6 +8,7 @@ import type { SimgeAdi } from '@/bilesenler/simgeler'
 import type { Ton } from '@/bilesenler/durum'
 import NobetNotu from './NobetNotu.vue'
 import YakinlikNotu from './YakinlikNotu.vue'
+import YorgunlukOzeti from './YorgunlukOzeti.vue'
 import { ROL_ETIKETLERI, type Aday, type AtamaRolu, type YakinlikYaniti } from './atamaApi'
 import { onerilenAday, ortalamayaFark } from './hizliDoldur'
 import { adayHaritasi } from './yakinlik'
@@ -67,6 +68,14 @@ function durumEtiketi(a: Aday): string {
 
 const ihlalSimgesi = (i: Aday['ihlaller'][number]): SimgeAdi =>
   i.siddet === 'ENGEL' ? 'engel' : 'uyari'
+
+/** OK-47a: yorgunluk ayrıntısı yalnız odaklı adayda açılır (satıra ya da içindeki öğeye odak). */
+const acikSatir = ref<number | null>(null)
+function odakCikti(e: FocusEvent, i: number) {
+  const hedef = e.relatedTarget as Node | null
+  if (acikSatir.value === i && !(hedef && (e.currentTarget as HTMLElement).contains(hedef)))
+    acikSatir.value = null
+}
 
 // Yaylanan (roving) odak: satırlar ↑/↓ ile gezilir, Tab listeye tek durakla girer.
 const odak = ref(0)
@@ -149,6 +158,8 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
             :tabindex="i === odak ? 0 : -1"
             :aria-disabled="secilebilir(a) ? undefined : 'true'"
             @focus="odak = i"
+            @focusin="acikSatir = i"
+            @focusout="odakCikti($event, i)"
             @click="sec(a)"
             @keydown="tus($event, i, a)"
           >
@@ -169,6 +180,11 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
                 boyut="sm"
               />
               <Rozet v-if="a === onerilen" ton="basari" metin="Önerilen" boyut="sm" />
+              <YorgunlukOzeti
+                v-if="yakinlik && yakinlikSatiri(a)"
+                :yorgunluk="yakinlikSatiri(a)!.yorgunluk"
+                :esikler="yakinlik.esikler"
+              />
               <ul v-if="a.ihlaller.length > 0" class="ihlal-listesi">
                 <li>
                   <Simge :ad="ihlalSimgesi(a.ihlaller[0]!)" boyut="1em" />
@@ -188,6 +204,7 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
                 v-if="yakinlik && yakinlikSatiri(a)"
                 :satir="yakinlikSatiri(a)!"
                 :esikler="yakinlik.esikler"
+                :acik="acikSatir === i"
               />
               <button
                 v-if="yolculukOnerilebilir(a)"

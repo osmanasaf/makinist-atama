@@ -56,6 +56,11 @@ class MutasyonKayitTest extends TestVeritabani {
                             java.util.List.of(), java.util.List.of());
                     return t.istek(MockMvcRequestBuilders.multipart("/api/makinist/ice-aktar").file(new MockMultipartFile("dosya", "m.xlsx", "application/octet-stream", xlsx)).param("onizle", "false"));
                 }, DegisiklikTuru.MAKINIST_ICE_AKTAR),
+                arguments("resmi tatil ekle (F5)", (Uc) (t, j) -> t.post("/api/resmi-tatil", "{\"tarih\":\"2026-10-29\",\"ad\":\"Cumhuriyet Bayramı\"}"), DegisiklikTuru.TATIL_EKLE),
+                arguments("resmi tatil sil (F5)", (Uc) (t, j) -> {
+                    t.post("/api/resmi-tatil", "{\"tarih\":\"2026-10-29\",\"ad\":\"Cumhuriyet Bayramı\"}");
+                    return t.delete("/api/resmi-tatil/2026-10-29");
+                }, DegisiklikTuru.TATIL_SIL),
                 arguments("atama ekle", (Uc) (t, j) -> {
                     var v = new com.makinistatama.atama.AtamaVeri(j);
                     long m = v.makinist("D001");

@@ -10,6 +10,17 @@ describe('masaBaglantisi (derin bağlantı sözleşmesi, MK-156)', () => {
     expect(masaBaglantisi('2026-10-12')).toEqual({ name: 'atama', query: { tarih: '2026-10-12' } })
   })
 
+  it('F5: sefer kimliği (aylık çizelge hücresi) sorguya yazılır; süzgeçle birlikte de, yoksa anahtar hiç yok', () => {
+    expect(masaBaglantisi('2026-10-12', undefined, 42)).toEqual({
+      name: 'atama',
+      query: { tarih: '2026-10-12', sefer: '42' },
+    })
+    expect(masaBaglantisi('2026-10-12', 'kirmizi', 42)).toEqual({
+      name: 'atama',
+      query: { tarih: '2026-10-12', suzgec: 'kirmizi', sefer: '42' },
+    })
+  })
+
   it('suzgecOku: bilinen değerler döner, geçersiz/dizi/boş yok sayılır', () => {
     expect(suzgecOku('atanmamis')).toBe('atanmamis')
     expect(suzgecOku('kirmizi')).toBe('kirmizi')

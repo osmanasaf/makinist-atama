@@ -11,6 +11,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/rapor/cizelge',
+    name: 'rapor-cizelge',
+    component: () => import('./AylikCizelge.vue'),
+    // F5: salt okunur aylık ızgara; yalnız personel (makinist kabuğunda bu rota yok, sunucu 403)
+    meta: {
+      menu: { ad: 'Aylık Çizelge', sira: 41, grup: 'Raporlar', simge: 'gar' },
+      baslik: 'Aylık çizelge',
+    },
+  },
+  {
     path: '/rapor/yedek',
     name: 'rapor-yedek',
     component: () => import('./YedekTakvimi.vue'),

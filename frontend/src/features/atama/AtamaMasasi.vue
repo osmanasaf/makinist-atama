@@ -30,7 +30,7 @@ import type { Aday, AtamaRolu, GunMakinisti, GunSatiri, Oneri, UygunSefer } from
 import { useYoklama } from '@/features/benim/useYoklama'
 import { atanmamisMi } from '@/features/ana/yapilacaklar'
 import { hizliAtanabilir, sonrakiBos } from './hizliDoldur'
-import { suzgecOku, type MasaSuzgeci } from './masaBaglantisi'
+import { seferOku, suzgecOku, type MasaSuzgeci } from './masaBaglantisi'
 import { useAtamaMasasi } from './useAtamaMasasi'
 import { atamaHaritasi, isaretlerMetni } from './yakinlik'
 import { GERI_AL_SURESI_MS, useGeriAl } from './useGeriAl'
@@ -73,7 +73,9 @@ useYoklama(() => {
 })
 
 function gunDegistir(t: string) {
-  if (TARIH_DESENI.test(t)) void router.replace({ query: { ...route.query, tarih: t } })
+  // ?sefer= yalnız ilk açılışın derin bağlantısıdır: gün değişince düşer (eski seçim yeni güne taşınmaz)
+  if (TARIH_DESENI.test(t))
+    void router.replace({ query: { ...route.query, tarih: t, sefer: undefined } })
 }
 
 const TEK_SUTUN = '(max-width: 1100px)' // stildeki medya sorgusuyla aynı olmalı
@@ -92,6 +94,22 @@ async function seferSec(id: number) {
   await nextTick()
   gorunurKil(panel.value)
 }
+
+// F5 derin bağlantı (AK-5.6): `?sefer=<id>` — ilk gün listesi gelince (bir kez) o sefer seçilir ve satırı görünür kılınır; o günde yoksa ya da bozuksa yok sayılır.
+let derinSefer = seferOku(route.query.sefer)
+watch(
+  satirlar,
+  async (l) => {
+    if (derinSefer === null || l.length === 0) return
+    const id = derinSefer
+    derinSefer = null
+    if (!l.some((s) => s.seferId === id)) return
+    await seferSec(id)
+    await nextTick()
+    gorunurKil(liste.value?.querySelector<HTMLElement>('tr.secili') ?? null)
+  },
+  { immediate: true },
+)
 
 /** QA BUG-2: seçili sefer varken aday panelinin başlığına odak (satırdan → ya da "Adaylara geç"); ~300 Tab gerekmez. */
 const panelBasligi = ref<HTMLElement | null>(null)
@@ -833,12 +851,13 @@ async function kapat(yenile: boolean) {
                     >
                     <span
                       v-if="yakinlikMetni(m)"
-                      class="gosterge gosterge-yakinlik"
+                      class="yakinlik-isareti"
                       data-test="yakinlik"
                       :title="yakinlikMetni(m)"
-                      ><Simge ad="bilgi" boyut="1em" /><span class="gorunmez">{{
-                        yakinlikMetni(m)
-                      }}</span></span
+                      ><Rozet ton="bilgi" simge="bilgi" metin="Sınıra yakın" boyut="sm" /><span
+                        class="gorunmez"
+                        >{{ yakinlikMetni(m).replace('Sınıra yakın', '') }}</span
+                      ></span
                     >
                     <button
                       type="button"
@@ -878,6 +897,14 @@ async function kapat(yenile: boolean) {
                       :title="cizelgede ? `Uyarı: ${m.uyarilar.join('; ')}` : undefined"
                     >
                       <Simge ad="uyari" boyut="1em" />Uyarı: {{ m.uyarilar.join('; ') }}
+                    </div>
+                    <div
+                      v-if="yakinlikMetni(m) && aktifId === s.seferId"
+                      class="soluk yakinlik-ayrinti"
+                      data-test="yakinlik-ayrinti"
+                      aria-hidden="true"
+                    >
+                      {{ yakinlikMetni(m) }}
                     </div>
                     <div v-if="s.durum === 'IPTAL'" class="soluk iptal-notu">
                       Eski atama iptal seferde duruyor; "Kaldır" ile kaldırın.
@@ -1379,6 +1406,7 @@ button.cip:hover {
     padding: 0;
   }
   .masa-tablo--cizelge .kirmizi-neden,
+  .masa-tablo--cizelge .yakinlik-ayrinti,
   .masa-tablo--cizelge .uyari-notu,
   .masa-tablo--cizelge .iptal-notu {
     flex: 1 1 100%; /* notlar kendi satırında */
@@ -1586,11 +1614,17 @@ button.cip:hover {
   color: var(--renk-rol-konduktor-metin);
   border-style: dashed;
 }
+.yakinlik-isareti {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
 .gosterge-hesap {
   border-color: transparent;
   color: var(--renk-metin-soluk);
 }
 .kirmizi-neden,
+.yakinlik-ayrinti,
 .uyari-notu,
 .iptal-notu {
   flex-basis: 100%;

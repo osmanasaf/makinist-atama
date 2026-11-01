@@ -57,6 +57,8 @@ const SAYFALAR = [
     eylem: "document.querySelectorAll('[data-test^=\"hazir-\"] button')[1]?.click()",
   },
   { ad: 'adalet-raporu', yol: '/rapor/adalet', grup: 'masaustu' },
+  { ad: 'cizelge', yol: '/rapor/cizelge', grup: 'masaustu' }, // F5 aylık çizelge ızgarası
+  { ad: 'yazdir-cizelge', yol: `/yazdir/cizelge?ay=${bugun.slice(0, 7)}&boyut=A4`, grup: 'masaustu' }, // F5 ilan baskısı (A3: boyut=A3)
   { ad: 'yedek-plani', yol: '/rapor/yedek', grup: 'masaustu' },
   { ad: 'ozel-kurallar', yol: '/ozel-kurallar', grup: 'masaustu' },
   { ad: 'izinler', yol: '/izin', grup: 'masaustu' },

@@ -8,6 +8,7 @@ import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { yoneticiMi } from '@/composables/oturum'
 import { TANIM_ETIKETLERI, tanimApi, type TanimDto, type TanimTipi } from './tanimApi'
 import GarSureleri from './GarSureleri.vue'
+import ResmiTatiller from './ResmiTatiller.vue'
 
 const tipler = Object.keys(TANIM_ETIKETLERI) as TanimTipi[]
 const sekmeler = tipler.map((t) => ({ kimlik: t, ad: TANIM_ETIKETLERI[t] }))
@@ -192,6 +193,7 @@ onMounted(yukle)
       </template>
     </Sekmeler>
     <GarSureleri v-if="sekme === 'GAR'" />
+    <ResmiTatiller />
   </section>
 </template>
 

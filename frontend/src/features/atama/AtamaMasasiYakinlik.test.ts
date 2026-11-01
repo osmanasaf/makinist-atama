@@ -121,6 +121,20 @@ describe('AtamaMasasi: sınıra yakınlık (F3, MK-176)', () => {
     expect(satirlar(w)[1]!.find('[data-test="yakinlik"]').exists()).toBe(false)
   })
 
+  it('OK-47b: işaret yalnız hover title değil, GÖRÜNÜR kısa rozet ("Sınıra yakın", gizli metin değil) + erişilebilir ad; satır odaklanınca ölçüm metni görünür', async () => {
+    const w = await kur()
+    const isaretli = gorevli(w, 0, 0).get('[data-test="yakinlik"]')
+    const gorunur = isaretli.get('.rozet-bilgi .rozet-metin')
+    expect(gorunur.text()).toBe('Sınıra yakın')
+    expect(gorunur.element.closest('.gorunmez')).toBeNull()
+    expect(isaretli.text()).toContain('Günlük süre (12 Eki 2026): 10 s 40 dk / 11 s') // erişilebilir ad
+    expect(w.find('[data-test="yakinlik-ayrinti"]').exists()).toBe(false)
+    await satirlar(w)[0]!.trigger('focusin') // klavyeyle satıra gelen de ölçümü okur (hover gerekmez)
+    const ayrinti = satirlar(w)[0]!.get('[data-test="yakinlik-ayrinti"]')
+    expect(ayrinti.text()).toContain('10 s 40 dk / 11 s')
+    expect(satirlar(w)[2]!.find('[data-test="yakinlik-ayrinti"]').exists()).toBe(false)
+  })
+
   it('satırın durumu DEĞİŞMEZ: kırmızı/uyarı sınıfı ve neden yok; yakınlıksız çizimle aynı sınıflar ve metin dışında aynı yapı', async () => {
     vi.mocked(atamaApi.gunYakinlik).mockImplementation(() => Promise.resolve(gunYaniti(false)))
     const kapali = await kur()

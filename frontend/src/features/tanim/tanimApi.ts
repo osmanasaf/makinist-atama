@@ -1,4 +1,4 @@
-import { api } from '@/api/istemci'
+import { api, sorguMetni } from '@/api/istemci'
 
 export type TanimTipi = 'GAR' | 'HAT' | 'ARAC_TIPI'
 
@@ -32,7 +32,17 @@ export interface GarIntikalSureGovde {
   versiyon?: number
 }
 
+/** F5 (MK-178): resmi tatil; yönetici elle girer, YALNIZ GÖSTERİM (aylık çizelge başlığı). */
+export interface ResmiTatil {
+  /** "YYYY-MM-DD" */
+  tarih: string
+  ad: string
+}
+
 export const tanimApi = {
+  resmiTatiller: (yil?: number) => api.get<ResmiTatil[]>(`/api/resmi-tatil${sorguMetni({ yil })}`),
+  tatilEkle: (g: ResmiTatil) => api.post<ResmiTatil>('/api/resmi-tatil', g),
+  tatilSil: (tarih: string) => api.sil(`/api/resmi-tatil/${tarih}`),
   liste: (tip: TanimTipi) => api.get<TanimDto[]>(`/api/tanimlar?tip=${tip}`),
   ekle: (tip: TanimTipi, ad: string) => api.post<TanimDto>('/api/tanimlar', { tip, ad }),
   adlandir: (id: number, ad: string) => api.put<TanimDto>(`/api/tanimlar/${id}`, { ad }),

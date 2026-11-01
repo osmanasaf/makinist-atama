@@ -151,6 +151,16 @@ public class GunListesiServisi {
         return new KirmiziSayisiDto(bas, bit, kirmiziSeferler.size(), kirmiziAtama, intikaller.kirmiziSayisi(bas, bit), ilkKirmiziGun);
     }
 
+    /**
+     * F5 (MK-177): {@link #kirmiziSayisi}'nın AYNI hesabı (aynı liste, aynı {@code KirmiziAtamaHesabi}), sayı yerine kırmızı atama kimlikleri; aylık çizelge hücre bayrağı. Aralık sınırı
+     * ({@code EN_COK_ARALIK_GUN}) aynıdır. Salt okuma.
+     */
+    public java.util.Set<Long> kirmiziAtamaKimlikleri(LocalDate bas, LocalDate bit) {
+        aralikDogrula(bas, bit);
+        List<SeferDto> liste = seferler.aralikListesi(bas, bit);
+        return kirmiziHesabi.hesapla(liste, atamalar(liste)).entrySet().stream().filter(e -> e.getValue().kirmizi()).map(Map.Entry::getKey).collect(Collectors.toSet());
+    }
+
     private static void aralikDogrula(LocalDate bas, LocalDate bit) {
         if (bit.isBefore(bas)) {
             throw UygulamaHatasi.dogrulama("bit", "Bitiş tarihi başlangıçtan önce olamaz.");
