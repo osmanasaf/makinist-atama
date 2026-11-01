@@ -32,6 +32,7 @@ import { atanmamisMi } from '@/features/ana/yapilacaklar'
 import { hizliAtanabilir, sonrakiBos } from './hizliDoldur'
 import { suzgecOku, type MasaSuzgeci } from './masaBaglantisi'
 import { useAtamaMasasi } from './useAtamaMasasi'
+import { atamaHaritasi, isaretlerMetni } from './yakinlik'
 import { GERI_AL_SURESI_MS, useGeriAl } from './useGeriAl'
 import ZamanSeridi, { type CubukDurumu } from './ZamanSeridi.vue'
 import {
@@ -55,6 +56,10 @@ const tarih = computed(() => {
 
 const masa = useAtamaMasasi(tarih)
 const { satirlar, seciliId, seciliSatir, rol, adaylar } = masa
+/** F3: atanan makinistin "sınıra yakın" bilgi işareti metni (yoksa boş). Satırın kırmızı/uyarı durumunu ETKİLEMEZ. */
+const yakinlikAtamalari = computed(() => atamaHaritasi(masa.gunYakinlik.value))
+const yakinlikMetni = (m: GunMakinisti) =>
+  isaretlerMetni(yakinlikAtamalari.value.get(m.atamaId)?.yakinlik ?? [])
 void masa.gunuYukle()
 void masa.kirmiziYukle()
 void masa.gordumYukle()
@@ -826,6 +831,15 @@ async function kapat(yenile: boolean) {
                         >hesap yok</span
                       ></span
                     >
+                    <span
+                      v-if="yakinlikMetni(m)"
+                      class="gosterge gosterge-yakinlik"
+                      data-test="yakinlik"
+                      :title="yakinlikMetni(m)"
+                      ><Simge ad="bilgi" boyut="1em" /><span class="gorunmez">{{
+                        yakinlikMetni(m)
+                      }}</span></span
+                    >
                     <button
                       type="button"
                       :tabindex="tb(s)"
@@ -994,6 +1008,7 @@ async function kapat(yenile: boolean) {
             ref="adayPaneli"
             v-model:rol="rol"
             :adaylar="adaylar"
+            :yakinlik="masa.adayYakinlik.value"
             :yukleniyor="masa.adayYukleniyor.value"
             :hata="masa.adayHatasi.value"
             @sec="adayAta"

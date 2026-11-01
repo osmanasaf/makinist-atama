@@ -209,8 +209,9 @@ async function onayla() {
           Onayla ve yükle ({{ sonuc.eklenen }} personel)
         </button>
         <small
-          >Hatalı satırlar atlanır, geçerli satırlar yüklenir; atlanan satırı sonradan aynı dosyayla
-          eklemek için dosyayı onaylamadan önce düzeltin. Zaten var olan personelin bröveleri
+          >Hatalı satırlar atlanır, geçerli satırlar yüklenir. Bir personelin herhangi bir hücresi
+          (bröve sayfaları dahil) hatalıysa o personel hiç eklenmez; sonradan aynı dosyayla eklemek
+          için dosyayı onaylamadan önce düzeltin. Zaten var olan personelin bröveleri
           güncellenmez.</small
         >
       </div>

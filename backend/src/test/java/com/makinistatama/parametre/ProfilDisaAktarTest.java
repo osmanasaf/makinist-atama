@@ -28,7 +28,7 @@ class ProfilDisaAktarTest extends ProfilTestTabani {
         assertThat(paket.get("uretimZamani").asString()).isNotBlank();
         assertThat(bolum(paket, "parametreler").size()).isEqualTo(32).isEqualTo(jdbc.queryForObject("SELECT count(*) FROM kural_parametre", Integer.class));
         assertThat(bolum(paket, "siddetler").size()).isEqualTo(22).isEqualTo(jdbc.queryForObject("SELECT count(*) FROM kural_siddet", Integer.class));
-        assertThat(bolum(paket, "ayarlar").size()).isEqualTo(22).isEqualTo(jdbc.queryForObject("SELECT count(*) FROM uygulama_ayar", Integer.class));
+        assertThat(bolum(paket, "ayarlar").size()).isEqualTo(34).isEqualTo(jdbc.queryForObject("SELECT count(*) FROM uygulama_ayar", Integer.class));
         assertThat(bolum(paket, "siddetler").has("K-10")).isFalse();
 
         // değerler API'deki ile aynı

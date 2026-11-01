@@ -56,6 +56,8 @@ class GuvenlikTaramaTest extends TestVeritabani {
             Map.entry("GET /api/atama/makinist/{makinistId}/izin-etkisi", "G"),
             Map.entry("POST /api/sefer/{id}/iptal", "G"), Map.entry("POST /api/sefer/{id}/gecikme", "G"),
             Map.entry("GET /api/atama/sefer/{seferId}/oneri", "G"),
+            // F3 (yeni-ozellikler Tur 3, MK-174): sınıra yakınlık + yorgunluk bilgisi, yalnız personel (makinist 403: OK-35)
+            Map.entry("GET /api/atama/sefer/{seferId}/yakinlik", "G"), Map.entry("GET /api/atama/yakinlik", "G"),
             Map.entry("GET /api/atama/sefer/{seferId}/yolculuk-oner", "G"), Map.entry("POST /api/atama/sefer/{seferId}/yolculukla", "G"),
             Map.entry("POST /api/atama/sefer/{id}/bol", "G"),
             Map.entry("POST /api/atama/sefer/{id}/birlestir", "G"),

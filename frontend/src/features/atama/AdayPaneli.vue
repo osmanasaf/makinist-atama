@@ -7,14 +7,22 @@ import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import type { SimgeAdi } from '@/bilesenler/simgeler'
 import type { Ton } from '@/bilesenler/durum'
 import NobetNotu from './NobetNotu.vue'
-import { ROL_ETIKETLERI, type Aday, type AtamaRolu } from './atamaApi'
+import YakinlikNotu from './YakinlikNotu.vue'
+import { ROL_ETIKETLERI, type Aday, type AtamaRolu, type YakinlikYaniti } from './atamaApi'
 import { onerilenAday, ortalamayaFark } from './hizliDoldur'
+import { adayHaritasi } from './yakinlik'
 
 const props = defineProps<{
   adaylar: Aday[]
   yukleniyor?: boolean
   hata?: string
+  /** F3: sınıra yakınlık + yorgunluk (ayrı uç; yoksa/kapalıysa hiçbir işaret çizilmez). Yalnız bilgi: sıralama, "Önerilen" ve seçim bundan etkilenmez. */
+  yakinlik?: YakinlikYaniti | null
 }>()
+const yakinlikHaritasi = computed(() => adayHaritasi(props.yakinlik))
+/** Engelli (uygun olmayan) ve bu seferde zaten görevli adayda işaret gösterilmez (AK-3.5). */
+const yakinlikSatiri = (a: Aday) =>
+  a.uygun && a.buSeferdeRol === null ? yakinlikHaritasi.value.get(a.makinistId) : undefined
 /** Sunucu sırasındaki ilk temiz aday (MK-151): satırda "Önerilen" rozeti; masa hızlı atamada bu satıra odak verir. */
 const onerilen = computed(() => onerilenAday(props.adaylar))
 /** OK-35: aday havuzu ortalamasına göre fark (yalnız bilgi; yolcuda yok). */
@@ -176,6 +184,11 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
                   </li>
                 </ul>
               </details>
+              <YakinlikNotu
+                v-if="yakinlik && yakinlikSatiri(a)"
+                :satir="yakinlikSatiri(a)!"
+                :esikler="yakinlik.esikler"
+              />
               <button
                 v-if="yolculukOnerilebilir(a)"
                 type="button"
@@ -205,6 +218,17 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
     </div>
     <p v-if="farkVar" class="soluk fark-notu">
       Fark: bu ay saatinin aday havuzu ortalamasına göre farkı; yalnız bilgi.
+    </p>
+    <p
+      v-if="yakinlik && yakinlikHaritasi.size > 0"
+      class="soluk fark-notu"
+      data-test="yakinlik-aciklama"
+    >
+      Sınıra yakınlık ve yorgunluk bilgi amaçlıdır; engel ya da uyarı üretmez, sıralamayı etkilemez.
+      Yorgunluk göstergesi bilimsel bir yorgunluk modeli değildir: son
+      {{ yakinlik.esikler.pencereGun }} günün üç ham değeridir (vurgu eşikleri: çalışma
+      {{ yakinlik.esikler.toplamSaat }} s üstü, gece nöbeti {{ yakinlik.esikler.geceAdet }} ve üstü,
+      en kısa dinlenme {{ yakinlik.esikler.dinlenmeSaat }} s altı).
     </p>
     <NobetNotu :metinler="ihlalMetinleri" />
   </div>

@@ -110,6 +110,19 @@ class MakinistIceAktarTest extends TestVeritabani {
     }
 
     @Test
+    void ok46_broveHucresiHatali_makinistHicEklenmez_onizlemeVeSonucHataListeler() throws Exception {
+        Tarayici y = yonetici();
+        List<Object[]> m = new ArrayList<>(yuzSatir().subList(0, 3));
+        byte[] dosya = TestMakinistExcel.kitap(m, List.<Object[]>of(new Object[] { "M001", "YHT", "31.02.2026" }), List.of());
+        yukle(y, dosya, true).andExpect(status().isOk()).andExpect(jsonPath("$.eklenen").value(2)).andExpect(jsonPath("$.hataSayisi").value(2))
+                .andExpect(jsonPath("$.satirlar[?(@.sicil == 'M001')]").isEmpty())
+                .andExpect(jsonPath("$.hatalar[?(@.sayfa == 'Makinistler' && @.sicil == 'M001')]").isNotEmpty());
+        yukle(y, dosya, false).andExpect(status().isOk()).andExpect(jsonPath("$.eklenen").value(2)).andExpect(jsonPath("$.hataSayisi").value(2));
+        assertThat(makinistSayisi()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM makinist WHERE sicil = 'M001'", Integer.class)).as("hatalı bröve hücreli makinist DB'ye girmez").isZero();
+    }
+
+    @Test
     void hataliSatirlarAtlanir_gecerliler_yazilir_toplamTutar() throws Exception {
         Tarayici y = yonetici();
         List<Object[]> m = new ArrayList<>(yuzSatir().subList(0, 4));

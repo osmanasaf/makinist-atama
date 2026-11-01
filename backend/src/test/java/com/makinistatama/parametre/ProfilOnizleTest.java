@@ -34,7 +34,7 @@ class ProfilOnizleTest extends ProfilTestTabani {
 
         assertThat(o.get("ozet").get("degisir").asInt()).isZero();
         assertThat(o.get("ozet").get("gecersiz").asInt()).isZero();
-        assertThat(o.get("ozet").get("ayni").asInt()).isEqualTo(32 + 22 + 22 + 1);
+        assertThat(o.get("ozet").get("ayni").asInt()).isEqualTo(32 + 22 + 34 + 1);
         for (JsonNode s : o.get("satirlar")) {
             assertThat(s.get("durum").asString()).as(s.get("kimlik").asString()).isEqualTo("AYNI");
         }

@@ -94,6 +94,46 @@ export interface Aday {
   buSeferdeRol: AtamaRolu | null
 }
 
+/** F3 (MK-174): sınıra yakınlık işareti; yalnız BİLGİDİR (ihlal değil). `olculen/sinir/kalan` `birim` ('dk' | 'hafta') cinsindendir. */
+export interface YakinlikIsareti {
+  kod: string
+  olculen: number
+  sinir: number
+  kalan: number
+  birim: string
+  metin: string
+}
+
+/** Yorgunluk göstergesi: üç ham değer, bileşik puan yok. `enKisaDinlenmeDk`: pencerede tek nöbet varsa null. */
+export interface YorgunlukOzeti {
+  pencereGun: number
+  toplamDk: number
+  geceNobetSayisi: number
+  enKisaDinlenmeDk: number | null
+}
+
+/** Yorgunluk vurgu eşikleri (Ayarlar > "Sınıra yakınlık ve yorgunluk"). */
+export interface YakinlikEsikleri {
+  pencereGun: number
+  toplamSaat: number
+  geceAdet: number
+  dinlenmeSaat: number
+}
+
+/** Aday ucunda `makinistId` aday, gün ucunda atanan makinisttir; `atamaId` yalnız gün ucunda dolu. */
+export interface YakinlikSatiri {
+  makinistId: number
+  atamaId: number | null
+  yakinlik: YakinlikIsareti[]
+  yorgunluk: YorgunlukOzeti
+}
+
+export interface YakinlikYaniti {
+  marjAktif: boolean
+  esikler: YakinlikEsikleri
+  satirlar: YakinlikSatiri[]
+}
+
 export interface AtamaGovde {
   makinistId: number
   rol?: AtamaRolu
@@ -376,6 +416,12 @@ export const atamaApi = {
   gun: (tarih: Tarih) => api.get<GunListesi>(`/api/atama/gun${sorguMetni({ tarih })}`),
   adaylar: (seferId: number, rol: AtamaRolu) =>
     api.get<Aday[]>(`/api/atama/sefer/${seferId}/adaylar${sorguMetni({ rol })}`),
+  /** F3: `adaylar` ile aynı havuz için yakınlık + yorgunluk (ayrı uç; `Aday` değişmez). */
+  adayYakinlik: (seferId: number, rol: AtamaRolu) =>
+    api.get<YakinlikYaniti>(`/api/atama/sefer/${seferId}/yakinlik${sorguMetni({ rol })}`),
+  /** F3: günün atamaları için yakınlık + yorgunluk (ayrı uç; `GunListesi` değişmez). */
+  gunYakinlik: (tarih: Tarih) =>
+    api.get<YakinlikYaniti>(`/api/atama/yakinlik${sorguMetni({ tarih })}`),
   ata: (seferId: number, govde: AtamaGovde) =>
     api.post<AtamaSonucu>(`/api/atama/sefer/${seferId}`, govde),
   kaldir: (seferId: number, p: KaldirParametre) =>

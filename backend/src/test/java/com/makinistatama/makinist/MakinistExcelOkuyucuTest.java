@@ -165,20 +165,43 @@ class MakinistExcelOkuyucuTest {
     void hata10_kondukturdeBrove() {
         Sonuc s = oku(satirlar(makinist("K001", "Kenan", "Kondüktör", "Ankara", null, "31.12.2030", "31.12.2030", "31.12.2030", null)),
                 satirlar(new Object[] { "K001", "YHT", "01.03.2026" }), satirlar(new Object[] { "K001", "Ankara–Eskişehir", "01.03.2026", null }));
-        assertThat(s.hatalar()).hasSize(2);
-        assertThat(s.hatalar()).allSatisfy(h -> assertThat(h.neden()).contains("Kondüktör kartında bröve"));
-        assertThat(s.gecerli()).as("kondüktör brövesiz yüklenir").hasSize(1);
-        assertThat(s.gecerli().getFirst().istek().broveAracTipleri()).isEmpty();
+        assertThat(s.hatalar()).as("2 bröve satırı + OK-46: makinist satırı").hasSize(3);
+        assertThat(s.hatalar()).filteredOn(h -> !"Makinistler".equals(h.sayfa())).hasSize(2).allSatisfy(h -> assertThat(h.neden()).contains("Kondüktör kartında bröve"));
+        assertThat(s.gecerli()).as("OK-46: hatalı hücreli satır (kondüktör dahil) hiç eklenmez").isEmpty();
     }
 
     @Test
     void hata11_ayniAracTipiIkiKez() {
         Sonuc s = oku(satirlar(makinist("D001", "Ayşe", "Ankara")), satirlar(new Object[] { "D001", "YHT", "01.03.2026" }, new Object[] { "d001", "yht", "02.03.2026" }), List.of());
-        tekHata(s, "Araç Tipi Bröveleri", 3, "iki kez");
-        assertThat(s.gecerli().getFirst().istek().broveAracTipleri()).hasSize(1);
+        assertThat(s.hatalar()).as("bröve satırı + OK-46 makinist satırı").hasSize(2);
+        assertThat(s.hatalar()).anySatisfy(x -> assertThat(x.sayfa()).isEqualTo("Araç Tipi Bröveleri"));
+        assertThat(s.hatalar().stream().filter(x -> "Araç Tipi Bröveleri".equals(x.sayfa())).findFirst().orElseThrow().neden()).contains("iki kez");
+        assertThat(s.gecerli()).as("OK-46: hatalı hücreli makinist hiç eklenmez").isEmpty();
         Sonuc h = oku(satirlar(makinist("D001", "Ayşe", "Ankara")), List.of(),
                 satirlar(new Object[] { "D001", "Ankara–Eskişehir", "01.03.2026", null }, new Object[] { "D001", "Ankara–Eskişehir", "02.03.2026", null }));
-        tekHata(h, "Hat Bröveleri", 3, "iki kez");
+        assertThat(h.hatalar()).hasSize(2);
+        assertThat(h.hatalar().stream().filter(x -> "Hat Bröveleri".equals(x.sayfa())).findFirst().orElseThrow().neden()).contains("iki kez");
+        assertThat(h.gecerli()).isEmpty();
+    }
+
+    @Test
+    void ok46_broveHucresiHataliMakinist_hicEklenmez_makinistSatirindaDaHataVar() {
+        // geçersiz bröve tarihi (önceki davranış: makinist brövesiz EKLENİR)
+        Sonuc s = oku(satirlar(makinist("D001", "Ayşe", "Ankara"), makinist("D002", "Veli", "Ankara")),
+                satirlar(new Object[] { "D001", "YHT", "31.02.2026" }, new Object[] { "D002", "YHT", "01.03.2026" }), List.of());
+        assertThat(s.gecerli()).extracting(g -> g.istek().sicil()).as("hatalı bröve hücresi olan makinist hiç eklenmez").containsExactly("D002");
+        assertThat(s.hatalar()).hasSize(2);
+        assertThat(s.hatalar()).anySatisfy(h -> assertThat(h.sayfa()).isEqualTo("Araç Tipi Bröveleri"));
+        assertThat(s.hatalar()).anySatisfy(h -> {
+            assertThat(h.sayfa()).isEqualTo("Makinistler");
+            assertThat(h.satirNo()).isEqualTo(2);
+            assertThat(h.sicil()).isEqualTo("D001");
+            assertThat(h.neden()).contains("eklenmedi").contains("Araç Tipi Bröveleri").contains("satır 2");
+        });
+        // hat bröveleri de aynı kuralda
+        Sonuc h = oku(satirlar(makinist("D001", "Ayşe", "Ankara")), List.of(), satirlar(new Object[] { "D001", "Sivas–Kars", "01.03.2026", null }));
+        assertThat(h.gecerli()).isEmpty();
+        assertThat(h.hatalar()).hasSize(2);
     }
 
     @Test

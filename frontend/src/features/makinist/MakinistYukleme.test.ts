@@ -201,5 +201,8 @@ describe('MakinistYukleme (F1, AK-1.2..1.4)', () => {
     await dosyaSec(w, xlsx())
     expect(w.text()).toContain('Hatalı satırlar atlanır')
     expect(w.text()).toContain('bröveleri güncellenmez')
+    expect(w.text()).toContain(
+      'herhangi bir hücresi (bröve sayfaları dahil) hatalıysa o personel hiç eklenmez',
+    ) // OK-46
   })
 })

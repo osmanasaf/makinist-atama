@@ -29,7 +29,7 @@ class YeniVarsayilanlarTest extends TestVeritabani {
     void ac1_taze_veritabani_yeni_varsayilanlar() {
         assertThat(sayi("SELECT count(*) FROM kural_parametre")).isEqualTo("32");
         assertThat(sayi("SELECT count(*) FROM kural_siddet")).isEqualTo("22");
-        assertThat(sayi("SELECT count(*) FROM uygulama_ayar")).isEqualTo("22");
+        assertThat(sayi("SELECT count(*) FROM uygulama_ayar")).isEqualTo("34");
         assertThat(sayi("SELECT siddet FROM kural_siddet WHERE kod = 'K-14'")).isEqualTo("KAPALI");
         assertThat(sayi("SELECT siddet FROM kural_siddet WHERE kod = 'K-23'")).isEqualTo("ENGEL");
         assertThat(sayi("SELECT deger FROM kural_parametre WHERE anahtar = 'nobet.asgari_aktarma_dk'")).isEqualTo("20");

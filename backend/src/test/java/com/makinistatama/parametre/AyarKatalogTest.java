@@ -15,15 +15,15 @@ import com.makinistatama.TestVeritabani;
 /** MK-93/94: ayar kataloğu (GET /api/ayar, YONETICI) ve uygulama ayarı yazma doğrulamaları (FR-04, NFR-03). */
 class AyarKatalogTest extends TestVeritabani {
 
-    static final Set<String> GRUPLAR = Set.of("CALISMA", "GECE", "BELGE", "PUANTAJ", "TAKAS_IZIN", "YOLCULUK", "OTOMATIK", "KADRO", "PERSONEL", "MAKINIST");
+    static final Set<String> GRUPLAR = Set.of("CALISMA", "GECE", "BELGE", "PUANTAJ", "TAKAS_IZIN", "YOLCULUK", "OTOMATIK", "KADRO", "PERSONEL", "MAKINIST", "MARJ");
 
     private static String govde(String deger, String neden) {
         return "{\"deger\":" + deger + (neden == null ? "" : ",\"neden\":\"" + neden + "\"") + "}";
     }
 
     @Test
-    void liste_yonetici22Satir_atamaci403_anonim401() throws Exception {
-        yonetici().get("/api/ayar").andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(22)))
+    void liste_yonetici34Satir_atamaci403_anonim401() throws Exception {
+        yonetici().get("/api/ayar").andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(34)))
                 .andExpect(jsonPath("$[?(@.anahtar=='gordum.kalem_gun')].deger").value(7))
                 .andExpect(jsonPath("$[?(@.anahtar=='gordum.kalem_gun')].varsayilan").value(7))
                 .andExpect(jsonPath("$[?(@.anahtar=='gordum.kalem_gun')].grup").value("MAKINIST"));
@@ -44,16 +44,16 @@ class AyarKatalogTest extends TestVeritabani {
     @Test
     void herSatirinOkunurAdiVar() throws Exception {
         var anahtarlar = jdbc.queryForList("SELECT anahtar FROM kural_parametre UNION ALL SELECT kod FROM kural_siddet UNION ALL SELECT anahtar FROM uygulama_ayar", String.class);
-        assertThat(anahtarlar).hasSize(76).allSatisfy(a -> assertThat(AyarAdlari.var(a)).as(a).isTrue());
-        assertThat(anahtarlar.stream().map(AyarAdlari::ad).distinct()).as("adlar ayırt edilebilir").hasSize(76);
+        assertThat(anahtarlar).hasSize(88).allSatisfy(a -> assertThat(AyarAdlari.var(a)).as(a).isTrue());
+        assertThat(anahtarlar.stream().map(AyarAdlari::ad).distinct()).as("adlar ayırt edilebilir").hasSize(88);
         yonetici().get("/api/ayar").andExpect(jsonPath("$[?(@.anahtar=='gordum.kalem_gun')].ad").value("Elinden alınan görev bildiriminin ekranda kalma süresi"));
         atamaci().get("/api/parametre").andExpect(jsonPath("$[?(@.anahtar=='nobet.asgari_aktarma_dk')].ad").value("Nöbet içinde asgari aktarma süresi"));
         atamaci().get("/api/kural").andExpect(jsonPath("$[?(@.kod=='K-14')].ad").value("Haftalık görev süresi"));
     }
 
     @Test
-    void tazeDb_varsayilanDegereEsit_22ayar() {
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM uygulama_ayar", Integer.class)).isEqualTo(22);
+    void tazeDb_varsayilanDegereEsit_34ayar() {
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM uygulama_ayar", Integer.class)).isEqualTo(34);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM uygulama_ayar WHERE varsayilan <> deger", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM kural_parametre WHERE varsayilan <> deger", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM kural_siddet WHERE varsayilan <> siddet", Integer.class)).isZero();

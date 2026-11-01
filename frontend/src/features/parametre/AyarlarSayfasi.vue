@@ -367,6 +367,10 @@ const degerMetni = (s: AyarSatiri, deger: string): string => {
         <div class="ayar-icerik">
           <section v-for="g in gorunenGruplar" :key="g.kod" :aria-labelledby="`grup-${g.kod}`">
             <h2 :id="`grup-${g.kod}`" tabindex="-1">{{ g.baslik }}</h2>
+            <p v-if="g.kod === 'MARJ'" class="grup-notu soluk" data-test="grup-notu-marj">
+              Bilgi amaçlıdır; engel ya da uyarı üretmez. Yorgunluk göstergesi bilimsel bir model
+              değildir.
+            </p>
             <div class="tablo-kap">
               <table class="tablo" :aria-labelledby="`grup-${g.kod}`">
                 <thead>
@@ -634,6 +638,10 @@ h2:focus-visible {
 .ayar-duzen {
   display: block;
 }
+.grup-notu {
+  margin: 0 0 var(--aralik-3);
+  font-size: var(--yazi-sm);
+}
 .grup-gezgin ul {
   display: flex;
   flex-wrap: wrap;
@@ -676,6 +684,10 @@ h2:focus-visible {
   .grup-gezgin {
     position: sticky;
     top: var(--aralik-5);
+  }
+  .grup-notu {
+    margin: 0 0 var(--aralik-3);
+    font-size: var(--yazi-sm);
   }
   .grup-gezgin ul {
     display: block;

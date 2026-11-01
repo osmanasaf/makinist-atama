@@ -169,6 +169,7 @@ public final class MakinistExcelOkuyucu {
         private final DataFormatter bicim = new DataFormatter(Locale.forLanguageTag("tr-TR"));
         private final Map<String, Gecici> makinistler = new LinkedHashMap<>(); // sicil -> geçerli makinist
         private final List<SatirHatasi> hatalar = new ArrayList<>();
+        private final Map<String, List<String>> broveSorunlari = new LinkedHashMap<>(); // OK-46: sicil -> "sayfa satır N"
         private final Set<EksikTanimAnahtari> eksik = new TreeSet<>();
         private int toplam;
 
@@ -353,6 +354,9 @@ public final class MakinistExcelOkuyucu {
                 }
                 if (!sorunlar.isEmpty()) {
                     hata(sayfaAdi, no, sicil, String.join("; ", sorunlar));
+                    if (m != null) { // OK-46: satırın herhangi bir hücresi hatalıysa makinist hiç eklenmez
+                        broveSorunlari.computeIfAbsent(sicil, anahtar -> new ArrayList<>()).add(sayfaAdi + " satır " + no);
+                    }
                 } else if (aracTipi) {
                     m.araclar.add(new MakinistIstegi.BroveAracTipiIstegi(tanimId, sinav));
                 } else {
@@ -363,7 +367,13 @@ public final class MakinistExcelOkuyucu {
 
         Sonuc sonuc() {
             List<Satir> gecerli = new ArrayList<>();
-            for (Gecici m : makinistler.values()) {
+            for (Map.Entry<String, Gecici> e : makinistler.entrySet()) {
+                Gecici m = e.getValue();
+                List<String> broveSorunu = broveSorunlari.get(e.getKey());
+                if (broveSorunu != null) {
+                    hata(MAKINIST_SAYFA, m.satirNo, e.getKey(), "Makinist eklenmedi: bröve sayfalarında hatalı satır var (" + String.join(", ", broveSorunu) + "); düzeltip dosyayı yeniden yükleyin");
+                    continue;
+                }
                 MakinistIstegi i = m.istek;
                 gecerli.add(new Satir(m.satirNo, new MakinistIstegi(i.sicil(), i.adSoyad(), i.bagliGarId(), i.durum(), i.ehliyetBitis(), i.saglikBitis(), i.psikoteknikBitis(),
                         i.sonSurus(), null, List.copyOf(m.araclar), List.copyOf(m.hatlar), i.tur()), m.uyarilar));
