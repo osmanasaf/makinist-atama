@@ -41,6 +41,10 @@ html:has(.benim) {
   border-color: var(--renk-menu-baslik);
   color: var(--renk-n-0);
 }
+.benim-ust .btn-hayalet {
+  border-color: transparent;
+  text-decoration: underline; /* kazara çıkış riski: kenarlıksız, ikincil görünüm; hedef yine >= 44 px */
+}
 .benim-ust :focus-visible {
   outline-color: var(--renk-odak-koyu);
 }
@@ -99,6 +103,7 @@ html:has(.benim) {
   border-top: 1px solid var(--renk-cizgi);
 }
 .benim-sekmeler a {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 3.5rem;
@@ -112,6 +117,11 @@ html:has(.benim) {
   color: var(--renk-metin-ikincil);
   border-top: 3px solid transparent;
 }
+.benim-sekmeler .sekme-rozet {
+  position: absolute;
+  top: var(--aralik-2);
+  left: calc(50% + 0.75rem);
+}
 .benim-sekmeler a.router-link-active {
   background: var(--renk-bilgi-zemin);
   border-top-color: var(--renk-birincil);
@@ -119,29 +129,26 @@ html:has(.benim) {
   font-weight: var(--yazi-agirlik-kalin);
 }
 
-/* ikincil girişler (Konaklamam, Takas taleplerim): sekme altı değil, görev listesinin üstünde iki büyük hedef */
+/* ikincil girişler (Konaklamam, Takas taleplerim): H8 — görev listesinin ALTINDA küçük bağlantılar; dokunma hedefi yine >= 44 px */
 .benim-kisayollar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
-  gap: var(--aralik-3);
-  margin-bottom: var(--aralik-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aralik-2) var(--aralik-5);
+  margin-top: var(--aralik-6);
+  padding-top: var(--aralik-4);
+  border-top: 1px solid var(--renk-cizgi);
 }
 .benim-kisayol {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--aralik-3);
-  min-height: 3rem;
-  padding: var(--aralik-3) var(--aralik-4);
-  background: var(--renk-yuzey);
-  border: 1px solid var(--renk-kontrol-kenar);
-  border-radius: var(--yaricap);
-  color: var(--renk-metin);
+  min-height: 2.75rem;
+  color: var(--renk-birincil-koyu);
   font-weight: var(--yazi-agirlik-orta);
-  text-decoration: none;
 }
 .benim-kisayol:hover {
-  background: var(--renk-n-100);
+  text-decoration: underline;
 }
 
 /* görev kartları */
@@ -160,6 +167,10 @@ html:has(.benim) {
   margin-bottom: 0;
 }
 /* durum şeridi: sol çizgi (YENİ mavi, DEĞİŞTİ sarı, İPTAL/kaldırılan kırmızı) + rozet metni; çizgi süstür, anlam rozette */
+/* "Sonraki görev": en üstte tek bakışta saat + kalan süre; büyük saat */
+.sonraki-kart .benim-saat {
+  font-size: var(--yazi-2xl);
+}
 .benim-kart.yeni {
   border-left: 4px solid var(--renk-birincil);
 }

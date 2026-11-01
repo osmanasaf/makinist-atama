@@ -8,12 +8,22 @@ import type { SimgeAdi } from '@/bilesenler/simgeler'
 import type { Ton } from '@/bilesenler/durum'
 import NobetNotu from './NobetNotu.vue'
 import { ROL_ETIKETLERI, type Aday, type AtamaRolu } from './atamaApi'
+import { onerilenAday, ortalamayaFark } from './hizliDoldur'
 
 const props = defineProps<{
   adaylar: Aday[]
   yukleniyor?: boolean
   hata?: string
 }>()
+/** Sunucu sırasındaki ilk temiz aday (MK-151): satırda "Önerilen" rozeti; masa hızlı atamada bu satıra odak verir. */
+const onerilen = computed(() => onerilenAday(props.adaylar))
+/** OK-35: aday havuzu ortalamasına göre fark (yalnız bilgi; yolcuda yok). */
+const farklar = computed(() => ortalamayaFark(props.adaylar, rol.value))
+const farkVar = computed(() => farklar.value.size > 0)
+const farkMetni = (a: Aday) => {
+  const f = farklar.value.get(a.makinistId)
+  return f == null ? '—' : f > 0 ? `+%${f}` : f < 0 ? `-%${-f}` : '%0'
+}
 const ihlalMetinleri = computed(() => props.adaylar.flatMap((a) => a.ihlaller.map((i) => i.metin)))
 const rol = defineModel<AtamaRolu>('rol', { required: true })
 const emit = defineEmits<{ sec: [aday: Aday]; yolculukOner: [aday: Aday] }>()
@@ -25,8 +35,8 @@ const yolculukOnerilebilir = (a: Aday) =>
   a.buSeferdeRol === null &&
   a.ihlaller.some((i) => i.kod === 'K-20')
 
-/** Seçilebilir = engeli yok ve bu seferde zaten görevli değil. */
-const secilebilir = (a: Aday) => a.uygun && a.buSeferdeRol === null
+/** Seçilebilir = liste yüklenmiyor (D1/B-01: eski seferin listesi), engeli yok ve bu seferde zaten görevli değil. */
+const secilebilir = (a: Aday) => !props.yukleniyor && a.uygun && a.buSeferdeRol === null
 
 function sec(a: Aday) {
   if (secilebilir(a)) emit('sec', a)
@@ -53,6 +63,19 @@ const ihlalSimgesi = (i: Aday['ihlaller'][number]): SimgeAdi =>
 // Yaylanan (roving) odak: satırlar ↑/↓ ile gezilir, Tab listeye tek durakla girer.
 const odak = ref(0)
 const govde = ref<HTMLElement | null>(null)
+
+/** Önerilen (yoksa ilk) satıra odak: masa, kullanıcı panele geçmişken sefer ilerleyince çağırır (MK-154). */
+function odakla(): boolean {
+  const i = Math.max(
+    0,
+    props.adaylar.findIndex((a) => a === onerilen.value),
+  )
+  const satir = govde.value?.querySelectorAll<HTMLElement>('tr[data-aday]')[i]
+  odak.value = i
+  satir?.focus()
+  return !!satir
+}
+defineExpose({ odakla })
 
 /** Yalnız satırın KENDİSİNDEKİ tuşlar: satır içindeki özet (+N ihlal daha) ve düğmeler kendi Enter/Boşluk davranışını korur (W2). */
 function tus(e: KeyboardEvent, i: number, a: Aday) {
@@ -82,6 +105,7 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
       <!-- Satırlar CSS grid (ad | saat | km, altında durum): tablo anlamı rol öznitelikleriyle korunur. -->
       <table
         class="tablo aday-tablo"
+        :class="{ 'fark-var': farkVar }"
         role="table"
         aria-label="Aday personel"
         :aria-busy="yukleniyor"
@@ -93,6 +117,14 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
             <th role="columnheader" class="sayisal">Bu ay saat</th>
             <th role="columnheader" class="sayisal">Bu ay km</th>
             <th role="columnheader" class="gorunmez">Durum</th>
+            <th
+              v-if="farkVar"
+              role="columnheader"
+              class="sayisal kol-fark"
+              title="Bu ay saatinin aday havuzu ortalamasına göre farkı (yalnız bilgi; sıralamayı etkilemez)"
+            >
+              Fark
+            </th>
           </tr>
         </thead>
         <tbody ref="govde" role="rowgroup">
@@ -128,6 +160,7 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
                 :metin="durumEtiketi(a)"
                 boyut="sm"
               />
+              <Rozet v-if="a === onerilen" ton="basari" metin="Önerilen" boyut="sm" />
               <ul v-if="a.ihlaller.length > 0" class="ihlal-listesi">
                 <li>
                   <Simge :ad="ihlalSimgesi(a.ihlaller[0]!)" boyut="1em" />
@@ -153,6 +186,9 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
                 Yolculuk öner
               </button>
             </td>
+            <td v-if="farkVar" role="cell" class="sayisal aday-fark">
+              {{ farkMetni(a) }}
+            </td>
           </tr>
           <tr v-if="!yukleniyor && adaylar.length === 0" role="row" class="aday-bos">
             <td role="cell" colspan="5">
@@ -167,6 +203,9 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
         </tbody>
       </table>
     </div>
+    <p v-if="farkVar" class="soluk fark-notu">
+      Fark: bu ay saatinin aday havuzu ortalamasına göre farkı; yalnız bilgi.
+    </p>
     <NobetNotu :metinler="ihlalMetinleri" />
   </div>
 </template>
@@ -261,8 +300,21 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
   background: none;
   white-space: nowrap;
 }
+.aday-tablo.fark-var tr {
+  grid-template-columns: 1.4rem minmax(0, 1fr) 4.5rem 4rem 3.5rem;
+}
+.aday-tablo td.aday-fark,
+.aday-tablo th.kol-fark {
+  grid-column: 5;
+  grid-row: 1;
+}
+.fark-notu {
+  margin: var(--aralik-2) 0 0;
+  font-size: var(--yazi-xs);
+}
 .aday-tablo td.aday-durum {
   grid-column: 2 / -1;
+  grid-row: 2;
   white-space: normal;
   margin-top: var(--aralik-2);
 }

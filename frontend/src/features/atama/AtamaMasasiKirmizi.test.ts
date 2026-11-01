@@ -20,7 +20,7 @@ vi.mock('./atamaApi', async (orijinal) => ({
 
 import AtamaMasasi from './AtamaMasasi.vue'
 import { atamaApi, type GunListesi, type Oneri, type UygunSefer } from './atamaApi'
-import { makinist, satir } from './testVerisi'
+import { eylemTetikle, makinist, satir } from './testVerisi'
 
 const bos = { template: '<div />' }
 const ali = makinist()
@@ -185,9 +185,10 @@ describe('AtamaMasasi: kırmızı, uyarı, sayaç', () => {
     const { w } = await kur()
     await satirlar(w)[4]!.trigger('click')
     await flushPromises()
-    await w.get('tr.aday').trigger('click')
-    await w.get('dialog form').trigger('submit')
+    await w.get('tr.aday').trigger('click') // K8: temiz aday → diyalog yok, doğrudan atanır
     await flushPromises()
+    expect(w.find('dialog').exists()).toBe(false)
+    expect(atamaApi.ata).toHaveBeenCalledTimes(1)
     expect(atamaApi.kirmiziSayisi).toHaveBeenCalledTimes(2)
   })
 
@@ -195,10 +196,12 @@ describe('AtamaMasasi: kırmızı, uyarı, sayaç', () => {
     it('düğmeler iptal olmayan satırlarda var, iptal satırında yok', async () => {
       const { w } = await kur()
       const s = satirlar(w)
+      await s[0]!.get('button[aria-haspopup="menu"]').trigger('click') // K7: eylemler ⋯ menüsünde
       expect(s[0]!.find('button[aria-label^="T1001"][aria-label$="gecikme gir"]').exists()).toBe(
         true,
       )
       expect(s[0]!.find('button[aria-label$="iptal et"]').exists()).toBe(true)
+      expect(s[2]!.find('button[aria-haspopup="menu"]').exists()).toBe(false) // iptal satırında menü yok
       expect(s[2]!.find('button[aria-label$="gecikme gir"]').exists()).toBe(false)
       expect(s[2]!.find('button[aria-label$="iptal et"]').exists()).toBe(false)
     })
@@ -206,7 +209,7 @@ describe('AtamaMasasi: kırmızı, uyarı, sayaç', () => {
     it('Gecikme: diyalog, doğru gövde; başarıda gün ve sayaç yenilenir, bilgi gösterilir', async () => {
       vi.mocked(atamaApi.seferGecikme).mockResolvedValue(sefer)
       const { w } = await kur()
-      await satirlar(w)[0]!.get('button[aria-label$="gecikme gir"]').trigger('click')
+      await eylemTetikle(satirlar(w)[0]!, 'gecikme gir')
       expect(w.get('dialog').text()).toContain('Gecikme gir')
       await w.get('#sefer-kalkis-gecikme').setValue('45')
       await w.get('#sefer-neden').setValue('GECIKME')
@@ -227,7 +230,7 @@ describe('AtamaMasasi: kırmızı, uyarı, sayaç', () => {
     it('İptal: geri alınamaz uyarısı, doğru gövde, yenileme', async () => {
       vi.mocked(atamaApi.seferIptal).mockResolvedValue(sefer)
       const { w } = await kur()
-      await satirlar(w)[1]!.get('button[aria-label$="iptal et"]').trigger('click')
+      await eylemTetikle(satirlar(w)[1]!, 'iptal et')
       expect(w.get('dialog').text()).toContain('Bu işlem geri alınamaz')
       await w.get('#sefer-neden').setValue('HASTALIK')
       await w.get('dialog form').trigger('submit')
@@ -247,6 +250,8 @@ describe('AtamaMasasi: kırmızı, uyarı, sayaç', () => {
       const { w } = await kur()
       const s = satirlar(w)
       expect(s[4]!.find('button[aria-label$="yerine ata"]').exists()).toBe(false) // BOŞ
+      expect(s[4]!.get('button[aria-label$="seferine ata"]').classes()).toContain('btn-birincil') // K6: boş satırda birincil "Ata"
+      expect(s[0]!.find('button[aria-label$="seferine ata"]').exists()).toBe(false)
       expect(s[0]!.get('button[aria-label$="yerine ata"]').classes()).not.toContain('btn-birincil')
       expect(s[1]!.get('button[aria-label$="yerine ata"]').classes()).toContain('btn-birincil')
     })

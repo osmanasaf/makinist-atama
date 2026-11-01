@@ -46,12 +46,6 @@ async function yukle() {
   }
 }
 onMounted(yukle)
-
-const fark = computed(() => {
-  const f = veri.value?.farkYuzde
-  if (f === null || f === undefined) return 'Ortalama yok'
-  return `${f > 0 ? '+' : ''}${sayi.format(f)} %`
-})
 </script>
 
 <template>
@@ -102,24 +96,12 @@ const fark = computed(() => {
           <dt>İzin günü</dt>
           <dd>{{ veri.izinGunu }}</dd>
         </div>
-        <div>
-          <dt>Ortalamaya fark</dt>
-          <dd>
-            {{ fark }}
-            <small class="soluk"
-              >Görev saatinizin aynı türdeki personelin ortalamasına göre farkı.</small
-            >
-          </dd>
-        </div>
       </dl>
       <p class="soluk">
         Planlanan seferler dahildir (gerçekleşen değil).
         <template v-if="veri.yolculukSayisi">
           Yolcu olarak gittiğiniz {{ veri.yolculukSayisi }} yolculuk sefer sayısına girmez; süresi
           görev saatinize dahildir, km toplamına eklenmez.
-        </template>
-        <template v-if="veri.ortalamaSaat > 0">
-          Ortalama görev saati: {{ sayi.format(veri.ortalamaSaat) }}.
         </template>
         <template v-if="veri.kmBilinmeyenSefer > 0">
           {{ veri.kmBilinmeyenSefer }} seferin km bilgisi girilmediği için km toplamına dahil

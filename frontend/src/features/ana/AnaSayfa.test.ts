@@ -9,8 +9,9 @@ import type { GunListesi, GunSatiri } from '@/features/atama/atamaApi'
 import type { BelgeDurumuYaniti } from '@/features/belge/belgeApi'
 
 vi.mock('@/features/atama/atamaApi', () => ({
-  atamaApi: { gun: vi.fn(), kirmiziSayisi: vi.fn() },
+  atamaApi: { gun: vi.fn(), kirmiziSayisi: vi.fn(), gordumOzeti: vi.fn() },
 }))
+vi.mock('@/features/takas/takasApi', () => ({ takasApi: { liste: vi.fn() } }))
 vi.mock('@/features/belge/belgeApi', () => ({ belgeApi: { durum: vi.fn() } }))
 vi.mock('@/features/rapor/raporApi', () => ({
   raporApi: { izinListe: vi.fn() },
@@ -28,6 +29,7 @@ vi.mock('./demoApi', () => ({
 import { atamaApi } from '@/features/atama/atamaApi'
 import { belgeApi } from '@/features/belge/belgeApi'
 import { raporApi } from '@/features/rapor/raporApi'
+import { takasApi } from '@/features/takas/takasApi'
 import AnaSayfa from './AnaSayfa.vue'
 import { demoApi } from './demoApi'
 
@@ -120,9 +122,9 @@ afterEach(() => kurulan.splice(0).forEach((w) => w.unmount()))
 async function kur() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ['/', '/atama', '/seferler/yukle', '/belgeler', '/izin'].map((path, i) => ({
+    routes: ['/', '/atama', '/seferler/yukle', '/belgeler', '/izin', '/takas'].map((path, i) => ({
       path,
-      name: ['ana', 'atama', 'sefer-yukle', 'belgeler', 'izin'][i],
+      name: ['ana', 'atama', 'sefer-yukle', 'belgeler', 'izin', 'takas'][i],
       component: { template: '<div />' },
     })),
   })
@@ -156,9 +158,20 @@ describe('AnaSayfa', () => {
       bit: '2026-10-18',
       kirmiziSefer: 3,
       kirmiziAtama: 4,
+      ilkKirmiziGun: '2026-10-13',
     })
     vi.mocked(belgeApi.durum).mockResolvedValue(belgeYaniti)
     vi.mocked(raporApi.izinListe).mockResolvedValue([{ id: 1 }, { id: 2 }] as never)
+    vi.mocked(atamaApi.gordumOzeti).mockResolvedValue({
+      bas: '',
+      bit: '',
+      toplam: 5,
+      gorulen: 3,
+      gorulmeyen: 2,
+      hesapsiz: 0,
+      uyari: 0,
+    })
+    vi.mocked(takasApi.liste).mockResolvedValue({ bekleyen: 1, talepler: [] })
     vi.mocked(demoApi.durum).mockRejectedValue(new ApiHata(404, 'BULUNAMADI', 'yok'))
   })
 
@@ -195,6 +208,102 @@ describe('AnaSayfa', () => {
     expect(w.get('[data-test=kart-belge]').text()).toContain('Belge hatası')
     expect(w.get('[data-test=kart-sefer]').text()).toContain('4')
     expect(w.get('[data-test=kart-kirmizi]').text()).toContain('3')
+  })
+
+  describe('Bugün yapılacaklar (H1+O2, AK-6.x)', () => {
+    const kalemler = (w: Awaited<ReturnType<typeof kur>>) =>
+      w.findAll('[data-test=yapilacaklar] > li')
+    const bugunTarihi = () =>
+      new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Istanbul' })
+
+    it('AK-6.1: aciliyete göre sıralı <ol>; her kalemde tek eylem bağlantısı (<a>, buton değil)', async () => {
+      const w = await kur()
+      const l = kalemler(w)
+      expect(w.get('[data-test=yapilacaklar]').element.tagName).toBe('OL')
+      expect(l.map((x) => x.attributes('data-kimlik'))).toEqual([
+        'kirmizi',
+        'atanmamis',
+        'gorulmeyen',
+        'takas',
+        'izin',
+        'belge',
+      ])
+      for (const x of l) {
+        expect(x.findAll('a')).toHaveLength(1)
+        expect(x.findAll('button')).toHaveLength(0)
+      }
+      expect(l[0]!.text()).toContain('3 sefer kontrol bekliyor')
+      expect(l[1]!.text()).toContain('1 sefer atanmamış') // yalnız #2 (bitmeyen)
+      expect(l[1]!.text()).toContain('1 seferin kalkışı geçti') // test verisinde kalkış 2000 yılında; sefer henüz bitmedi
+      expect(l[2]!.text()).toContain('2 atamayı makinist henüz görmedi')
+      expect(l[3]!.text()).toContain('1 takas talebi')
+      expect(l[4]!.text()).toContain('2 izin talebi')
+      expect(l[5]!.text()).toContain('1 belgenin süresi doldu')
+    })
+
+    it('AK-6.2/6.4: kırmızı bağlantısı İLK KIRMIZI GÜNÜ + kirmizi süzgecini açar; atanmamış bugünü + bitmeyen (atanmamış) süzgecini', async () => {
+      const w = await kur()
+      const l = kalemler(w)
+      expect(l[0]!.get('a').attributes('href')).toBe('/atama?tarih=2026-10-13&suzgec=kirmizi')
+      expect(l[1]!.get('a').attributes('href')).toBe(
+        `/atama?tarih=${bugunTarihi()}&suzgec=bitmeyen`,
+      )
+      expect(l[2]!.get('a').attributes('href')).toBe(
+        `/atama?tarih=${bugunTarihi()}&suzgec=gormeyen`,
+      )
+      expect(l[3]!.get('a').attributes('href')).toBe('/takas')
+      expect(l[4]!.get('a').attributes('href')).toBe('/izin')
+      expect(l[5]!.get('a').attributes('href')).toBe('/belgeler')
+    })
+
+    it('B-2 yokken (ilkKirmiziGun alanı yok) kırmızı bağlantısı bugüne düşer', async () => {
+      vi.mocked(atamaApi.kirmiziSayisi).mockResolvedValue({
+        bas: '',
+        bit: '',
+        kirmiziSefer: 1,
+        kirmiziAtama: 1,
+      })
+      const w = await kur()
+      expect(kalemler(w)[0]!.get('a').attributes('href')).toBe(
+        `/atama?tarih=${bugunTarihi()}&suzgec=kirmizi`,
+      )
+    })
+
+    it('mevcut 4 sayı kartı aşağıda KALIR ve bağlantıları derin bağlantıdır', async () => {
+      const w = await kur()
+      expect(w.get('[data-test=kart-kirmizi] a').attributes('href')).toBe(
+        '/atama?tarih=2026-10-13&suzgec=kirmizi',
+      )
+      expect(w.get('[data-test=kart-sefer] a').attributes('href')).toBe(
+        `/atama?tarih=${bugunTarihi()}`,
+      )
+    })
+
+    it('AK-6.5: bir kaynak düşerse yalnız o satır hata verir, diğer kalemler durur', async () => {
+      vi.mocked(takasApi.liste).mockRejectedValue(new ApiHata(500, 'SUNUCU_HATASI', 'Takas hatası'))
+      const w = await kur()
+      expect(kalemler(w).map((x) => x.attributes('data-kimlik'))).not.toContain('takas')
+      expect(kalemler(w).length).toBe(5)
+      expect(w.get('[data-test=yapilacak-hata]').text()).toContain('Takas hatası')
+      expect(w.get('[data-test=yapilacak-hata]').attributes('role')).toBe('alert')
+    })
+
+    it('AK-6.5: hiç iş yokken "bekleyen iş yok" durumu; liste çizilmez', async () => {
+      vi.mocked(atamaApi.gun).mockResolvedValue(gun([satir(1, { makinistler: [asil] })]))
+      vi.mocked(atamaApi.kirmiziSayisi).mockResolvedValue({
+        bas: '',
+        bit: '',
+        kirmiziSefer: 0,
+        kirmiziAtama: 0,
+      })
+      vi.mocked(atamaApi.gordumOzeti).mockResolvedValue({ gorulmeyen: 0 } as never)
+      vi.mocked(takasApi.liste).mockResolvedValue({ bekleyen: 0, talepler: [] })
+      vi.mocked(raporApi.izinListe).mockResolvedValue([])
+      vi.mocked(belgeApi.durum).mockResolvedValue({ ...belgeYaniti, makinistler: [] })
+      const w = await kur()
+      expect(w.find('[data-test=yapilacaklar]').exists()).toBe(false)
+      expect(w.get('[data-test=yapilacak-yok]').text()).toContain('sizi bekleyen iş yok')
+    })
   })
 
   describe('demo veri', () => {

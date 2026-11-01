@@ -102,9 +102,9 @@ public class AtamaController {
 
     @DeleteMapping("/sefer/{seferId}")
     public ResponseEntity<KaldirSonucuDto> kaldir(@PathVariable long seferId, @RequestParam(defaultValue = "ASIL") AtamaRol rol, @RequestParam(required = false) Long makinistId,
-            @RequestParam(required = false) Neden neden, @RequestParam(required = false) String nedenNotu) {
-        // makinistId yalnız rol=YOLCU için zorunlu (bir seferde birden çok yolcu olabilir). 204; kaldırma başka atamayı ya da aynı makinistin intikalini yeni kırmızı yaptıysa 200 + etkilenenler
-        KaldirSonucuDto s = servis.kaldir(seferId, rol, makinistId, neden, nedenNotu);
+            @RequestParam(required = false) Neden neden, @RequestParam(required = false) String nedenNotu, @RequestParam(required = false) Long atamaId) {
+        // makinistId yalnız rol=YOLCU için zorunlu (bir seferde birden çok yolcu olabilir). atamaId (OK-37, Geri al yarışı): verilirse ve güncel atama o kimlik değilse 409. 204; kaldırma başka atamayı ya da aynı makinistin intikalini yeni kırmızı yaptıysa 200 + etkilenenler
+        KaldirSonucuDto s = servis.kaldir(seferId, rol, makinistId, atamaId, neden, nedenNotu);
         return s.yeniKirmizi().isEmpty() && s.yeniKirmiziIntikal().isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(s);
     }
 

@@ -23,6 +23,8 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
   const adaylar = ref<Aday[]>([])
   const adayHatasi = ref('')
   const adayYukleniyor = ref(false)
+  /** `adaylar` listesinin ait olduğu "sefer:rol" (D1/B-01): seçim değişince bayat liste ile atama yapılmasın. */
+  const adayAnahtari = ref('')
   /** Seçili gün + sonraki 7 gün için kırmızı sayaç; yüklenemezse null (masa yine çalışır). */
   const kirmizi = ref<KirmiziSayisi | null>(null)
   /** Seçili gün + sonraki 7 gün için "kim gördü" sayacı; yüklenemezse null. */
@@ -67,16 +69,22 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
     adayHatasi.value = ''
     if (seciliId.value === null) {
       adaylar.value = []
+      adayAnahtari.value = ''
       adayYukleniyor.value = false
       return
     }
     adayYukleniyor.value = true
+    const anahtar = `${seciliId.value}:${rol.value}`
     try {
       const sonuc = await atamaApi.adaylar(seciliId.value, rol.value)
-      if (sira === adaySayac) adaylar.value = sonuc
+      if (sira === adaySayac) {
+        adaylar.value = sonuc
+        adayAnahtari.value = anahtar
+      }
     } catch (e) {
       if (sira !== adaySayac) return
       adaylar.value = []
+      adayAnahtari.value = ''
       adayHatasi.value = hataMetni(e, 'Adaylar yüklenemedi.')
     } finally {
       if (sira === adaySayac) adayYukleniyor.value = false
@@ -151,6 +159,7 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
     adaylar,
     adayHatasi,
     adayYukleniyor,
+    adayAnahtari,
     atanmamisSayisi,
     kirmizi,
     gordum,

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { bugun, gunKaydir, saatBicimle, tarihBicimle, zamanBicimle } from './tarih'
+import { bugun, gunKaydir, kalanMetni, saatBicimle, tarihBicimle, zamanBicimle } from './tarih'
 
 afterEach(() => vi.useRealTimers())
 
@@ -38,5 +38,22 @@ describe('tarih', () => {
   it('gunKaydir ay/yıl sınırını geçer', () => {
     expect(gunKaydir('2026-10-31', 1)).toBe('2026-11-01')
     expect(gunKaydir('2026-01-01', -1)).toBe('2025-12-31')
+  })
+})
+
+describe('kalanMetni (H1/H8: "31 dk sonra", "3 sa 20 dk sonra")', () => {
+  const t0 = Date.parse('2026-10-23T06:00:00Z')
+  const sonra = (dk: number) => t0 + dk * 60_000
+  it('dakikaya yukarı yuvarlar; saat ve dakika birlikte, tam saatte dakika yok', () => {
+    expect(kalanMetni(sonra(31), t0)).toBe('31 dk sonra')
+    expect(kalanMetni(t0 + 30_001, t0)).toBe('1 dk sonra')
+    expect(kalanMetni(sonra(60), t0)).toBe('1 sa sonra')
+    expect(kalanMetni(sonra(200), t0)).toBe('3 sa 20 dk sonra')
+  })
+  it('geçmiş ya da şimdi → "şimdi"; 48 saatten uzak → gün', () => {
+    expect(kalanMetni(t0, t0)).toBe('şimdi')
+    expect(kalanMetni(sonra(-5), t0)).toBe('şimdi')
+    expect(kalanMetni(sonra(47 * 60), t0)).toBe('47 sa sonra')
+    expect(kalanMetni(sonra(50 * 60), t0)).toBe('2 gün sonra')
   })
 })

@@ -53,6 +53,22 @@
   --renk-rol-yolcu-metin: #4a5568;
   --renk-rol-yolcu-zemin: #eef0f4;
 
+  /* ---- zaman çizelgesi çubukları (B1, MK-159): anlamsal takma ad; kontrast çiftleri belirtecler.test.ts'te ---- */
+  --renk-cubuk-dolu: var(--renk-p-600);
+  --renk-cubuk-dolu-yazi: var(--renk-n-0);
+  --renk-cubuk-bos-zemin: var(--renk-uyari-zemin);
+  --renk-cubuk-bos-cizgi: var(--renk-uyari-cizgi);
+  --renk-cubuk-bos-yazi: var(--renk-uyari-metin);
+  --renk-cubuk-kirmizi: var(--renk-engel-dolu);
+  --renk-cubuk-kirmizi-desen: var(--renk-tehlike-koyu);
+  --renk-cubuk-kirmizi-yazi: var(--renk-n-0);
+  --renk-cubuk-iptal-zemin: var(--renk-n-50);
+  --renk-cubuk-iptal-cizgi: var(--renk-n-400);
+  --renk-cubuk-iptal-yazi: var(--renk-n-500);
+  --renk-cubuk-gece: var(--renk-gece-zemin);
+  --renk-cubuk-izgara: var(--renk-n-200);
+  --renk-cubuk-simdi: var(--renk-n-900);
+
   /* ---- anlamsal takma adlar (bileşenlerin kullandığı) ---- */
   --renk-zemin: var(--renk-n-50);
   --renk-yuzey: var(--renk-n-0);

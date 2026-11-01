@@ -17,7 +17,7 @@ vi.mock('@/features/sefer/seferApi', () => ({ seferApi: { getir: vi.fn() } }))
 import AtamaMasasi from './AtamaMasasi.vue'
 import { atamaApi, type GunListesi } from './atamaApi'
 import { seferApi, type Sefer } from '@/features/sefer/seferApi'
-import { satir } from './testVerisi'
+import { eylemTetikle, satir } from './testVerisi'
 
 const bos = { template: '<div />' }
 const GELECEK = '2099-01-01T05:00:00Z'
@@ -47,13 +47,18 @@ async function kur() {
   return w
 }
 type W = Awaited<ReturnType<typeof kur>>
-const birlestirDugmeleri = (w: W) =>
-  w.findAll('tr.sefer-satiri').map((r) => r.findAll('button').some((b) => b.text() === 'Birleştir'))
-const satirDugmesi = (w: W, i: number) =>
-  w
-    .findAll('tr.sefer-satiri')
-    [i]!.findAll('button')
-    .find((b) => b.text() === 'Birleştir')!
+/** K7: Birleştir artık ⋯ menüsünde; menü satır satır açılıp "Birleştir" öğesi aranır (menüsüz satır = false). */
+async function birlestirDugmeleri(w: W) {
+  const sonuc: boolean[] = []
+  for (const r of w.findAll('tr.sefer-satiri')) {
+    const menu = r.find('button[aria-haspopup="menu"]')
+    if (menu.exists()) await menu.trigger('click')
+    sonuc.push(r.findAll('[role="menuitem"]').some((b) => b.text() === 'Birleştir'))
+  }
+  return sonuc
+}
+const birlestirTetikle = (w: W, i: number) =>
+  eylemTetikle(w.findAll('tr.sefer-satiri')[i]!, 'seferini birleştir')
 
 describe('AtamaMasasi: Birleştir', () => {
   beforeEach(() => {
@@ -82,12 +87,12 @@ describe('AtamaMasasi: Birleştir', () => {
 
   it('"Birleştir" yalnız parçalı + PLANLI satırda görünür', async () => {
     const w = await kur()
-    expect(birlestirDugmeleri(w)).toEqual([true, false, false, true])
+    expect(await birlestirDugmeleri(w)).toEqual([true, false, false, true])
   })
 
   it('tıklayınca diyalog açılır (satır seçilmez); vazgeçince kapanır ve masa yenilenmez', async () => {
     const w = await kur()
-    await satirDugmesi(w, 0).trigger('click')
+    await birlestirTetikle(w, 0)
     await flushPromises()
     expect(w.find('dialog').exists()).toBe(true)
     expect(atamaApi.birlestir).toHaveBeenCalledWith(1, { versiyon: 3, onizle: true })
@@ -102,7 +107,7 @@ describe('AtamaMasasi: Birleştir', () => {
 
   it('başarıda diyalog kapanır, yeniKirmizi bildirimi gösterilir ve masa yenilenir', async () => {
     const w = await kur()
-    await satirDugmesi(w, 3).trigger('click')
+    await birlestirTetikle(w, 3)
     await flushPromises()
     await w.get('dialog form').trigger('submit')
     await flushPromises()

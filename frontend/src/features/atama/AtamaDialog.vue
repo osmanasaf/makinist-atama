@@ -15,7 +15,7 @@ import {
   type AtamaNedeni,
   type AtamaRolu,
   type GunMakinisti,
-  type KaldirSonucu,
+  kaldirMesaji,
 } from './atamaApi'
 
 /**
@@ -80,20 +80,6 @@ const nedenMetni = computed(() => {
 
 function vazgec() {
   if (!mesgul.value) emit('kapat', hataOldu)
-}
-
-/** Kaldırma başka atamayı kırmızı yaptıysa (ör. nöbet bölünür, ardışık gece haftası K-18) atamacıya söylenir. */
-function kaldirMesaji(sonuc?: KaldirSonucu): string {
-  const gorevler = [
-    ...(sonuc?.yeniKirmizi ?? []).map((y) => ({ ad: y.trenNo, neden: y.nedenler[0] })),
-    ...(sonuc?.yeniKirmiziIntikal ?? []).map((y) => ({ ad: y.ozet, neden: y.nedenler[0] })),
-  ]
-  if (gorevler.length === 0) return 'Atama kaldırıldı.'
-  const ozet = gorevler
-    .slice(0, 3)
-    .map((y) => `${y.ad} (${y.neden ?? 'kural ihlali'})`)
-    .join('; ')
-  return `Atama kaldırıldı. Dikkat: bu makinistin ${gorevler.length} başka görevi kırmızı oldu: ${ozet}${gorevler.length > 3 ? ' …' : ''}`
 }
 
 async function onayla() {

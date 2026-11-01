@@ -21,5 +21,9 @@ const sinif = computed(() => [
 </script>
 
 <template>
-  <span :class="sinif"><Simge v-if="simge" :ad="simge" boyut="1em" />{{ metin }}</span>
+  <span :class="sinif"
+    ><Simge v-if="simge" :ad="simge" boyut="1em" /><span class="rozet-metin">{{
+      metin
+    }}</span></span
+  >
 </template>

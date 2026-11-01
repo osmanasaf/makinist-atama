@@ -121,15 +121,16 @@ describe('BenimGorevler: gördüm', () => {
     )
     const w = await kur()
     const kartlar = w.findAll('article')
+    // H8: onay bekleyenler üstte ve DEĞİŞTİ önce; Gördünüz kartı gün grubunda kalır
     expect(kartlar.map((k) => k.classes().filter((c) => ['yeni', 'degisti'].includes(c)))).toEqual([
-      ['yeni'],
       ['degisti'],
+      ['yeni'],
       [],
     ])
-    const yeni = kartlar[0]!.get('.rozet-bilgi')
+    const yeni = kartlar[1]!.get('.rozet-bilgi')
     expect(yeni.text()).toBe('YENİ')
     expect(yeni.get('svg').attributes('data-simge')).toBe('bilgi')
-    const degisti = kartlar[1]!.get('.rozet-uyari')
+    const degisti = kartlar[0]!.get('.rozet-uyari')
     expect(degisti.text()).toContain('DEĞİŞTİ')
     expect(degisti.get('svg').attributes('data-simge')).toBe('uyari')
     expect(kartlar[2]!.get('.rozet-basari svg').attributes('data-simge')).toBe('basari')
@@ -277,7 +278,9 @@ describe('BenimGorevler: yoklama', () => {
     await w.get('article button').trigger('click')
     await flushPromises()
     expect(w.find('article button').exists()).toBe(false) // düğme kalktı
-    expect(document.activeElement).toBe(w.get('article').element)
+    // H8 (AK-7.3): kart "Onayınızı bekleyenler"den gün grubuna geçti; onay kalmadığından odak sayfa başlığına gider (BODY'ye düşmez)
+    expect(document.activeElement).not.toBe(document.body)
+    expect(document.activeElement).toBe(w.get('h1').element)
     expect(rozetMetni.value).toMatch(/^Gördünüz: T1. 1 görev listelendi/)
   })
 })

@@ -66,7 +66,11 @@ describe('parça etiketi (F2c, FR-08)', () => {
     const tren = w.findAll('tr.sefer-satiri').map((tr) => tr.findAll('td')[1]!.text())
 
     expect(tren).toEqual(['DE-1503 · 1/2', 'DE-1503 · 2/2', 'T1003'])
+    // K7: gecikme eylemi ⋯ menüsünde; satır satır açılır
+    const satirlar = w.findAll('tr.sefer-satiri')
+    await satirlar[1]!.get('button[aria-haspopup="menu"]').trigger('click')
     expect(w.find('[aria-label="DE-1503 · 2/2 seferine gecikme gir"]').exists()).toBe(true)
+    await satirlar[2]!.get('button[aria-haspopup="menu"]').trigger('click')
     expect(w.find('[aria-label="T1003 seferine gecikme gir"]').exists()).toBe(true)
   })
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import Diyalog from '@/bilesenler/Diyalog.vue'
 import Simge from '@/bilesenler/Simge.vue'
@@ -32,7 +32,8 @@ const iptalMi = props.kip === 'iptal'
 // "Sefer iptali" nedeni yalnız iptal akışında anlamlı.
 const nedenler = Object.entries(NEDEN_ETIKETLERI).filter(([k]) => iptalMi || k !== 'IPTAL')
 
-const neden = ref<AtamaNedeni | ''>('')
+// Gecikme kipinde neden varsayılan "Gecikme" (H4: yazma/seçim gerekmesin); iptalde bilinçli seçim gerekir.
+const neden = ref<AtamaNedeni | ''>(iptalMi ? '' : 'GECIKME')
 const nedenNotu = ref('')
 // type=number girdisinde v-model sayıya çevirir (boşsa '' kalır).
 const kalkis = ref<string | number>(props.kalkisGecikmeDk ?? 0)
@@ -46,6 +47,23 @@ const varis = ref<string | number>(
 const sonrakiVar =
   props.parcaNo != null && props.parcaSayisi != null && props.parcaNo < props.parcaSayisi
 const devam = ref(true)
+
+// Hızlı gecikme (H4): toplam gecikme çipleri; tıklayınca değer yazılır, odak dk alanına döner (Enter gönderir).
+const CIPLER = [15, 30, 60, 90, 120]
+const kalkisAlani = useTemplateRef<HTMLInputElement>('kalkisAlani')
+function cipSec(dk: number) {
+  kalkis.value = dk
+  kalkisAlani.value?.focus()
+}
+onMounted(() => {
+  // Diyalog (alt bileşen) önce bağlanıp modalı açtı; açılışta odak ve seçim dk alanında.
+  kalkisAlani.value?.focus()
+  kalkisAlani.value?.select()
+})
+// Varış yalnız kalkıştan farklıysa önemlidir: kayıtlı varış ≠ kalkış ise ayrıntı açık başlar.
+const varisAcik = ref(
+  props.varisGecikmeDk != null && props.varisGecikmeDk !== props.kalkisGecikmeDk,
+)
 const mesgul = ref(false)
 const genelHata = ref('')
 const alanHatalari = ref<Record<string, string>>({})
@@ -140,7 +158,9 @@ async function onayla() {
         <label for="sefer-kalkis-gecikme">Kalkış gecikmesi (dk, planlanana göre toplam)</label>
         <input
           id="sefer-kalkis-gecikme"
+          ref="kalkisAlani"
           v-model="kalkis"
+          autofocus
           type="number"
           min="0"
           :max="EN_COK_DK"
@@ -150,21 +170,43 @@ async function onayla() {
           :aria-describedby="alanHatalari.kalkisGecikmeDk ? 'sefer-kalkis-hata' : undefined"
         />
         <AlanHatasi id="sefer-kalkis-hata" :metin="alanHatalari.kalkisGecikmeDk" />
+        <div class="suzgec" role="group" aria-label="Hızlı gecikme süresi (toplam, dk)">
+          <button
+            v-for="dk in CIPLER"
+            :key="dk"
+            type="button"
+            class="btn btn-kucuk"
+            :aria-pressed="Number(kalkis) === dk"
+            @click="cipSec(dk)"
+          >
+            {{ dk }} dk
+          </button>
+        </div>
+        <small v-if="(kalkisGecikmeDk ?? 0) > 0" class="soluk"
+          >Şu an: {{ kalkisGecikmeDk }} dk</small
+        >
       </div>
-      <div class="alan">
-        <label for="sefer-varis-gecikme">Varış gecikmesi (dk, boşsa kalkışla aynı)</label>
-        <input
-          id="sefer-varis-gecikme"
-          v-model="varis"
-          type="number"
-          min="0"
-          :max="EN_COK_DK"
-          step="1"
-          :aria-invalid="!!alanHatalari.varisGecikmeDk"
-          :aria-describedby="alanHatalari.varisGecikmeDk ? 'sefer-varis-hata' : undefined"
-        />
-        <AlanHatasi id="sefer-varis-hata" :metin="alanHatalari.varisGecikmeDk" />
-      </div>
+      <details
+        class="varis-ayrinti"
+        :open="varisAcik"
+        @toggle="varisAcik = ($event.target as HTMLDetailsElement).open"
+      >
+        <summary>Varış farklıysa</summary>
+        <div class="alan">
+          <label for="sefer-varis-gecikme">Varış gecikmesi (dk, boşsa kalkışla aynı)</label>
+          <input
+            id="sefer-varis-gecikme"
+            v-model="varis"
+            type="number"
+            min="0"
+            :max="EN_COK_DK"
+            step="1"
+            :aria-invalid="!!alanHatalari.varisGecikmeDk"
+            :aria-describedby="alanHatalari.varisGecikmeDk ? 'sefer-varis-hata' : undefined"
+          />
+          <AlanHatasi id="sefer-varis-hata" :metin="alanHatalari.varisGecikmeDk" />
+        </div>
+      </details>
     </template>
 
     <div v-if="sonrakiVar" class="alan alan-onay">
@@ -224,3 +266,13 @@ async function onayla() {
     </template>
   </Diyalog>
 </template>
+
+<style scoped>
+.varis-ayrinti {
+  margin-bottom: var(--aralik-4);
+}
+.varis-ayrinti summary {
+  cursor: pointer;
+  margin-bottom: var(--aralik-2);
+}
+</style>

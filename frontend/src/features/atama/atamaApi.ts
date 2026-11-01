@@ -174,12 +174,28 @@ export interface KaldirParametre {
   makinistId?: number
   neden: AtamaNedeni
   nedenNotu?: string
+  /** OK-37 (Geri al yarışı): verilirse ve rolün güncel ataması bu kimlik değilse sunucu 409 (ATAMA_DEGISTI) verir, hiçbir şey silinmez. */
+  atamaId?: number
 }
 
 /** Kaldırma, aynı makinistin BAŞKA atamalarını ya da serbest intikalini yeni kırmızı yaptıysa sunucu 200 + bu gövdeyi döner (kural gereği; atamacı bilsin). */
 export interface KaldirSonucu {
   yeniKirmizi: { atamaId: number; seferId: number; trenNo: string; nedenler: string[] }[]
   yeniKirmiziIntikal?: { intikalId: number; ozet: string; nedenler: string[] }[]
+}
+
+/** Kaldırma başka atamayı kırmızı yaptıysa (ör. nöbet bölünür, ardışık gece haftası K-18) atamacıya söylenir. */
+export function kaldirMesaji(sonuc?: KaldirSonucu): string {
+  const gorevler = [
+    ...(sonuc?.yeniKirmizi ?? []).map((y) => ({ ad: y.trenNo, neden: y.nedenler[0] })),
+    ...(sonuc?.yeniKirmiziIntikal ?? []).map((y) => ({ ad: y.ozet, neden: y.nedenler[0] })),
+  ]
+  if (gorevler.length === 0) return 'Atama kaldırıldı.'
+  const ozet = gorevler
+    .slice(0, 3)
+    .map((y) => `${y.ad} (${y.neden ?? 'kural ihlali'})`)
+    .join('; ')
+  return `Atama kaldırıldı. Dikkat: bu makinistin ${gorevler.length} başka görevi kırmızı oldu: ${ozet}${gorevler.length > 3 ? ' …' : ''}`
 }
 
 /** Seferi böl (MK-128): ara istasyonlar; saatler "SS:dd" (gün sunucuda çözülür). `hatId`/`aracTipiId` boşsa önceki parçadan miras. */
@@ -225,6 +241,8 @@ export interface KirmiziSayisi {
   kirmiziAtama: number
   /** Canlı kırmızı serbest intikal sayısı (OK-28): atama sayacına KATILMAZ, ayrı gösterilir; eski yanıtlarda yok. */
   kirmiziIntikal?: number
+  /** Aralıktaki en erken kırmızı SEFER günü (B-2); kırmızı yoksa null, eski yanıtlarda yok → ana sayfa bugüne düşer. */
+  ilkKirmiziGun?: Tarih | null
 }
 
 /** Atamacı "kim gördü" sayaçları: yalnız kalkışı geçmemiş, iptal olmayan atamalar; hesapsız ayrı sayaç. */

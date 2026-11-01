@@ -4,9 +4,12 @@ import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
 import { kullanici, yoneticiMi } from '@/composables/oturum'
 import { atamaApi, type GunSatiri } from '@/features/atama/atamaApi'
+import { masaBaglantisi } from '@/features/atama/masaBaglantisi'
 import { belgeApi } from '@/features/belge/belgeApi'
 import { raporApi } from '@/features/rapor/raporApi'
+import { takasApi } from '@/features/takas/takasApi'
 import { bugun, gunKaydir, tarihBicimle } from '@/lib/tarih'
+import { atanmamisMi, yapilacaklariOlustur } from './yapilacaklar'
 import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
 import Simge from '@/bilesenler/Simge.vue'
 import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
@@ -16,38 +19,52 @@ const GUN_SONRASI = 7 // kırmızı sayacı: bugün + sonraki 7 gün (atama masa
 const tarih = bugun()
 const yukleniyor = ref(true)
 const seferler = ref<{ sefer: number; atanmamis: number; iptal: number } | null>(null)
-const kirmizi = ref<{ sefer: number; atama: number; intikal: number } | null>(null)
+const kirmizi = ref<{
+  sefer: number
+  atama: number
+  intikal: number
+  ilkKirmiziGun?: string | null
+} | null>(null)
+const gunSatirlari = ref<GunSatiri[] | null>(null)
+const gorulmeyen = ref<number | null>(null)
+const takas = ref<number | null>(null)
+const simdi = ref(Date.now())
 const belge = ref<{ dolmus: number; yaklasan: number } | null>(null)
 const izin = ref<number | null>(null)
 /** Dört kaynak birbirinden bağımsız okunur: biri düşerse yalnız kendi kartı hata gösterir. */
-const hatalar = ref<{ sefer?: string; kirmizi?: string; belge?: string; izin?: string }>({})
+const hatalar = ref<{
+  sefer?: string
+  kirmizi?: string
+  belge?: string
+  izin?: string
+  takas?: string
+  gorulmeyen?: string
+}>({})
 
 const hataMetni = (e: unknown, yedek: string) => (e instanceof ApiHata ? e.detail : yedek)
-
-/** Henüz bitmemiş ve asıl makinisti olmayan seferler: sabah listesinde asıl iş. Bitmiş seferler atanmamış sayılmaz. */
-function atanmamisMi(s: GunSatiri, simdi: number): boolean {
-  return (
-    s.durum === 'PLANLI' &&
-    !s.makinistler.some((m) => m.rol === 'ASIL') &&
-    new Date(s.guncelVaris).getTime() > simdi
-  )
-}
 
 async function ozetYukle() {
   yukleniyor.value = true
   hatalar.value = {}
-  const [gun, kr, bd, iz] = await Promise.allSettled([
+  const [gun, kr, bd, iz, tk, gd] = await Promise.allSettled([
     atamaApi.gun(tarih),
     atamaApi.kirmiziSayisi(tarih, gunKaydir(tarih, GUN_SONRASI)),
     belgeApi.durum(),
     raporApi.izinListe('TALEP'),
+    takasApi.liste('ATAMACI_ONAYI_BEKLIYOR'),
+    atamaApi.gordumOzeti(tarih, tarih),
   ])
-  const simdi = Date.now()
+  simdi.value = Date.now()
+  gunSatirlari.value = gun.status === 'fulfilled' ? gun.value.satirlar : null
+  if (tk.status === 'fulfilled') takas.value = tk.value.bekleyen
+  else hatalar.value.takas = hataMetni(tk.reason, 'Takas talepleri yüklenemedi.')
+  if (gd.status === 'fulfilled') gorulmeyen.value = gd.value.gorulmeyen
+  else hatalar.value.gorulmeyen = hataMetni(gd.reason, 'Görülmeyen atamalar yüklenemedi.')
   if (gun.status === 'fulfilled') {
     const s = gun.value.satirlar
     seferler.value = {
       sefer: s.length,
-      atanmamis: s.filter((x) => atanmamisMi(x, simdi)).length,
+      atanmamis: s.filter((x) => atanmamisMi(x, simdi.value)).length,
       iptal: s.filter((x) => x.durum === 'IPTAL').length,
     }
   } else hatalar.value.sefer = hataMetni(gun.reason, 'Bugünün seferleri yüklenemedi.')
@@ -56,6 +73,7 @@ async function ozetYukle() {
       sefer: kr.value.kirmiziSefer,
       atama: kr.value.kirmiziAtama,
       intikal: kr.value.kirmiziIntikal ?? 0,
+      ilkKirmiziGun: kr.value.ilkKirmiziGun,
     }
   } else hatalar.value.kirmizi = hataMetni(kr.reason, 'Kontrol bekleyen atamalar yüklenemedi.')
   if (bd.status === 'fulfilled') {
@@ -71,6 +89,31 @@ async function ozetYukle() {
 }
 
 const bos = computed(() => seferler.value?.sefer === 0)
+
+/** Aciliyete göre sıralı "bugün yapılacaklar" (saf üretici; yalnız okunabilen kaynaklar satır üretir). */
+const yapilacaklar = computed(() =>
+  yapilacaklariOlustur({
+    simdi: simdi.value,
+    tarih,
+    satirlar: gunSatirlari.value,
+    kirmizi: kirmizi.value,
+    gorulmeyen: gorulmeyen.value,
+    takas: takas.value,
+    izin: izin.value,
+    belge: belge.value,
+  }),
+)
+const kuyrukHatalari = computed(() =>
+  [hatalar.value.takas, hatalar.value.gorulmeyen].filter((m): m is string => !!m),
+)
+/** Hiç kaynak düşmediyse ve iş yoksa "bekleyen iş yok" denir (eksik veriyle yanlış rahatlık verilmez). */
+const isYok = computed(
+  () =>
+    !yukleniyor.value &&
+    !bos.value &&
+    Object.keys(hatalar.value).length === 0 &&
+    yapilacaklar.value.length === 0,
+)
 
 // Geliştirme yardımcıları (demo bölümü): yalnız geliştirme derlemesinde ve ayrı dosyada (INFO: üretim paketinde ölü kod kalmasın). `import.meta.env.DEV` üretimde sabit false olur;
 // Rollup bu dalı ve içindeki dinamik içe aktarmayı atar, DemoAraclari chunk'ı hiç üretilmez.
@@ -90,6 +133,49 @@ onMounted(() => void ozetYukle())
         </p>
       </template>
     </SayfaBasligi>
+
+    <section class="yapilacaklar" aria-labelledby="yapilacaklar-baslik">
+      <h2 id="yapilacaklar-baslik" class="ozet-baslik">
+        Bugün yapılacaklar
+        <span v-if="yapilacaklar.length" class="soluk">· {{ yapilacaklar.length }} kalem</span>
+      </h2>
+      <p class="soluk yapilacaklar-not">Aciliyete göre sıralı; her kalemin tek eylemi vardır.</p>
+      <ol v-if="yapilacaklar.length" class="yapilacak-liste" data-test="yapilacaklar">
+        <li
+          v-for="i in yapilacaklar"
+          :key="i.kimlik"
+          :class="['yapilacak', `yapilacak-${i.ton}`]"
+          :data-kimlik="i.kimlik"
+        >
+          <Simge :ad="i.simge" boyut="1.4em" class="yapilacak-simge" />
+          <div class="yapilacak-metin">
+            <p class="yapilacak-baslik">{{ i.baslik }}</p>
+            <p class="soluk">{{ i.ayrinti }}</p>
+          </div>
+          <RouterLink
+            :class="['btn', i.kimlik === yapilacaklar[0]?.kimlik ? 'btn-birincil' : '']"
+            :to="i.hedef"
+            :aria-label="`${i.eylem}: ${i.baslik}`"
+            >{{ i.eylem }}</RouterLink
+          >
+        </li>
+      </ol>
+      <VeriDurumu
+        v-else-if="isYok"
+        durum="bos"
+        metin="Şu an sizi bekleyen iş yok."
+        data-test="yapilacak-yok"
+      />
+      <p
+        v-for="m in kuyrukHatalari"
+        :key="m"
+        class="ozet-hata"
+        role="alert"
+        data-test="yapilacak-hata"
+      >
+        <Simge ad="engel" boyut="1.1em" />{{ m }}
+      </p>
+    </section>
 
     <h2 class="ozet-baslik">Bugünün durumu · {{ tarihBicimle(tarih) }}</h2>
     <VeriDurumu
@@ -120,9 +206,7 @@ onMounted(() => void ozetYukle())
           </p>
           <p v-if="seferler.iptal > 0" class="soluk">İptal: {{ seferler.iptal }}</p>
         </template>
-        <RouterLink class="btn" :to="{ name: 'atama', query: { tarih } }">
-          Atama masasını aç
-        </RouterLink>
+        <RouterLink class="btn" :to="masaBaglantisi(tarih)"> Atama masasını aç </RouterLink>
       </article>
 
       <article class="ozet-kart" data-test="kart-kirmizi">
@@ -138,7 +222,7 @@ onMounted(() => void ozetYukle())
             + {{ kirmizi.intikal }} kırmızı intikal
           </p>
         </template>
-        <RouterLink class="btn" :to="{ name: 'atama', query: { tarih } }">
+        <RouterLink class="btn" :to="masaBaglantisi(kirmizi?.ilkKirmiziGun ?? tarih, 'kirmizi')">
           Kırmızıları gör
         </RouterLink>
       </article>
@@ -198,6 +282,57 @@ onMounted(() => void ozetYukle())
 .ozet-baslik {
   margin: var(--aralik-3) 0 0;
   font-size: var(--yazi-xl);
+}
+.yapilacaklar {
+  display: grid;
+  gap: var(--aralik-3);
+  align-content: start;
+}
+.yapilacaklar-not,
+.yapilacaklar .ozet-baslik {
+  margin: 0;
+}
+.yapilacak-liste {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--renk-yuzey);
+  border: 1px solid var(--renk-cizgi);
+  border-radius: var(--yaricap);
+}
+.yapilacak {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--aralik-4);
+  padding: var(--aralik-4) var(--aralik-5);
+  border-left: 0.25rem solid transparent;
+}
+.yapilacak + .yapilacak {
+  border-top: 1px solid var(--renk-cizgi);
+}
+.yapilacak-engel {
+  border-left-color: var(--renk-engel-dolu);
+}
+.yapilacak-uyari {
+  border-left-color: var(--renk-uyari-cizgi);
+}
+.yapilacak-engel .yapilacak-simge {
+  color: var(--renk-engel-metin);
+}
+.yapilacak-uyari .yapilacak-simge {
+  color: var(--renk-uyari-metin);
+}
+.yapilacak-metin {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.yapilacak-metin p {
+  margin: 0;
+}
+.yapilacak-baslik {
+  font-weight: var(--yazi-agirlik-orta);
 }
 .ozet-izgara {
   display: grid;

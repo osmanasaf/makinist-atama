@@ -19,7 +19,7 @@ import AtamaMasasi from './AtamaMasasi.vue'
 import { atamaApi, type GunListesi } from './atamaApi'
 import { seferApi, type Sefer } from '@/features/sefer/seferApi'
 import { tanimApi } from '@/features/tanim/tanimApi'
-import { makinist, satir } from './testVerisi'
+import { eylemTetikle, makinist, satir } from './testVerisi'
 
 const bos = { template: '<div />' }
 const GELECEK = '2099-01-01T05:00:00Z'
@@ -50,8 +50,16 @@ async function kur() {
   await flushPromises()
   return w
 }
-const bolDugmeleri = (w: Awaited<ReturnType<typeof kur>>) =>
-  w.findAll('tr.sefer-satiri').map((r) => r.findAll('button').some((b) => b.text() === 'Böl'))
+/** K7: Böl artık ⋯ menüsünde; menü satır satır açılıp "Böl" öğesi aranır (menüsüz satır = false). */
+async function bolDugmeleri(w: Awaited<ReturnType<typeof kur>>) {
+  const sonuc: boolean[] = []
+  for (const r of w.findAll('tr.sefer-satiri')) {
+    const menu = r.find('button[aria-haspopup="menu"]')
+    if (menu.exists()) await menu.trigger('click')
+    sonuc.push(r.findAll('[role="menuitem"]').some((b) => b.text() === 'Böl'))
+  }
+  return sonuc
+}
 
 describe('AtamaMasasi: Böl', () => {
   beforeEach(() => {
@@ -76,16 +84,12 @@ describe('AtamaMasasi: Böl', () => {
 
   it('"Böl" yalnız parçasız + PLANLI + kalkışı geçmemiş satırda görünür', async () => {
     const w = await kur()
-    expect(bolDugmeleri(w)).toEqual([true, false, false, false, true])
+    expect(await bolDugmeleri(w)).toEqual([true, false, false, false, true])
   })
 
   it('tıklayınca diyalog açılır (satır seçilmez); vazgeçince kapanır ve masa yenilenmez', async () => {
     const w = await kur()
-    const dugme = w
-      .findAll('tr.sefer-satiri')[0]!
-      .findAll('button')
-      .find((b) => b.text() === 'Böl')!
-    await dugme.trigger('click')
+    await eylemTetikle(w.findAll('tr.sefer-satiri')[0]!, 'seferini böl')
     await flushPromises()
     expect(w.find('dialog').exists()).toBe(true)
     expect(seferApi.getir).toHaveBeenCalledWith(1)
@@ -113,11 +117,7 @@ describe('AtamaMasasi: Böl', () => {
       yeniKirmizi: [{ atamaId: 5, seferId: 30, trenNo: 'T1030', nedenler: ['dinlenme'] }],
     })
     const w = await kur()
-    await w
-      .findAll('tr.sefer-satiri')[0]!
-      .findAll('button')
-      .find((b) => b.text() === 'Böl')!
-      .trigger('click')
+    await eylemTetikle(w.findAll('tr.sefer-satiri')[0]!, 'seferini böl')
     await flushPromises()
     await w.get('#bol-gar-0').setValue('2')
     await w.get('#bol-varis-0').setValue('13:30')

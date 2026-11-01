@@ -146,8 +146,9 @@ public class GunListesiServisi {
         Map<Long, List<Atama>> atamaMap = atamalar(liste);
         Map<Long, KirmiziAtamaHesabi.Sonuc> durum = kirmiziHesabi.hesapla(liste, atamaMap);
         int kirmiziAtama = (int) durum.values().stream().filter(KirmiziAtamaHesabi.Sonuc::kirmizi).count();
-        int kirmiziSefer = (int) liste.stream().filter(s -> atamaMap.getOrDefault(s.id(), List.of()).stream().anyMatch(a -> durum.get(a.id()).kirmizi())).count();
-        return new KirmiziSayisiDto(bas, bit, kirmiziSefer, kirmiziAtama, intikaller.kirmiziSayisi(bas, bit));
+        List<SeferDto> kirmiziSeferler = liste.stream().filter(s -> atamaMap.getOrDefault(s.id(), List.of()).stream().anyMatch(a -> durum.get(a.id()).kirmizi())).toList();
+        LocalDate ilkKirmiziGun = kirmiziSeferler.stream().map(SeferDto::tarih).min(LocalDate::compareTo).orElse(null);
+        return new KirmiziSayisiDto(bas, bit, kirmiziSeferler.size(), kirmiziAtama, intikaller.kirmiziSayisi(bas, bit), ilkKirmiziGun);
     }
 
     private static void aralikDogrula(LocalDate bas, LocalDate bit) {

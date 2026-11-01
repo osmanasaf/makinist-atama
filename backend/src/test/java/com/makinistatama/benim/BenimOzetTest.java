@@ -16,7 +16,7 @@ import com.makinistatama.TestVeritabani;
 import com.makinistatama.atama.AtamaVeri;
 import com.makinistatama.ortak.ZamanAyari;
 
-/** FR-M07 / MK-30: aylık özet adalet raporunun KENDİ satırıdır (ikinci formül yok); başkasının satırı ve ücret alanı yok. */
+/** FR-M07 / MK-30: aylık özet adalet raporunun KENDİ satırıdır (ikinci formül yok); başkasının satırı ve ücret alanı yok. OK-35: ortalama / ortalamaya fark makinist ucundan SIZMAZ. */
 class BenimOzetTest extends TestVeritabani {
 
     @Test
@@ -37,11 +37,26 @@ class BenimOzetTest extends TestVeritabani {
                 .andExpect(jsonPath("$.planlananDahil").value(true)).andReturn().getResponse().getContentAsString();
         String rapor = atamaci().get("/api/rapor/adalet?ay=" + ay).andReturn().getResponse().getContentAsString();
         List<Number> adaletSaat = JsonPath.read(rapor, "$.satirlar[?(@.sicil=='D001')].gorevSaat");
-        List<Object> adaletFark = JsonPath.read(rapor, "$.satirlar[?(@.sicil=='D001')].farkYuzde");
         assertThat(((Number) JsonPath.read(ozet, "$.gorevSaat")).doubleValue()).isEqualTo(adaletSaat.getFirst().doubleValue()).isPositive();
-        assertThat(JsonPath.<Object>read(ozet, "$.farkYuzde")).isEqualTo(adaletFark.getFirst());
-        assertThat(((Number) JsonPath.read(ozet, "$.ortalamaSaat")).doubleValue()).isEqualTo(((Number) JsonPath.read(rapor, "$.ortalamaSaat")).doubleValue());
         assertThat(ozet).doesNotContain("D002").doesNotContain("satirlar").doesNotContainIgnoringCase("ucret").doesNotContainIgnoringCase("tutar");
+    }
+
+    /** OK-35 güvenlik kapısı: ağ yanıtı başkalarının verisinden türeyen ortalamayı hiçbir biçimde taşımaz (arayüzde gizlemek yetmez). */
+    @Test
+    void ozet_ortalamaVeFarkAlaniYok_hamMetindeDeGecmez() throws Exception {
+        var v = new AtamaVeri(jdbc);
+        long m = v.makinist("D001");
+        long baska = v.makinist("D002");
+        LocalDate gun = LocalDate.now(ZamanAyari.BOLGE).withDayOfMonth(15);
+        v.atama(v.sefer("T1", gun, "08:00", "10:00"), m, "ASIL");
+        v.atama(v.sefer("T3", gun, "09:00", "19:30"), baska, "ASIL");
+        Tarayici t = makinistGirisli(m, "D001");
+
+        String ozet = t.get("/api/benim/ozet?ay=" + YearMonth.from(gun)).andExpect(status().isOk()).andExpect(jsonPath("$.ortalamaSaat").doesNotExist())
+                .andExpect(jsonPath("$.farkYuzde").doesNotExist()).andReturn().getResponse().getContentAsString();
+        assertThat(ozet).doesNotContainIgnoringCase("ortalama").doesNotContainIgnoringCase("fark");
+        String bos = t.get("/api/benim/ozet?ay=" + YearMonth.from(gun).plusMonths(1)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(bos).doesNotContainIgnoringCase("ortalama").doesNotContainIgnoringCase("fark");
     }
 
     @Test

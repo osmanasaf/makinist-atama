@@ -1,4 +1,4 @@
-/** Simge seti (MK-132): ad -> SVG yol dizesi (20x20, çizgi 1,75). Tavan 36 simge (menü öğelerinin her birine benzersiz simge için 30 → 36); yeni simge eklemeden önce var olan kullanılır.
+/** Simge seti (MK-132): ad -> SVG yol dizesi (20x20, çizgi 1,75). Tavan 41 simge (menü öğeleri için 30 → 36; Tur A MK-149: H2 çakışmaları + ⋯ + Geri al → 41); yeni simge eklemeden önce var olan kullanılır.
  * `temel.css` içindeki 4 bant simgesi (bilgi/uyari/engel/basari) bu dizelerin kopyasıdır (CSS mask data-URI). */
 export const SIMGELER = {
   engel: 'M10 2.5a7.5 7.5 0 1 0 0 15a7.5 7.5 0 0 0 0-15zM4.7 4.7l10.6 10.6',
@@ -41,6 +41,14 @@ export const SIMGELER = {
   'telefon-yok':
     'M7 2.5h6a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-13a1 1 0 0 1 1-1zM9 15h2M3 3l14 14',
   kural: 'M10 2.5l6 2.2v5c0 3.8-2.6 6.2-6 7.8-3.4-1.6-6-4-6-7.8v-5zM7.3 10l2 2 3.4-3.6',
+  tablo:
+    'M3.5 4.5h13a.5.5 0 0 1 .5.5v10a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5V5a.5.5 0 0 1 .5-.5zM3 8.5h14M3 12h14M8 4.5v11',
+  'kisi-degistir':
+    'M8 8.5a2.7 2.7 0 1 0 0-5.4a2.7 2.7 0 0 0 0 5.4zM3 16.5c0-2.7 2.3-4.5 5-4.5M12 11.5h5.5l-1.8-1.8M17.5 15.5H12l1.8 1.8',
+  'yatak-belge':
+    'M5 2.5h6.5l4 4V17a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5zM11.5 2.5v4h4M7 14.5v-3.5M7 13.5h6v1M13 13.5v-1.5a1 1 0 0 0-1-1H9v2.5',
+  daha: 'M4.5 10v.1M10 10v.1M15.5 10v.1',
+  'geri-al': 'M7.5 5L3.5 9l4 4M3.5 9h8a4.5 4.5 0 0 1 0 9H8',
 } as const
 
 export type SimgeAdi = keyof typeof SIMGELER

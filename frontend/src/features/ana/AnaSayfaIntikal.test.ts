@@ -5,8 +5,9 @@ import { ApiHata } from '@/api/istemci'
 import { kullanici } from '@/composables/oturum'
 
 vi.mock('@/features/atama/atamaApi', () => ({
-  atamaApi: { gun: vi.fn(), kirmiziSayisi: vi.fn() },
+  atamaApi: { gun: vi.fn(), kirmiziSayisi: vi.fn(), gordumOzeti: vi.fn() },
 }))
+vi.mock('@/features/takas/takasApi', () => ({ takasApi: { liste: vi.fn() } }))
 vi.mock('@/features/belge/belgeApi', () => ({ belgeApi: { durum: vi.fn() } }))
 vi.mock('@/features/rapor/raporApi', () => ({ raporApi: { izinListe: vi.fn() } }))
 vi.mock('./demoApi', () => ({
@@ -16,6 +17,7 @@ vi.mock('./demoApi', () => ({
 import { atamaApi } from '@/features/atama/atamaApi'
 import { belgeApi } from '@/features/belge/belgeApi'
 import { raporApi } from '@/features/rapor/raporApi'
+import { takasApi } from '@/features/takas/takasApi'
 import AnaSayfa from './AnaSayfa.vue'
 import { demoApi } from './demoApi'
 
@@ -26,9 +28,9 @@ afterEach(() => kurulan.splice(0).forEach((w) => w.unmount()))
 async function kur() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: ['/', '/atama', '/seferler/yukle', '/belgeler', '/izin'].map((path, i) => ({
+    routes: ['/', '/atama', '/seferler/yukle', '/belgeler', '/izin', '/takas'].map((path, i) => ({
       path,
-      name: ['ana', 'atama', 'sefer-yukle', 'belgeler', 'izin'][i],
+      name: ['ana', 'atama', 'sefer-yukle', 'belgeler', 'izin', 'takas'][i],
       component: { template: '<div />' },
     })),
   })
@@ -38,6 +40,9 @@ async function kur() {
   await flushPromises()
   return w
 }
+
+const gordum = (gorulmeyen: number) =>
+  ({ bas: '', bit: '', toplam: 0, gorulen: 0, gorulmeyen, hesapsiz: 0, uyari: 0 }) as never
 
 const sayac = (ek: Record<string, number> = {}) => ({
   bas: '2026-10-11',
@@ -68,6 +73,8 @@ describe('AnaSayfa: serbest intikal (OK-28)', () => {
       makinistler: [],
     })
     vi.mocked(raporApi.izinListe).mockResolvedValue([])
+    vi.mocked(atamaApi.gordumOzeti).mockResolvedValue(gordum(0))
+    vi.mocked(takasApi.liste).mockResolvedValue({ bekleyen: 0, talepler: [] })
     vi.mocked(demoApi.durum).mockResolvedValue({ yuklu: true })
   })
 
