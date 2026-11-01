@@ -78,6 +78,8 @@ class GuvenlikTaramaTest extends TestVeritabani {
             Map.entry("GET /api/rapor/puantaj", "G"), Map.entry("GET /api/rapor/puantaj/excel", "G"),
             // F5 (yeni-ozellikler Tur 4, MK-177/MK-178): aylık çizelge ızgarası (makinist 403: OK-35) ve resmi tatil listesi (okuma personel, yazma yönetici)
             Map.entry("GET /api/rapor/cizelge", "G"), Map.entry("GET /api/resmi-tatil", "G"), Map.entry("POST /api/resmi-tatil", "Y"), Map.entry("DELETE /api/resmi-tatil/{tarih}", "Y"),
+            // F4 (yeni-ozellikler Tur 5, MK-180/MK-181): yönetim özeti ve denetim paketi, yalnız yönetici (makinist 403: OK-35)
+            Map.entry("GET /api/rapor/ozet", "Y"), Map.entry("GET /api/rapor/denetim-paketi/excel", "Y"),
             Map.entry("GET /api/izin", "G"), Map.entry("POST /api/izin", "G"), Map.entry("POST /api/izin/{id}/onay", "G"), Map.entry("POST /api/izin/{id}/red", "G"),
             // F2a: makinist hesabı (personel) ve kendi parolası (tüm roller; /api/auth/* altında)
             Map.entry("GET /api/makinist/{id}/hesap", "G"), Map.entry("POST /api/makinist/{id}/hesap", "G"),

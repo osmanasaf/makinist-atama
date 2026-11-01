@@ -24,6 +24,8 @@ export type ListelenenTur =
   | 'INTIKAL_IPTAL'
   | 'INTIKAL_SURESI_DEGISTI'
   | 'PROFIL_UYGULA'
+  | 'TATIL_EKLE'
+  | 'TATIL_SIL'
   | 'ATAMA'
   | 'ATAMA_KALDIR'
   | 'ATAMA_DEGISTIR'
@@ -54,6 +56,8 @@ export const TUR_ETIKETLERI: Record<ListelenenTur, string> = {
   INTIKAL_IPTAL: 'İntikal iptal edildi',
   INTIKAL_SURESI_DEGISTI: 'Gar intikal süresi değişti',
   PROFIL_UYGULA: 'Kural profili uygulandı',
+  TATIL_EKLE: 'Resmi tatil eklendi',
+  TATIL_SIL: 'Resmi tatil silindi',
   ATAMA: 'Atama',
   ATAMA_KALDIR: 'Atama kaldırıldı',
   ATAMA_DEGISTIR: 'Atama değiştirildi',

@@ -99,7 +99,7 @@ describe('DegisiklikRaporu', () => {
     expect(turler).toContain('Atama değiştirildi')
     expect(turler).toContain('Otomatik atama')
     expect(turler).toContain('İntikal iptal edildi')
-    expect(turler).toHaveLength(25)
+    expect(turler).toHaveLength(27)
     expect(turler).toContain('Kural profili uygulandı')
     expect(degisiklikApi.rapor).not.toHaveBeenCalled()
     expect(w.text()).not.toContain('Excel indir')

@@ -301,6 +301,11 @@ public class DegisiklikRaporServisi {
 
     /** Aynı rapor .xlsx: "Değişiklikler" sayfası (bölüm sütunuyla) + "Rapor bilgisi" sayfası (üretim zamanı, üreten, süzgeç, kayıt sayısı). */
     public byte[] excel(DegisiklikRaporuDto r) {
+        return TabloExcel.yaz(sayfalar(r));
+    }
+
+    /** Excel sayfaları (F4, MK-181): denetim paketi aynı sayfa üretimini yeniden kullanır; {@link #excel} çıktısı bununla BİREBİR aynıdır. */
+    List<TabloExcel.Sayfa> sayfalar(DegisiklikRaporuDto r) {
         List<List<Object>> satirlar = new ArrayList<>();
         for (Bolum b : r.bolumler()) {
             for (DegisiklikRaporuDto.Satir s : b.satirlar()) {
@@ -320,9 +325,9 @@ public class DegisiklikRaporServisi {
                 java.util.Arrays.asList("Kullanıcı", f.kullanici()),
                 java.util.Arrays.asList("Tür", f.tur() == null ? null : f.tur().name()),
                 List.of("Kayıt sayısı", r.kayitSayisi()));
-        return TabloExcel.yaz(List.of(
+        return List.of(
                 new TabloExcel.Sayfa("Değişiklikler", List.of("Zaman", "Kim", "Bölüm", "Tür", "Sicil", "Tren no", "Sefer tarihi", "Eski", "Yeni", "Neden", "Not",
                         "Uyarılı", "Uyarı gerekçesi", "Uyaran kural", "Otomatik"), satirlar),
-                new TabloExcel.Sayfa("Rapor bilgisi", List.of("Alan", "Değer"), bilgi)));
+                new TabloExcel.Sayfa("Rapor bilgisi", List.of("Alan", "Değer"), bilgi));
     }
 }

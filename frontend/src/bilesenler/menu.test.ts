@@ -45,7 +45,7 @@ describe('gruplaMenu', () => {
     expect(g.map((x) => x.grup)).toEqual([null, 'Yeni'])
   })
 
-  it('gerçek rotalar: 20 öğe, hepsi gruplanmış (Ana Sayfa hariç) ve yönetici 20, atamacı 16 görür', async () => {
+  it('gerçek rotalar: 21 öğe, hepsi gruplanmış (Ana Sayfa hariç) ve yönetici 21, atamacı 16 görür', async () => {
     const modul = import.meta.glob<{ default: MenuRotasi[] & { path: string }[] }>(
       '../features/*/routes.ts',
       { eager: true },
@@ -55,7 +55,7 @@ describe('gruplaMenu', () => {
       .flatMap((m) => m.default as unknown as Partial<MenuRotasi>[])
       .map((r) => ({ path: r.path!, meta: r.meta ?? {} }))
     const yonetici = gruplaMenu(rotalar, true)
-    expect(yonetici.flatMap((g) => g.ogeler)).toHaveLength(20)
+    expect(yonetici.flatMap((g) => g.ogeler)).toHaveLength(21)
     expect(
       yonetici.filter((g) => g.grup === null).flatMap((g) => g.ogeler.map((o) => o.ad)),
     ).toEqual(['Ana Sayfa'])

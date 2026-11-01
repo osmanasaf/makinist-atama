@@ -11,6 +11,17 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/rapor/ozet',
+    name: 'rapor-ozet',
+    component: () => import('./YonetimOzeti.vue'),
+    // F4: mevcut raporların sayıları tek sayfada + denetim paketi; yalnız yönetici (sunucu da 403 verir)
+    meta: {
+      menu: { ad: 'Yönetim Özeti', sira: 40, grup: 'Raporlar', simge: 'bilgi' },
+      baslik: 'Yönetim özeti',
+      rol: 'Y',
+    },
+  },
+  {
     path: '/rapor/cizelge',
     name: 'rapor-cizelge',
     component: () => import('./AylikCizelge.vue'),

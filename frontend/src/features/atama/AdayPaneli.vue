@@ -180,6 +180,12 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
                 boyut="sm"
               />
               <Rozet v-if="a === onerilen" ton="basari" metin="Önerilen" boyut="sm" />
+              <YakinlikNotu
+                v-if="yakinlik && yakinlikSatiri(a)"
+                :satir="yakinlikSatiri(a)!"
+                :esikler="yakinlik.esikler"
+                :acik="acikSatir === i"
+              />
               <YorgunlukOzeti
                 v-if="yakinlik && yakinlikSatiri(a)"
                 :yorgunluk="yakinlikSatiri(a)!.yorgunluk"
@@ -200,12 +206,6 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
                   </li>
                 </ul>
               </details>
-              <YakinlikNotu
-                v-if="yakinlik && yakinlikSatiri(a)"
-                :satir="yakinlikSatiri(a)!"
-                :esikler="yakinlik.esikler"
-                :acik="acikSatir === i"
-              />
               <button
                 v-if="yolculukOnerilebilir(a)"
                 type="button"

@@ -36,6 +36,14 @@ const routes: RouteRecordRaw[] = [
     },
     meta: { baslik: 'Aylık çizelge', yazdir: true },
   },
+  {
+    path: '/yazdir/ozet',
+    name: 'yazdir-ozet',
+    component: () => import('./YonetimOzetiYazdir.vue'),
+    // F4 yönetim özeti baskısı: ?ay=YYYY-MM (yalnız yönetici; sunucu da 403 verir)
+    props: (r) => ({ ay: typeof r.query.ay === 'string' ? r.query.ay : undefined }),
+    meta: { baslik: 'Yönetim özeti', yazdir: true, rol: 'Y' },
+  },
 ]
 
 export default routes

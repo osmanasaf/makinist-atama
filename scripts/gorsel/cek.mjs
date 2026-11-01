@@ -59,6 +59,8 @@ const SAYFALAR = [
   { ad: 'adalet-raporu', yol: '/rapor/adalet', grup: 'masaustu' },
   { ad: 'cizelge', yol: '/rapor/cizelge', grup: 'masaustu' }, // F5 aylık çizelge ızgarası
   { ad: 'yazdir-cizelge', yol: `/yazdir/cizelge?ay=${bugun.slice(0, 7)}&boyut=A4`, grup: 'masaustu' }, // F5 ilan baskısı (A3: boyut=A3)
+  { ad: 'ozet', yol: '/rapor/ozet', grup: 'masaustu' }, // F4 yönetim özeti (yalnız yönetici)
+  { ad: 'yazdir-ozet', yol: `/yazdir/ozet?ay=${bugun.slice(0, 7)}`, grup: 'masaustu' }, // F4 yazdırılabilir özet (--yazdir ile baskı önizlemesi)
   { ad: 'yedek-plani', yol: '/rapor/yedek', grup: 'masaustu' },
   { ad: 'ozel-kurallar', yol: '/ozel-kurallar', grup: 'masaustu' },
   { ad: 'izinler', yol: '/izin', grup: 'masaustu' },

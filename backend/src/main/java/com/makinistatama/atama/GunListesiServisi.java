@@ -161,6 +161,18 @@ public class GunListesiServisi {
         return kirmiziHesabi.hesapla(liste, atamalar(liste)).entrySet().stream().filter(e -> e.getValue().kirmizi()).map(Map.Entry::getKey).collect(Collectors.toSet());
     }
 
+    /**
+     * F4 (MK-180): aralıkta (iki uç dahil) iptal OLMAYAN sefer sayısı ve kaçının ASIL'ı olduğu / olmadığı. "BOŞ" tanımı gün listesindeki ({@code bosNedenleri}, atamacı "Atanmamış" sayacı) ile aynıdır:
+     * iptal değil ∧ ASIL yok (yalnız yardımcı/kondüktör/yolcu olan sefer de boştur). Aralık sınırı {@code kirmiziSayisi} ile aynı. Salt okuma, iki sorgu.
+     */
+    public DolulukOzeti doluluk(LocalDate bas, LocalDate bit) {
+        aralikDogrula(bas, bit);
+        List<SeferDto> liste = seferler.aralikListesi(bas, bit).stream().filter(s -> s.durum() != SeferDurumu.IPTAL).toList();
+        Map<Long, List<Atama>> atamaMap = atamalar(liste);
+        Map<Boolean, Long> bolunmus = liste.stream().collect(Collectors.partitioningBy(s -> atamaMap.getOrDefault(s.id(), List.of()).stream().anyMatch(a -> a.rol() == AtamaRol.ASIL), Collectors.counting()));
+        return new DolulukOzeti(liste.size(), bolunmus.get(true).intValue(), bolunmus.get(false).intValue());
+    }
+
     private static void aralikDogrula(LocalDate bas, LocalDate bit) {
         if (bit.isBefore(bas)) {
             throw UygulamaHatasi.dogrulama("bit", "Bitiş tarihi başlangıçtan önce olamaz.");
