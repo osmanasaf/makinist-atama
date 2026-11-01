@@ -14,6 +14,10 @@ interface MakinistRepository extends JpaRepository<Makinist, Long> {
 
     boolean existsBySicil(String sicil);
 
+    /** Toplu içe aktarma: var olan sicil kümesi (yalnız sicil sütunu). */
+    @Query("select m.sicil from Makinist m")
+    List<String> tumSiciller();
+
     boolean existsByAdSoyadStartingWith(String onEk);
 
     List<Makinist> findAllByOrderBySicil();

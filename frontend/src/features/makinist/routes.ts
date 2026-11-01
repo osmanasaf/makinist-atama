@@ -14,6 +14,12 @@ const routes: RouteRecordRaw[] = [
     meta: { baslik: 'Yeni personel' },
   },
   {
+    path: '/makinistler/yukle',
+    name: 'makinist-yukle',
+    component: () => import('./MakinistYukleme.vue'),
+    meta: { rol: 'Y', baslik: 'Personel yükleme' },
+  },
+  {
     path: '/makinistler/:id([0-9]+)',
     name: 'makinist-kart',
     component: () => import('./MakinistKarti.vue'),

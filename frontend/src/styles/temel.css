@@ -97,6 +97,21 @@ summary {
   background: var(--renk-menu-aktif);
   color: var(--renk-n-0);
 }
+.marka-logo {
+  height: 2rem;
+  width: auto;
+  max-width: 8rem;
+  object-fit: contain;
+  padding: var(--aralik-1);
+  border-radius: var(--yaricap);
+  background: var(--renk-n-0);
+}
+.giris-marka .marka-logo {
+  height: 2.75rem;
+  max-width: 10rem;
+  padding: 0;
+  background: transparent;
+}
 .kullanici-bilgisi {
   color: var(--renk-menu-metin);
 }

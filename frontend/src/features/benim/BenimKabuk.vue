@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { ayrilabilirMi } from '@/composables/cikis-korumasi'
+import { kurumAdi, logoAdresi } from '@/composables/kurum'
 import { cikisYap, kullanici } from '@/composables/oturum'
 import Rozet from '@/bilesenler/Rozet.vue'
 import Simge from '@/bilesenler/Simge.vue'
@@ -43,7 +44,10 @@ async function cik() {
   <div class="benim" data-yogunluk="dokunma">
     <header class="benim-ust">
       <div>
-        <span class="benim-marka">Makinist Atama</span>
+        <span class="benim-marka">
+          <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" :alt="kurumAdi" />
+          {{ kurumAdi }}
+        </span>
         <span class="benim-ad">{{ kullanici?.adSoyad }}</span>
       </div>
       <button type="button" class="btn btn-hayalet" @click="cik">Çıkış</button>

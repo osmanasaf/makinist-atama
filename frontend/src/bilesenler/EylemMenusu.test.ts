@@ -103,12 +103,33 @@ describe('EylemMenusu', () => {
     expect(dugme(w).attributes('aria-expanded')).toBe('false')
   })
 
-  it('Tab menüyü kapatır (odak ⋯ düğmesinde, doğal Tab devam eder)', async () => {
+  it('Tab menüyü kapatır (odak ⋯ düğmesinde)', async () => {
     const w = kur()
     await dugme(w).trigger('click')
     await w.get('[role="menu"]').trigger('keydown', { key: 'Tab' })
     expect(w.find('[role="menu"]').exists()).toBe(false)
     expect(document.activeElement).toBe(dugme(w).element)
+  })
+
+  it('N-2 (MK-182): Tab ve Shift+Tab doğal gezintiyi iptal eder; menü kapanır, odak ⋯ düğmesinde kalır (body değil)', async () => {
+    for (const shiftKey of [false, true]) {
+      const w = kur()
+      await dugme(w).trigger('click')
+      const olay = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey,
+        bubbles: true,
+        cancelable: true,
+      })
+      w.get('[role="menu"]').element.dispatchEvent(olay)
+      await w.vm.$nextTick()
+      expect(olay.defaultPrevented).toBe(true) // sekme sırasının son öğesinde doğal Tab odağı belgeden çıkarıp body'ye düşürürdü
+      expect(w.find('[role="menu"]').exists()).toBe(false)
+      expect(document.activeElement).toBe(dugme(w).element)
+      expect(document.activeElement).not.toBe(document.body)
+      w.unmount()
+      acik.pop()
+    }
   })
 
   it('öğe seçimi sec(kimlik) yayar, menüyü kapatır, odağı ⋯ düğmesine verir', async () => {

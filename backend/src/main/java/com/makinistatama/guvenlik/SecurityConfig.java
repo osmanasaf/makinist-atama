@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -71,6 +72,7 @@ class SecurityConfig {
         http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/api/auth/giris", "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/kurum/acik", "/api/kurum/logo").permitAll() // MK-168: anonim yüzey yalnız bu iki GET (kurum adı + logo)
                         .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers("/api/benim/**").hasRole("MAKINIST")
                         .requestMatchers("/api/**").hasAnyRole("ATAMACI", "YONETICI")

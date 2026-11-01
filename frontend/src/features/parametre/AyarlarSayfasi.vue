@@ -269,7 +269,16 @@ const degerMetni = (s: AyarSatiri, deger: string): string => {
 
 <template>
   <section>
-    <SayfaBasligi baslik="Ayarlar" />
+    <SayfaBasligi baslik="Ayarlar">
+      <template v-if="yoneticiMi" #eylemler>
+        <RouterLink class="btn" to="/kurum" data-test="kurum-baglantisi"
+          >Kurum adı ve logo</RouterLink
+        >
+        <RouterLink class="btn" to="/profil" data-test="profil-baglantisi"
+          >Profil içe/dışa aktar</RouterLink
+        >
+      </template>
+    </SayfaBasligi>
     <p class="bildirim bildirim-uyari" role="note">
       <strong>
         Bu uygulama karar destek aracıdır; mevzuata uyum garantisi vermez. Eşikler ve şiddetler

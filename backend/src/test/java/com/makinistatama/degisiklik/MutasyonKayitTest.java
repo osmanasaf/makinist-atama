@@ -44,6 +44,18 @@ class MutasyonKayitTest extends TestVeritabani {
                     t.post("/api/ozel-kural", ozelKuralGovdesi(0, "8", ""));
                     return t.put("/api/ozel-kural/1", ozelKuralGovdesi(0, "9", ",\"neden\":\"eşik gevşetildi\""));
                 }, DegisiklikTuru.KURAL_GUNCELLE),
+                arguments("profil uygula (F2)", (Uc) (t, j) -> t.post("/api/profil/uygula",
+                        "{\"paket\":{\"format\":\"makinist-atama-profil\",\"profilSurumu\":1,\"ad\":\"Deneme\",\"parametreler\":{\"dinlenme.ev_saat\":\"10\"}},"
+                                + "\"secilen\":[\"PARAMETRE:dinlenme.ev_saat\"],\"neden\":\"deneme\"}"), DegisiklikTuru.PROFIL_UYGULA),
+                arguments("kurum adı yaz (F1)", (Uc) (t, j) -> t.put("/api/kurum", "{\"ad\":\"Örnek İşletme (demo)\"}"), DegisiklikTuru.KURUM_GUNCELLE),
+                arguments("kurum logosu yükle (F1)", (Uc) (t, j) -> t.istek(MockMvcRequestBuilders.put("/api/kurum/logo").contentType("application/octet-stream")
+                        .content(com.makinistatama.kurum.KurumGorselleri.png())), DegisiklikTuru.KURUM_LOGO),
+                arguments("makinist Excel içe aktar (F1)", (Uc) (t, j) -> {
+                    TestTanimlari.gar(j, "Ankara");
+                    byte[] xlsx = com.makinistatama.makinist.TestMakinistExcel.kitap(java.util.List.<Object[]>of(com.makinistatama.makinist.TestMakinistExcel.makinist("M001", "Örnek Personel", "Ankara")),
+                            java.util.List.of(), java.util.List.of());
+                    return t.istek(MockMvcRequestBuilders.multipart("/api/makinist/ice-aktar").file(new MockMultipartFile("dosya", "m.xlsx", "application/octet-stream", xlsx)).param("onizle", "false"));
+                }, DegisiklikTuru.MAKINIST_ICE_AKTAR),
                 arguments("atama ekle", (Uc) (t, j) -> {
                     var v = new com.makinistatama.atama.AtamaVeri(j);
                     long m = v.makinist("D001");

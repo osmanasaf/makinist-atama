@@ -1,4 +1,4 @@
-import { api, sorguMetni } from '@/api/istemci'
+import { api, indir, sorguMetni } from '@/api/istemci'
 import type { Tarih, Zaman } from '@/api/tipler'
 import type { Ton } from '@/bilesenler/durum'
 import type { SimgeAdi } from '@/bilesenler/simgeler'
@@ -124,6 +124,33 @@ export interface GeciciParolaYaniti {
   geciciParola: string
 }
 
+/** Makinist Excel içe aktarma (F1, MK-170): geçerli satır önizlemesi. `durum`: YENI ya da ZATEN_VAR (var olan sicil güncellenmez, atlanır). */
+export interface MakinistYuklemeSatiri {
+  satirNo: number
+  sicil: string
+  adSoyad: string
+  tur: PersonelTuru
+  bagliGar: string
+  makinistDurumu: MakinistDurumu
+  aracTipiSayisi: number
+  hatSayisi: number
+  durum: 'YENI' | 'ZATEN_VAR'
+  uyarilar: string[]
+}
+
+export interface MakinistYuklemeSonucu {
+  onizleme: boolean
+  toplamSatir: number
+  eklenen: number
+  zatenVar: number
+  hataSayisi: number
+  uyariSayisi: number
+  satirlar: MakinistYuklemeSatiri[]
+  hatalar: { sayfa: string; satirNo: number; sicil: string | null; neden: string }[]
+  /** Dosyada geçen ama Tanımlar'da olmayan adlar (tanım ÜRETİLMEZ). */
+  eksikTanimlar: { tip: 'GAR' | 'HAT' | 'ARAC_TIPI'; ad: string }[]
+}
+
 export const makinistApi = {
   liste: (arama: string, durum: MakinistDurumu | '', tur: PersonelTuru | '' = '') =>
     api.get<MakinistOzet[]>(`/api/makinist${sorguMetni({ arama: arama.trim(), durum, tur })}`),
@@ -137,6 +164,12 @@ export const makinistApi = {
   hesapParolaSifirla: (id: number) =>
     api.post<GeciciParolaYaniti>(`/api/makinist/${id}/hesap/parola-sifirla`),
   hesapKilitAc: (id: number) => api.post<HesapDurumu>(`/api/makinist/${id}/hesap/kilit-ac`),
+  iceAktarSablon: () => indir('/api/makinist/ice-aktar/sablon'),
+  iceAktar: (dosya: File, onizle: boolean) => {
+    const f = new FormData()
+    f.append('dosya', dosya)
+    return api.post<MakinistYuklemeSonucu>(`/api/makinist/ice-aktar?onizle=${onizle}`, f)
+  },
   izinEtkisi: (id: number, bas: Tarih, bit: Tarih) =>
     api.get<IzinEtkisiSatiri[]>(`/api/atama/makinist/${id}/izin-etkisi${sorguMetni({ bas, bit })}`),
 }

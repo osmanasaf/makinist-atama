@@ -22,6 +22,7 @@ import com.makinistatama.kural.Olcu;
 import com.makinistatama.kural.OzelKural;
 import com.makinistatama.kural.Pencere;
 import com.makinistatama.kural.Siddet;
+import com.makinistatama.kural.Vardiya;
 import com.makinistatama.kural.ZamanHesabi;
 import com.makinistatama.ortak.AramaMetni;
 import com.makinistatama.ortak.UygulamaHatasi;
@@ -235,6 +236,127 @@ public class OzelKuralServisi {
 
     private static UygulamaHatasi adTekrari(String ad) {
         return UygulamaHatasi.cakisma("KURAL_AD_TEKRARI", "'" + ad + "' adlı bir kural zaten var.");
+    }
+
+    // ------------------------------------------------------------------ profil paketi (MK-166): ad ile eşleşme, kapsam tanım adıyla, silme/kapatma yok
+
+    /** Profil önizlemesindeki bir özel kural satırının sonucu: durum {@code DEGISIR/AYNI/GECERSIZ}; {@code mevcut} yeni kuralda {@code null}. */
+    public record ProfilSonucu(String durum, String neden, String mevcut, String yeni, boolean yeniKural, boolean mevcutAcik, boolean yeniAcik) {
+    }
+
+    /** Dışa aktarım: tüm özel kurallar (kapalılar dahil), kapsam tanım ADLARIYLA (kimlik başka kuruluma taşınmaz). */
+    public List<ProfilPaketi.OzelKuralGirdisi> profilIcinDisaAktar() {
+        List<OzelKuralKaydi> hepsi = depo.findAllByOrderByIdAsc();
+        Map<Long, String> adlar = hepsi.isEmpty() ? Map.of() : tanimlar.tumAdlar();
+        return hepsi.stream().map(k -> {
+            OzelKural o = kural(k);
+            Kapsam c = o.kapsam();
+            var kapsam = new ProfilPaketi.KapsamAdlari(adSirali(c.hatlar(), adlar), adSirali(c.aracTipleri(), adlar), adSirali(c.kalkisGarlari(), adlar), adSirali(c.varisGarlari(), adlar),
+                    List.copyOf(c.trenTurleri()), c.vardiya().name(), c.personelTurleri().stream().map(Enum::name).toList());
+            return new ProfilPaketi.OzelKuralGirdisi(o.ad(), o.olcu().name(), o.pencere().name(), o.kayanGun(), o.karsilastirma().name(), o.esik(), kapsam, o.siddet().name(),
+                    o.gecerlilikBas(), o.gecerlilikBit(), o.gerekce(), o.kaynak());
+        }).toList();
+    }
+
+    private static List<String> adSirali(Set<Long> idler, Map<Long, String> adlar) {
+        return idler.stream().map(i -> adlar.getOrDefault(i, "#" + i)).sorted().toList();
+    }
+
+    /** Yazmadan değerlendirir (önizleme): ad eşleşirse karşılaştırır, yoksa yeni kural sayar; kapsamdaki tanım adı yoksa ya da doğrulama başarısızsa GECERSIZ. */
+    public ProfilSonucu profilDegerlendir(ProfilPaketi.OzelKuralGirdisi g) {
+        Map<Long, String> adlar = tanimlar.tumAdlar();
+        try {
+            Cozulen c = cozumle(g, "profil");
+            OzelKural yeni = taslak(c.istek(), c.mevcut() == null ? null : c.mevcut().id());
+            String yeniMetin = ozetMetni(yeni, adlar);
+            if (c.mevcut() == null) {
+                return new ProfilSonucu("DEGISIR", null, null, yeniMetin, true, false, yeni.siddet() != Siddet.KAPALI);
+            }
+            OzelKural eski = kural(c.mevcut());
+            return new ProfilSonucu(eski.equals(yeni) ? "AYNI" : "DEGISIR", null, ozetMetni(eski, adlar), yeniMetin, false, eski.siddet() != Siddet.KAPALI, yeni.siddet() != Siddet.KAPALI);
+        } catch (UygulamaHatasi e) {
+            return new ProfilSonucu("GECERSIZ", e.getMessage(), null, null, false, false, false);
+        }
+    }
+
+    /** Profildeki kuralı yazar: ad varsa mevcut kural güncellenir (sürüm artar), yoksa eklenir. Kayıtlar {@code KURAL_EKLE/GUNCELLE}. */
+    @Transactional
+    public void profilUygula(ProfilPaketi.OzelKuralGirdisi g, String neden) {
+        Cozulen c = cozumle(g, neden);
+        if (c.mevcut() == null) {
+            ekle(c.istek());
+        } else {
+            guncelle(c.mevcut().id(), c.istek());
+        }
+    }
+
+    private record Cozulen(OzelKuralIstegi istek, OzelKuralKaydi mevcut) {
+    }
+
+    private Cozulen cozumle(ProfilPaketi.OzelKuralGirdisi g, String neden) {
+        if (g.ad() == null || g.ad().isBlank()) {
+            throw UygulamaHatasi.dogrulama("ad", "Kural adı yazılmalı.");
+        }
+        String ad = g.ad().strip().replaceAll("\s+", " ");
+        if (g.olcu() == null || g.pencere() == null || g.karsilastirma() == null || g.esik() == null || g.siddet() == null || g.gerekce() == null || g.gerekce().isBlank()) {
+            throw UygulamaHatasi.dogrulama("ozelKurallar", "'" + ad + "': ölçü, pencere, koşul, eşik, şiddet ve gerekçe yazılmalı.");
+        }
+        Olcu olcu = enumDegeri(Olcu.class, g.olcu(), ad, "ölçü");
+        Pencere pencere = enumDegeri(Pencere.class, g.pencere(), ad, "pencere");
+        Karsilastirma karsilastirma = enumDegeri(Karsilastirma.class, g.karsilastirma(), ad, "koşul");
+        Siddet siddet = enumDegeri(Siddet.class, g.siddet(), ad, "şiddet");
+        Kapsam kapsam = kapsamKimlikli(g.kapsam());
+        OzelKuralKaydi mevcut = bul(ad);
+        var istek = new OzelKuralIstegi(ad, olcu, pencere, g.kayanGun(), karsilastirma, g.esik(), kapsam, siddet, g.gecerlilikBas(), g.gecerlilikBit(), g.gerekce(), g.kaynak(),
+                mevcut == null ? null : mevcut.versiyon(), neden);
+        return new Cozulen(istek, mevcut);
+    }
+
+    private OzelKuralKaydi bul(String ad) {
+        String katli = AramaMetni.katla(ad);
+        return depo.findAllByOrderByIdAsc().stream().filter(k -> AramaMetni.katla(k.ad()).equals(katli)).findFirst().orElse(null);
+    }
+
+    private static <E extends Enum<E>> E enumDegeri(Class<E> tur, String ham, String kural, String alan) {
+        try {
+            return Enum.valueOf(tur, ham.strip());
+        } catch (IllegalArgumentException e) {
+            throw UygulamaHatasi.dogrulama("ozelKurallar", "'" + kural + "': bilinmeyen " + alan + " '" + ham + "'.");
+        }
+    }
+
+    /** Kapsamdaki tanım adlarını bu kurulumun kimliklerine çevirir; bulunamayan ad kuralı GECERSIZ yapar (diğer kurallar etkilenmez). */
+    private Kapsam kapsamKimlikli(ProfilPaketi.KapsamAdlari k) {
+        if (k == null) {
+            return Kapsam.TUMU;
+        }
+        Vardiya vardiya = k.vardiya() == null || k.vardiya().isBlank() ? Vardiya.HEPSI : enumDegeri(Vardiya.class, k.vardiya(), "kapsam", "vardiya");
+        Set<com.makinistatama.kural.MakinistBilgisi.Tur> turler = new java.util.HashSet<>();
+        for (String t : k.personelTurleri()) {
+            turler.add(enumDegeri(com.makinistatama.kural.MakinistBilgisi.Tur.class, t, "kapsam", "personel türü"));
+        }
+        return new Kapsam(kimlikler(k.hatlar(), TanimTipi.HAT, "hattı"), kimlikler(k.aracTipleri(), TanimTipi.ARAC_TIPI, "araç tipi"),
+                kimlikler(k.kalkisGarlari(), TanimTipi.GAR, "garı"), kimlikler(k.varisGarlari(), TanimTipi.GAR, "garı"), Set.copyOf(k.trenTurleri()), vardiya, turler);
+    }
+
+    private Set<Long> kimlikler(List<String> adlar, TanimTipi tip, String tur) {
+        if (adlar.isEmpty()) {
+            return Set.of();
+        }
+        Map<String, Long> harita = tanimlar.katlanmisAdlar(tip);
+        Set<Long> sonuc = new java.util.HashSet<>();
+        for (String ad : adlar) {
+            Long id = ad == null ? null : harita.get(AramaMetni.katla(ad.strip()));
+            if (id == null) {
+                throw UygulamaHatasi.dogrulama("kapsam", "'" + ad + "' " + tur + " bu kurulumda tanımlı değil.");
+            }
+            sonuc.add(id);
+        }
+        return sonuc;
+    }
+
+    private static String ozetMetni(OzelKural k, Map<Long, String> adlar) {
+        return OzelKuralDto.ozet(k, adlar) + " · Şiddet: " + k.siddet().name();
     }
 
     // ------------------------------------------------------------------ dönüşümler

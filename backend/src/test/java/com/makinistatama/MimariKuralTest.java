@@ -38,7 +38,9 @@ class MimariKuralTest {
             Map.entry("degisiklik", Set.of("guvenlik.OturumKullanicisi")),
             Map.entry("tanim", Set.of("degisiklik")),
             Map.entry("parametre", Set.of("degisiklik", "kural", "tanim")), // kural: ParametreServisi ham değerleri saf Parametreler kaydına çevirir; tanim: OzelKuralServisi kapsam kimliklerini doğrular (MK-24)
+            Map.entry("kurum", Set.of("degisiklik")), // F1 MK-167: kurum adı + logo
             Map.entry("makinist", Set.of("tanim", "parametre", "degisiklik")),
+            Map.entry("kurulum", Set.of("kurum", "tanim", "makinist", "sefer", "degisiklik")), // F1 MK-171: kurulum durumu veriden türetilir, hiçbir paket kurulum'u import etmez
             Map.entry("sefer", Set.of("tanim", "degisiklik", "parametre")), // parametre: yükleme parça süre sınırı ayarı (sefer.parca_azami_saat; F2c tur 2, MK-66)
             Map.entry("atama", Set.of("sefer", "makinist", "tanim", "parametre", "degisiklik", "kural", "kullanici")), // kullanici: gördüm görünürlüğü "hesap yok" (MK-33, yaprak paket)
             Map.entry("rapor", Set.of("atama", "sefer", "makinist", "tanim", "parametre", "degisiklik", "kural", "cikti")), // degisiklik: denetim raporu kaydı okur

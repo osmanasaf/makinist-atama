@@ -6,6 +6,7 @@ import { kullanici, yoneticiMi } from '@/composables/oturum'
 import { atamaApi, type GunSatiri } from '@/features/atama/atamaApi'
 import { masaBaglantisi } from '@/features/atama/masaBaglantisi'
 import { belgeApi } from '@/features/belge/belgeApi'
+import { kurulumApi, type KurulumDurumu } from '@/features/kurulum/kurulumApi'
 import { raporApi } from '@/features/rapor/raporApi'
 import { takasApi } from '@/features/takas/takasApi'
 import { bugun, gunKaydir, tarihBicimle } from '@/lib/tarih'
@@ -88,6 +89,22 @@ async function ozetYukle() {
   yukleniyor.value = false
 }
 
+/** İlk kurulum hatırlatması (F1, MK-171): yalnız yönetici; bağımsız okunur, hata kartı sessizce gizler (Ana Sayfa özetini etkilemez). */
+const kurulum = ref<KurulumDurumu | null>(null)
+async function kurulumYukle() {
+  if (!yoneticiMi.value) return
+  try {
+    kurulum.value = await kurulumApi.durum()
+  } catch {
+    kurulum.value = null
+  }
+}
+const kurulumKarti = computed(() => {
+  const k = kurulum.value
+  if (!yoneticiMi.value || !k || k.tamam || k.gizli) return null
+  return { yapilan: k.adimlar.filter((a) => a.yapildi).length, toplam: k.adimlar.length }
+})
+
 const bos = computed(() => seferler.value?.sefer === 0)
 
 /** Aciliyete göre sıralı "bugün yapılacaklar" (saf üretici; yalnız okunabilen kaynaklar satır üretir). */
@@ -121,7 +138,10 @@ const DemoAraclari = import.meta.env.DEV
   ? defineAsyncComponent(() => import('./DemoAraclari.vue'))
   : null
 
-onMounted(() => void ozetYukle())
+onMounted(() => {
+  void ozetYukle()
+  void kurulumYukle()
+})
 </script>
 
 <template>
@@ -133,6 +153,19 @@ onMounted(() => void ozetYukle())
         </p>
       </template>
     </SayfaBasligi>
+
+    <section
+      v-if="kurulumKarti"
+      class="bildirim bildirim-bilgi"
+      aria-label="Kurulum hatırlatması"
+      data-test="kurulum-karti"
+    >
+      <p>
+        <strong>Kurulumu tamamlayın.</strong> {{ kurulumKarti.yapilan }} /
+        {{ kurulumKarti.toplam }} adım tamam.
+      </p>
+      <RouterLink class="btn btn-birincil" :to="{ name: 'kurulum' }">Kuruluma devam et</RouterLink>
+    </section>
 
     <section class="yapilacaklar" aria-labelledby="yapilacaklar-baslik">
       <h2 id="yapilacaklar-baslik" class="ozet-baslik">

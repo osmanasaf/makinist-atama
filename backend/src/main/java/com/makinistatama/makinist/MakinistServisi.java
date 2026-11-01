@@ -85,6 +85,11 @@ public class MakinistServisi {
         }
     }
 
+    /** Var olan tüm sicil kodları (toplu içe aktarma "zaten var" denetimi). */
+    public Set<String> tumSiciller() {
+        return new HashSet<>(depo.tumSiciller());
+    }
+
     /** Veritabanında demo makinist ({@code Demo Makinist NN}, FR-14) var mı: raporlar "DEMO – gerçek değil" etiketi koyar. */
     public boolean demoVerisiVarMi() {
         return depo.existsByAdSoyadStartingWith("Demo Makinist ");
@@ -148,6 +153,12 @@ public class MakinistServisi {
 
     @Transactional
     public MakinistDto olustur(MakinistIstegi istek) {
+        return dto(ekle(istek));
+    }
+
+    /** Tek doğrulama + yazma yolu ({@link #olustur} ve toplu içe aktarma): DTO kurmaz (satır başına parametre/tanım okuması toplu yüklemeyi yavaşlatırdı). */
+    @Transactional
+    Makinist ekle(MakinistIstegi istek) {
         String sicil = sicil(istek.sicil());
         if (depo.existsBySicil(sicil)) {
             throw sicilTekrari(sicil);
@@ -164,7 +175,7 @@ public class MakinistServisi {
         }
         broveYaz(m.id(), istek);
         degisiklik.kaydet(Kayit.of(DegisiklikTuru.MAKINIST_EKLE, "MAKINIST", m.id()).makinist(m.id()).degisim(null, sicil));
-        return dto(m);
+        return m;
     }
 
     @Transactional

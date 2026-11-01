@@ -7,6 +7,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./AyarlarSayfasi.vue'),
     meta: { menu: { ad: 'Ayarlar', sira: 40, grup: 'Ayarlar', simge: 'ayarlar' }, rol: 'Y' },
   },
+  {
+    path: '/profil',
+    name: 'profil',
+    component: () => import('./ProfilSayfasi.vue'),
+    meta: { menu: { ad: 'Kural profili', sira: 47, grup: 'Ayarlar', simge: 'indir' }, rol: 'Y' },
+  },
   // Eski adres (yer imleri): menüde görünmez.
   { path: '/parametreler', redirect: '/ayarlar' },
   {

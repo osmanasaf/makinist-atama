@@ -30,7 +30,7 @@ public abstract class TestVeritabani {
     private static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:17");
 
     /** Tohumlu, temizlikte korunan tablolar. */
-    private static final List<String> KORUNAN = List.of("flyway_schema_history", "kural_parametre", "kural_siddet", "uygulama_ayar");
+    private static final List<String> KORUNAN = List.of("flyway_schema_history", "kural_parametre", "kural_siddet", "uygulama_ayar", "kurum");
 
     private static java.util.Map<String, String> tohumDegerler;
     private static java.util.Map<String, String> tohumSiddetler;
@@ -96,6 +96,7 @@ public abstract class TestVeritabani {
         if (tohumAyarlar == null) {
             tohumAyarlar = jdbc.queryForList("SELECT anahtar, deger FROM uygulama_ayar").stream().collect(java.util.stream.Collectors.toMap(r -> (String) r.get("anahtar"), r -> ((Number) r.get("deger")).intValue()));
         }
+        jdbc.update("UPDATE kurum SET ad = NULL, logo = NULL, logo_tur = NULL, logo_boyut = 0, sihirbaz_gizli = FALSE, versiyon = 0, guncelleme = NULL"); // tek satırlı kurum tablosu: her test boş kurulumla başlar (V34 satırı korunur)
         tohumAyarlar.forEach((k, v) -> jdbc.update("UPDATE uygulama_ayar SET deger = ? WHERE anahtar = ? AND deger <> ?", v, k, v));
         tohumDegerler.forEach((k, v) -> jdbc.update("UPDATE kural_parametre SET deger = ? WHERE anahtar = ? AND deger <> ?", v, k, v));
         tohumSiddetler.forEach((k, v) -> jdbc.update("UPDATE kural_siddet SET siddet = ? WHERE kod = ? AND siddet <> ?", v, k, v));

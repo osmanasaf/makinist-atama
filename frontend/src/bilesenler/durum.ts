@@ -25,6 +25,12 @@ const DURUMLAR: Record<string, DurumOzellik> = {
   KONDUKTOR_EKSIK: { ton: 'bilgi', simge: 'kisi', metin: 'Kondüktör eksik' },
   BILGI: { ton: 'bilgi', simge: 'bilgi', metin: 'Bilgi' },
   GECE: { ton: 'gece', simge: 'ay', metin: 'Gece' },
+  // Kural profili önizlemesi (F2): satır durumu
+  DEGISIR: { ton: 'bilgi', simge: 'bilgi', metin: 'Değişir' },
+  AYNI: { ton: 'notr', simge: 'daire', metin: 'Aynı' },
+  GECERSIZ: { ton: 'engel', simge: 'engel', metin: 'Geçersiz' },
+  BILINMEYEN: { ton: 'uyari', simge: 'uyari', metin: 'Bilinmeyen' },
+  PROFILDE_YOK: { ton: 'notr', simge: 'daire', metin: 'Profilde yok' },
 }
 
 export function durumOzellikleri(kod: string): DurumOzellik {

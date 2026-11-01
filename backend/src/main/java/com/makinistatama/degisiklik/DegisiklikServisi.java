@@ -128,6 +128,12 @@ public class DegisiklikServisi {
                 .toList();
     }
 
+    /** Belirli türde kaç kayıt var (kurulum durumu gibi "şu işlem hiç yapıldı mı" sorguları; kayıt içeriği okunmaz). */
+    @Transactional(readOnly = true)
+    public long sayi(DegisiklikTuru tur) {
+        return depo.countByTur(tur);
+    }
+
     /** Kaydı yazar (yalnız INSERT). Çağıran işlem yoksa {@code IllegalTransactionStateException}. */
     @Transactional(propagation = Propagation.MANDATORY)
     public void kaydet(Kayit kayit) {

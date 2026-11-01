@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import { yoneticiMi } from '@/composables/oturum'
 import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
 import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { tarihBicimle } from '@/lib/tarih'
@@ -41,6 +42,13 @@ onMounted(yukle)
   <section>
     <SayfaBasligi baslik="Personel">
       <template #eylemler>
+        <RouterLink
+          v-if="yoneticiMi"
+          class="btn"
+          :to="{ name: 'makinist-yukle' }"
+          data-test="excel-yukle"
+          >Excel'den yükle</RouterLink
+        >
         <RouterLink class="btn btn-birincil" :to="{ name: 'makinist-yeni' }"
           >Yeni personel</RouterLink
         >

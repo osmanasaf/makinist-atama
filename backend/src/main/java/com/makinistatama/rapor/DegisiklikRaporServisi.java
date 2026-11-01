@@ -92,6 +92,10 @@ public class DegisiklikRaporServisi {
         TUR_ADLARI.put(DegisiklikTuru.INTIKAL_GUNCELLE, "İntikal güncellendi");
         TUR_ADLARI.put(DegisiklikTuru.INTIKAL_IPTAL, "İntikal iptal edildi");
         TUR_ADLARI.put(DegisiklikTuru.INTIKAL_SURESI_DEGISTI, "Gar intikal süresi değişti");
+        TUR_ADLARI.put(DegisiklikTuru.PROFIL_UYGULA, "Kural profili uygulandı");
+        TUR_ADLARI.put(DegisiklikTuru.KURUM_GUNCELLE, "Kurum bilgisi güncellendi");
+        TUR_ADLARI.put(DegisiklikTuru.KURUM_LOGO, "Kurum logosu değişti");
+        TUR_ADLARI.put(DegisiklikTuru.MAKINIST_ICE_AKTAR, "Makinist Excel yüklemesi");
     }
 
     private static final Map<String, String> BOLUM_ADLARI = new LinkedHashMap<>();
@@ -276,7 +280,7 @@ public class DegisiklikRaporServisi {
             case ATAMA, OTOMATIK_ATAMA -> "ATAMALAR";
             case SEFER_IPTAL, SEFER_GECIKME -> "IPTAL_GECIKME";
             case ATAMA_DEGISTIR, ATAMA_KALDIR -> "ATAMA_DEGISIKLIKLERI";
-            case PARAMETRE_DEGISTI, KURAL_EKLE, KURAL_GUNCELLE -> "PARAMETRE";
+            case PARAMETRE_DEGISTI, KURAL_EKLE, KURAL_GUNCELLE, PROFIL_UYGULA -> "PARAMETRE";
             case GORDUM -> GORDUM_BOLUMU;
             default -> "DIGER";
         };

@@ -54,4 +54,31 @@ public class AyarServisi {
         }
         return AyarDto.of(a);
     }
+
+    /**
+     * Profil uygulaması (MK-164): tüm değerler önce aralık denetiminden geçer, sonra TEK işlemde yazılır (biri geçersizse hiçbiri yazılmaz). Değişen her ayar için mevcut
+     * {@code PARAMETRE_DEGISTI} kaydı düşer; değişmeyen için kayıt yok. Dönen: gerçekten değişen ayar sayısı.
+     */
+    @Transactional
+    public int topluUygula(java.util.Map<String, Integer> yeniDegerler, String neden) {
+        java.util.Map<String, UygulamaAyar> degisenler = new java.util.LinkedHashMap<>();
+        for (var e : yeniDegerler.entrySet()) {
+            UygulamaAyar a = ayarlar.findById(e.getKey()).orElseThrow(() -> UygulamaHatasi.dogrulama("ayarlar", "Bilinmeyen ayar: " + e.getKey()));
+            if (e.getValue() < a.alt() || e.getValue() > a.ust()) {
+                throw UygulamaHatasi.dogrulama("ayarlar", AyarAdlari.ad(e.getKey()) + ": değer " + a.alt() + " ile " + a.ust() + " arasında olmalı.");
+            }
+            if (a.deger() != e.getValue()) {
+                degisenler.put(e.getKey(), a);
+            }
+        }
+        for (var e : degisenler.entrySet()) {
+            UygulamaAyar a = e.getValue();
+            int eski = a.deger();
+            a.degerYaz(yeniDegerler.get(e.getKey()));
+            ayarlar.flush();
+            degisiklik.kaydet(Kayit.of(DegisiklikTuru.PARAMETRE_DEGISTI, "AYAR", null).degisim(eski, a.deger())
+                    .neden(Neden.DIGER, neden).ayrinti("{\"anahtar\":\"" + e.getKey() + "\"}"));
+        }
+        return degisenler.size();
+    }
 }

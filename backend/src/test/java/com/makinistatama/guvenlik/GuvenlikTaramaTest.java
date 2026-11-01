@@ -38,6 +38,15 @@ class GuvenlikTaramaTest extends TestVeritabani {
             Map.entry("GET /api/ozel-kural", "G"), Map.entry("GET /api/ozel-kural/katalog", "G"), Map.entry("POST /api/ozel-kural", "Y"),
             Map.entry("PUT /api/ozel-kural/{id}", "Y"), Map.entry("POST /api/ozel-kural/dene", "Y"), Map.entry("POST /api/rapor/kadro", "Y"), Map.entry("POST /api/rapor/kadro/excel", "Y"),
             Map.entry("PUT /api/parametre/{anahtar}", "Y"), Map.entry("PUT /api/kural/{kod}/siddet", "Y"),
+            // F2 kural profili paketi (yeni-ozellikler Tur 1, MK-163): hepsi yalnız yönetici
+            Map.entry("GET /api/profil/disa-aktar", "Y"), Map.entry("GET /api/profil/hazir", "Y"), Map.entry("GET /api/profil/hazir/{kod}", "Y"),
+            Map.entry("POST /api/profil/onizle", "Y"), Map.entry("POST /api/profil/uygula", "Y"),
+            // F1 kurum adı + logo (yeni-ozellikler Tur 2, MK-167/168): okuma ANONİM (A, yalnız bu iki GET), yazma yalnız yönetici
+            Map.entry("GET /api/kurum/acik", "A"), Map.entry("GET /api/kurum/logo", "A"),
+            Map.entry("PUT /api/kurum", "Y"), Map.entry("PUT /api/kurum/logo", "Y"), Map.entry("DELETE /api/kurum/logo", "Y"),
+            // F1 makinist toplu içe aktarma (MK-170): yalnız yönetici
+            Map.entry("POST /api/makinist/ice-aktar", "Y"), Map.entry("GET /api/makinist/ice-aktar/sablon", "Y"),
+            Map.entry("GET /api/kurulum/durum", "Y"), Map.entry("PUT /api/kurulum/sihirbaz-gizle", "Y"),
             Map.entry("GET /api/makinist", "G"), Map.entry("GET /api/makinist/{id}", "G"), Map.entry("POST /api/makinist", "G"),
             Map.entry("PUT /api/makinist/{id}", "G"), Map.entry("POST /api/makinist/{id}/izin", "G"),
             Map.entry("GET /api/sefer", "G"), Map.entry("GET /api/sefer/{id}", "G"), Map.entry("POST /api/sefer", "G"), Map.entry("PUT /api/sefer/{id}", "G"),
@@ -132,6 +141,19 @@ class GuvenlikTaramaTest extends TestVeritabani {
         assertThat(siniflanmamis).as("rol tablosunda olmayan uçlar (GuvenlikTaramaTest.ROLLER'e ekleyin)").isEmpty();
         assertThat(yanlisIsaret).isEmpty();
         assertThat(ucNoktalar()).as("tablodaki kayıtlı uçlar bulundu").hasSizeGreaterThanOrEqualTo(ROLLER.size());
+    }
+
+    /** MK-168: anonim erişime açık uçların kümesi TAM eşitlik; üçüncü bir anonim uç eklenirse (ya da biri kapanırsa) bu test kırılır. */
+    @Test
+    void anonimAcikUclarKumesi_tamOlarakUc() {
+        List<String> acik = new ArrayList<>();
+        for (Uc uc : ucNoktalar()) {
+            if (YetkiOnKontrol.beyan(uc.islem()).filter(b -> b == Acik.class).isPresent()) {
+                acik.add(uc.anahtar());
+            }
+        }
+        assertThat(acik).containsExactlyInAnyOrder("POST /api/auth/giris", "GET /api/kurum/acik", "GET /api/kurum/logo");
+        assertThat(ROLLER.entrySet().stream().filter(e -> "A".equals(e.getValue())).map(Map.Entry::getKey)).containsExactlyInAnyOrderElementsOf(acik);
     }
 
     @Test

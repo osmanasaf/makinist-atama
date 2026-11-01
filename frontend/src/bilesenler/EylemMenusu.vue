@@ -102,7 +102,11 @@ function menuTus(e: KeyboardEvent) {
     e.preventDefault()
     e.stopPropagation()
     kapat(true)
-  } else if (e.key === 'Tab') kapat(true) // odak ⋯'ya döner, doğal Tab oradan ilerler
+  } else if (e.key === 'Tab') {
+    // N-2 (MK-182): ⋯ sekme sırasının son öğesi olabilir; doğal Tab odağı belgeden çıkarıp body'ye düşürürdü. Menü kapanır, odak ⋯'da kalır.
+    e.preventDefault()
+    kapat(true)
+  }
 }
 
 function sec(o: EylemOgesi) {

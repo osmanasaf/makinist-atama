@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
 import { kaydirmaDavranisi } from '@/lib/odak'
@@ -32,7 +32,7 @@ import { atanmamisMi } from '@/features/ana/yapilacaklar'
 import { hizliAtanabilir, sonrakiBos } from './hizliDoldur'
 import { suzgecOku, type MasaSuzgeci } from './masaBaglantisi'
 import { useAtamaMasasi } from './useAtamaMasasi'
-import { useGeriAl } from './useGeriAl'
+import { GERI_AL_SURESI_MS, useGeriAl } from './useGeriAl'
 import ZamanSeridi, { type CubukDurumu } from './ZamanSeridi.vue'
 import {
   cubuk as cubukHesapla,
@@ -261,6 +261,13 @@ type DigerDiyalog =
 const diyalog = ref<DiyalogDurumu | null>(null)
 const diger = ref<DigerDiyalog | null>(null)
 const bilgi = ref('')
+// N-1 (MK-182): bilgi, Geri al şeridiyle aynı sabit konumlu kapta görünür (akışta yer tutmaz, tablo kaymaz); şerit gibi 10 sn sonra kalkar.
+let bilgiZamanlayici: ReturnType<typeof setTimeout> | undefined
+watch(bilgi, (b) => {
+  clearTimeout(bilgiZamanlayici)
+  if (b) bilgiZamanlayici = setTimeout(() => (bilgi.value = ''), GERI_AL_SURESI_MS)
+})
+onBeforeUnmount(() => clearTimeout(bilgiZamanlayici))
 
 const geriAl = useGeriAl()
 /** Hızlı atama sürerken ikinci tetik (çift Enter) yok sayılır; sunucu `ZATEN_ATANMIS` ikinci savunma. */
@@ -677,7 +684,7 @@ async function kapat(yenile: boolean) {
           <Simge ad="geri-al" boyut="1.1em" />Geri al
         </button>
       </div>
-      <p v-else-if="bilgi" class="bildirim bildirim-bilgi">{{ bilgi }}</p>
+      <p v-else-if="bilgi" class="bildirim bildirim-bilgi geri-al-seridi">{{ bilgi }}</p>
     </div>
     <p v-if="hizliHata" class="bildirim bildirim-hata" role="alert">{{ hizliHata }}</p>
     <p v-if="masa.gunHatasi.value" class="bildirim bildirim-hata" role="alert">

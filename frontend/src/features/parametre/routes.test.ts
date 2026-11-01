@@ -15,6 +15,15 @@ describe('parametre rotaları', () => {
     expect(ayarlar.meta).toMatchObject({ menu: { ad: 'Ayarlar', sira: 40 }, rol: 'Y' })
   })
 
+  it('Kural profili sayfası Ayarlar grubunda 47. sırada ve yalnız yöneticiye açıktır', () => {
+    const profil = routes.find((r) => r.name === 'profil')!
+    expect(profil.path).toBe('/profil')
+    expect(profil.meta).toMatchObject({
+      menu: { ad: 'Kural profili', sira: 47, grup: 'Ayarlar' },
+      rol: 'Y',
+    })
+  })
+
   it('eski /parametreler adresi menüsüz olarak /ayarlar sayfasına yönlenir', () => {
     const eski = routes.find((r) => r.path === '/parametreler')!
     expect(eski.redirect).toBe('/ayarlar')

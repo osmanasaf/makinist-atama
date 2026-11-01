@@ -1,6 +1,6 @@
 # Gösterim rehberi (15–20 dakika)
 
-Bu rehber, uygulamayı bir makinist atamacısına ya da TCDD'den bir yetkiliye gösterirken izleyeceğiniz yolu anlatır. Ekrandaki makinistler, seferler ve izinler tamamen uydurmadır (Demo Makinist 01 … 68); gerçek kişi verisi yoktur.
+Bu rehber, uygulamayı bir makinist atamacısına ya da bir kurum yetkilisine gösterirken izleyeceğiniz yolu anlatır. Ekrandaki makinistler, seferler ve izinler tamamen uydurmadır (Demo Makinist 01 … 68); gerçek kişi verisi yoktur.
 
 ## 0. Kısa senaryo: en etkileyici 10 adım (15 dakika)
 
@@ -180,6 +180,21 @@ Aynı kural motoru kondüktörü de planlar (bir yolcu trenine bir kondüktör).
 
 **Söylenecek önemli not:** Başlık artık "(%13 devamsızlık varsayımıyla)" der ve altında tek cümleyle açıklar: kadro tahmini temiz sayfadan, devamsızlıklı bir plandır; masadaki gerçek plan mevcut atamalarla ve demo verideki yalnız 15 izinle yapıldığı için daha dolu (%99+) görünür. Çelişki değil, varsayım farkı: "Devamsızlık (%)" kutusunu 0 yaparsanız fark kapanır. "Ek hesap süresi (sn)" yalnız ek hesapların (iyileştirmeli plan, konum kuralı kapalı plan) bütçesidir; başlıktaki eğri ondan etkilenmez. Aynı anda ikinci hesap "Başka bir kadro hesabı sürüyor" (429) der.
 
+## 2h. İlk kurulum, kurum adı/logosu ve Excel'den personel yükleme (4 dakika)
+
+Boş kurulumda (demo yüklemeden) yönetici olarak girin. Ürün hiçbir kurumun markasını taşımaz: kurum adı ve logo **müşterinin kendi verisidir** ve yalnız yönetici girer. Girilmemişken her yerde ürün adı ("Makinist Atama") görünür.
+
+| # | Yapın | Dikkat çekin |
+|---|-------|--------------|
+| a | **Ayarlar → Kurulum** (ya da Ana Sayfa'daki "Kurulumu tamamlayın" kartı → **Kuruluma devam et**). | Beş adım: kurum adı ve logo, tanımlar (en az 2 gar, 1 hat, 1 araç tipi), personel listesi, kural profili, ilk seferler. Durum **veriden hesaplanır**: sayfayı yenileyince kaldığı yerden devam eder; yapılan adım "Tamam", yapılmayan "Bekliyor" yazar. "Hatırlatmayı gizle" yalnız Ana Sayfa kartını kapatır. |
+| b | Birinci adımda kurum adı yazıp **Adı kaydet** (ör. "Örnek İşletme (demo)"), isterseniz küçük bir PNG/JPEG logo seçin. | Ad üst çubukta, giriş sayfasında, personel ekranında ve yazdırılan listelerin başlığında görünür. Logo yalnız PNG/JPEG, en fazla 256 KB ve 1024 × 1024 piksel; SVG/GIF/WebP kabul edilmez. Kendi kurumunuzun dışında bir logo yüklemeyin. |
+| c | **Tanımlar**'da garları, hat ve araç tiplerini ekleyin, **Kurulum**'a dönün. | Tanım ürettirmeyiz: Excel'deki ad Tanımlar'da yoksa satır hata olur ve eksik adlar ayrıca listelenir. |
+| d | Üçüncü adım: **Personeli Excel'den yükle** → **Şablonu indir**, doldurun (ya da şablonu inceleyin), dosyayı seçin. | Şablon üç sayfa: Makinistler, Araç Tipi Bröveleri, Hat Bröveleri. Dosya seçilince **önizleme** gelir; **Onayla ve yükle** denmeden hiçbir kayıt yazılmaz. Hatalı satırlar sayfa + satır no + sicil + neden ile listelenir ve atlanır; geçerli satırlar yüklenir. Şablondaki "ORNEK-" sicilli satırlar silinmeden yüklenemez. |
+| e | Aynı dosyayı **ikinci kez** seçin. | "Eklenecek: 0 · Atlanacak (zaten var): N": sicili sistemde olan personel **güncellenmez**, satırında "Atlandı: zaten var" yazar. Belge bitiş tarihi geçmişte olan satırda "belge süresi dolmuş" uyarısı çıkar (atama zaten engellenir). |
+| f | Dördüncü adım: **Kural profiline git**. | Hazır profiller "örnek başlangıç, kurum mevzuatıyla doğrulanmalı" etiketlidir; yasal uyum iddiası yoktur. Atlamak isterseniz varsayılan kurallarla devam edip hatırlatmayı gizleyebilirsiniz. |
+
+Personel yükleme yalnız **yönetici** içindir; atamacı personeli tek tek ekleyebilir. Yükleme **Denetim Raporu**'nda "Makinist Excel yüklemesi" ve her personel için "Makinist eklendi" olarak görünür.
+
 ## 3. Takılırsanız
 
 | Gördüğünüz | Ne yapın |
@@ -202,4 +217,4 @@ Aynı kural motoru kondüktörü de planlar (bir yolcu trenine bir kondüktör).
 
 - "Mevzuata uygundur" demeyin: ekran kendisi "karar destek aracıdır, mevzuata uyum garantisi vermez" diyor (Ayarlar sayfasında).
 - Puantaj ve tutarlar demo oranlarıyladır, gerçek ücret değildir.
-- Bu sürümde Excel'den sefer yükleme var (Seferler sayfası), ama hazır bir TCDD formatı yok; kendi Excel'iniz için sütunlar şablonda.
+- Bu sürümde Excel'den sefer yükleme var (Seferler sayfası), ama hazır bir kurum formatı yok; kendi Excel'iniz için sütunlar şablonda. Personel listesi için de şablon vardır (Adım 2h).

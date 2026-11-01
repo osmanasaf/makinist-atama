@@ -63,6 +63,17 @@ describe('istemci', () => {
     expect(secenek.headers['X-XSRF-TOKEN']).toBe('t2')
   })
 
+  it('Blob/File (ham gövde) JSON metnine çevrilmez; içerik türü dosyanınkidir ve CSRF başlığı taşır', async () => {
+    document.cookie = 'XSRF-TOKEN=t3'
+    fetchSahte.mockResolvedValue(yanit(200, { ad: null }))
+    const dosya = new File([new Uint8Array([1, 2, 3])], 'logo.png', { type: 'image/png' })
+    await api.put('/api/kurum/logo', dosya)
+    const secenek = fetchSahte.mock.calls[0]![1]
+    expect(secenek.body).toBe(dosya)
+    expect(secenek.headers['Content-Type']).toBe('image/png')
+    expect(secenek.headers['X-XSRF-TOKEN']).toBe('t3')
+  })
+
   it('PUT, PATCH ve DELETE de CSRF başlığı taşır', async () => {
     document.cookie = 'XSRF-TOKEN=t1'
     fetchSahte.mockImplementation(() => Promise.resolve(yanit(204)))

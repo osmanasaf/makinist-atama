@@ -4,7 +4,7 @@
 //   1. Geçici PostgreSQL:  docker run -d --name makinist-tasarim-gecici-db -e POSTGRES_PASSWORD=<geçici> -e POSTGRES_DB=gecici -p 127.0.0.1:5436:5432 postgres:17
 //      (gerçek `makinist` DB'si 5434, ihale-takip 5433: dokunulmaz; iş bitince konteyneri `docker rm -f` ile sil)
 //   2. Backend (dev profili, 8082; ortam değişkenleri .env'i ezer):
-//      DB_PORT=5436 DB_ADI=gecici DB_KULLANICI=postgres DB_PAROLA=<geçici> APP_PORT=8082 MAKINIST_ADMIN_EPOSTA=<e-posta> MAKINIST_ADMIN_SIFRE=<parola>
+//      DB_PORT=5436 DB_ADI=gecici DB_KULLANICI=postgres DB_PAROLA=<geçici> SERVER_PORT=8082 MAKINIST_ADMIN_EPOSTA=<e-posta> MAKINIST_ADMIN_SIFRE=<parola>
 //      backend\mvnw.cmd -f backend\pom.xml spring-boot:run "-Dspring-boot.run.profiles=dev"
 //   3. Vite (5175, /api -> 8082): frontend/ içinde, repo dışı yapılandırmayla (örn. vite.config kopyası, server.port=5175, proxy '/api': 'http://localhost:8082')
 //   4. Demo veri: yönetici ile Ana sayfa > "Demo veri yükle" (yalnız dev profili)
@@ -42,10 +42,20 @@ const SAYFALAR = [
   { ad: 'personel-yeni', yol: '/makinistler/yeni', grup: 'masaustu' },
   { ad: 'seferler', yol: '/seferler', grup: 'masaustu' },
   { ad: 'sefer-yukle', yol: '/seferler/yukle', grup: 'masaustu' },
+  { ad: 'makinist-yukle', yol: '/makinistler/yukle', grup: 'masaustu' }, // F1
+  { ad: 'kurulum', yol: '/kurulum', grup: 'masaustu' }, // F1 ilk kurulum sihirbazı
+  { ad: 'kurum', yol: '/kurum', grup: 'masaustu' }, // F1 kurum adı + logo
   { ad: 'takas-talepleri', yol: '/takas', grup: 'masaustu' },
   { ad: 'belgeler', yol: '/belgeler', grup: 'masaustu' },
   { ad: 'tanimlar', yol: '/tanimlar', grup: 'masaustu' },
   { ad: 'ayarlar', yol: '/ayarlar', grup: 'masaustu' },
+  { ad: 'profil', yol: '/profil', grup: 'masaustu' },
+  {
+    ad: 'profil-fark',
+    yol: '/profil',
+    grup: 'masaustu',
+    eylem: "document.querySelectorAll('[data-test^=\"hazir-\"] button')[1]?.click()",
+  },
   { ad: 'adalet-raporu', yol: '/rapor/adalet', grup: 'masaustu' },
   { ad: 'yedek-plani', yol: '/rapor/yedek', grup: 'masaustu' },
   { ad: 'ozel-kurallar', yol: '/ozel-kurallar', grup: 'masaustu' },
