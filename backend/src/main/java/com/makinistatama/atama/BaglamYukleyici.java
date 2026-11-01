@@ -501,6 +501,17 @@ class BaglamYukleyici {
             return genelSon.get(makinistId);
         }
 
+        /** Kural girdisi birebir aynı makinistler için eşit anahtar (kimlik hariç; kurallar makinist kimliğini okumaz): sonuçları paylaşılabilir. */
+        record Sinif(MakinistBilgisi bilgi, Map<Long, LocalDate> hatSon, LocalDate genelSon, List<AtamaSatiri> satirlar) {
+        }
+
+        Sinif sinif(MakinistDto m) {
+            MakinistBilgisi b = bilgi(m);
+            MakinistBilgisi kimliksiz = new MakinistBilgisi(0L, b.bagliGarId(), b.durum(), b.ehliyetBitis(), b.saglikBitis(), b.psikoteknikBitis(), b.aracTipiSinavlari(), b.hatBroveleri(),
+                    b.kartSonSurus(), b.izinler(), b.tur());
+            return new Sinif(kimliksiz, hatSon(m.id()), genelSon(m.id()), satirlar(m.id()));
+        }
+
         static MakinistBilgisi bilgi(MakinistDto m) {
             Map<Long, LocalDate> arac = m.broveAracTipleri().stream()
                     .collect(Collectors.toMap(MakinistDto.BroveAracTipiDto::aracTipiId, MakinistDto.BroveAracTipiDto::sinavTarihi));

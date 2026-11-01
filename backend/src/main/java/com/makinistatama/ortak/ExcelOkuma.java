@@ -16,6 +16,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.FormulaError;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFCell;
@@ -146,11 +147,18 @@ public final class ExcelOkuma {
         return c != null && c.getCellType() == CellType.FORMULA && !(c instanceof XSSFCell x && x.getCTCell().isSetV());
     }
 
-    /** Satırda sonucu olmayan formül hücresi varsa satır sorunu (yoksa null): kullanıcıya ne yapacağını söyler. */
+    /**
+     * Satırda sonucu olmayan ya da HATA sonuçlu (#DIV/0!, #N/A ...) formül hücresi varsa satır sorunu (yoksa null): kullanıcıya ne yapacağını söyler. Hata sonucu boş değer gibi okunup
+     * "Ad soyad boş" gibi yanıltıcı bir mesaja dönmesin diye açıkça bildirilir.
+     */
     public static String formulSorunu(Row satir) {
         for (Cell c : satir) {
+            String sutun = CellReference.convertNumToColString(c.getColumnIndex());
             if (formulSonucsuz(c)) {
-                return "Formül hücresi (" + CellReference.convertNumToColString(c.getColumnIndex()) + ") dosyada hesaplanmış değer taşımıyor; dosyayı Excel'de açıp kaydedin ya da değeri yapıştırın";
+                return "Formül hücresi (" + sutun + ") dosyada hesaplanmış değer taşımıyor; dosyayı Excel'de açıp kaydedin ya da değeri yapıştırın";
+            }
+            if (c.getCellType() == CellType.FORMULA && c.getCachedFormulaResultType() == CellType.ERROR) {
+                return "Formül hücresi (" + sutun + ") hata sonucu veriyor (" + FormulaError.forInt(c.getErrorCellValue()).getString() + "); formülü düzeltin ya da değeri yapıştırın";
             }
         }
         return null;

@@ -59,4 +59,24 @@ class KaynakKodlamaTest {
         assertThat(BOZUK.matcher("bozuk " + m(0xFFFD)).find()).isTrue();
         assertThat(BOZUK.matcher("İntikal öneri çığ şüğ → hâlâ kâr ÇĞİÖŞÜ âlem ― Ankara – Sivas").find()).isFalse();
     }
+
+    /** Bildirim anahtar sözcükleriyle başlayan satırlar sütun 0'da olabilir; deyimler (girintisiz kalmış kod, QA tur 2 YENİ-5) olamaz. */
+    private static final Pattern SUTUN_SIFIR_SERBEST = Pattern.compile("^(package |import |@|public |final |abstract |class |interface |enum |record |sealed |non-sealed |static |/\\*|\\*|//|\\}).*");
+
+    @Test
+    void javaKaynaginda_girintisizDeyimYok() throws IOException {
+        List<String> bulunan = new ArrayList<>();
+        try (Stream<Path> dosyalar = Files.walk(Path.of("src", "main", "java"))) {
+            for (Path p : dosyalar.filter(f -> f.toString().endsWith(".java")).toList()) {
+                List<String> satirlar = Files.readAllLines(p);
+                for (int i = 0; i < satirlar.size(); i++) {
+                    String s = satirlar.get(i);
+                    if (!s.isEmpty() && !Character.isWhitespace(s.charAt(0)) && !SUTUN_SIFIR_SERBEST.matcher(s).matches()) {
+                        bulunan.add(p.toString().replace('\\', '/') + ":" + (i + 1));
+                    }
+                }
+            }
+        }
+        assertThat(bulunan).as("sütun 0'dan başlayan deyim satırları (girinti bozuk)").isEmpty();
+    }
 }

@@ -175,7 +175,7 @@ public final class SeferExcelOkuyucu {
             }
             int no = i + 1;
             List<String> sorunlar = new ArrayList<>();
-Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
+            Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
             LocalDate tarih = ExcelOkuma.tarih(satir.getCell(k[0]), sorunlar);
             String trenNo = ExcelOkuma.metin(satir.getCell(k[1]), bicim);
             String anahtar = trenAnahtari(trenNo);
@@ -312,7 +312,7 @@ Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
             }
             int no = i + 1;
             List<String> sorunlar = new ArrayList<>();
-Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
+            Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
             String trenNo = ExcelOkuma.metin(satir.getCell(k[0]), bicim);
             if (trenNo.isEmpty()) {
                 sorunlar.add("Tren no boş");
@@ -386,13 +386,21 @@ Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
         return id;
     }
 
+    /** Formül hücresinde Excel'in dosyaya yazdığı sonucun türü (formül ÇALIŞTIRILMAZ); formül değilse hücre türü. */
+    private static CellType sonucTuru(Cell c) {
+        return c.getCellType() == CellType.FORMULA ? c.getCachedFormulaResultType() : c.getCellType();
+    }
+
     private static LocalTime saat(Cell c, String etiket, List<String> sorunlar) {
         if (c == null || c.getCellType() == CellType.BLANK) {
             sorunlar.add(etiket + " boş");
             return null;
         }
+        if (sonucTuru(c) == CellType.ERROR) {
+            return null; // hata sonuçlu formül: satır sorunu zaten ExcelOkuma.formulSorunu ile bildirildi
+        }
         try {
-            if (c.getCellType() == CellType.NUMERIC) {
+            if (sonucTuru(c) == CellType.NUMERIC) {
                 double d = c.getNumericCellValue();
                 if (d < 0 || d >= 1) {
                     d = d - Math.floor(d); // tarih+saat hücresi: yalnız saat kısmı
@@ -414,8 +422,11 @@ Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
         if (c == null || c.getCellType() == CellType.BLANK) {
             return null;
         }
+        if (sonucTuru(c) == CellType.ERROR) {
+            return null; // hata sonuçlu formül: satır sorunu zaten ExcelOkuma.formulSorunu ile bildirildi
+        }
         try {
-            BigDecimal v = c.getCellType() == CellType.NUMERIC ? BigDecimal.valueOf(c.getNumericCellValue())
+            BigDecimal v = sonucTuru(c) == CellType.NUMERIC ? BigDecimal.valueOf(c.getNumericCellValue())
                     : new BigDecimal(c.getStringCellValue().strip().replace(',', '.'));
             if (v.signum() < 0 || v.compareTo(new BigDecimal("99999")) > 0) {
                 sorunlar.add("KM aralık dışı");

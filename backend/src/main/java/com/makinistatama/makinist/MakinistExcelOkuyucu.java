@@ -22,6 +22,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import com.makinistatama.ortak.AramaMetni;
+import com.makinistatama.ortak.MetinDenetimi;
 import com.makinistatama.ortak.ExcelOkuma;
 import com.makinistatama.ortak.UygulamaHatasi;
 
@@ -219,7 +220,7 @@ public final class MakinistExcelOkuyucu {
                 toplam++;
                 int no = i + 1;
                 List<String> sorunlar = new ArrayList<>();
-Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
+                Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
                 List<String> uyarilar = new ArrayList<>();
                 String sicil = ExcelOkuma.metin(satir.getCell(k[0]), bicim).strip().toUpperCase(Locale.ROOT);
                 String ad = ExcelOkuma.metin(satir.getCell(k[1]), bicim);
@@ -229,11 +230,15 @@ Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
                     sorunlar.add("Sicil en fazla " + EN_FAZLA_SICIL + " karakter olabilir");
                 } else if (sicil.startsWith(ORNEK_ONEKI)) {
                     sorunlar.add("Şablondaki örnek satır (" + ORNEK_ONEKI + "...) yüklenemez; silin ya da gerçek bilgilerle değiştirin");
+                } else if (MetinDenetimi.gorunumBozanKarakterVar(sicil)) {
+                    sorunlar.add("Sicil kontrol ya da yön denetim karakteri içeremez");
                 }
                 if (ad.isEmpty()) {
                     sorunlar.add("Ad soyad boş");
                 } else if (ad.length() > EN_FAZLA_AD) {
                     sorunlar.add("Ad soyad en fazla " + EN_FAZLA_AD + " karakter olabilir");
+                } else if (MetinDenetimi.gorunumBozanKarakterVar(ad)) {
+                    sorunlar.add("Ad soyad kontrol ya da yön denetim karakteri içeremez");
                 }
                 PersonelTuru tur = tur(k[2] < 0 ? "" : ExcelOkuma.metin(satir.getCell(k[2]), bicim), sorunlar);
                 Long gar = tanim(tanimlar.gar(), "GAR", ExcelOkuma.metin(satir.getCell(k[3]), bicim), "Bağlı gar", sorunlar);
@@ -337,7 +342,7 @@ Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
                 }
                 int no = i + 1;
                 List<String> sorunlar = new ArrayList<>();
-Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
+                Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
                 String sicil = ExcelOkuma.metin(satir.getCell(k[0]), bicim).strip().toUpperCase(Locale.ROOT);
                 Gecici m = makinistler.get(sicil);
                 if (sicil.isEmpty()) {

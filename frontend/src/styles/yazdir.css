@@ -28,6 +28,7 @@
 }
 /* Dar ekranda tablo sayfayı taşırmasın; kaydırma yalnız ekranda, yazdırmada kapsayıcı görünmez. */
 .yazdir-tablo-kap {
+  position: relative; /* görünmez (.gorunmez) hücre adları kabın dışına taşıp sayfayı yatay kaydırmasın (%200) */
   overflow-x: auto;
 }
 .yazdir-tablo {

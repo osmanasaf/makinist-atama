@@ -67,4 +67,33 @@ class ExcelFormulHucreTest {
         assertThat(s.hatalar().getFirst().satirNo()).isEqualTo(2);
         assertThat(s.hatalar().getFirst().neden()).contains("Formül").contains("değeri yapıştırın");
     }
+
+    /** QA tur 2 YENİ-1 / G2-3: hata sonuçlu formül (#DIV/0!) "Ad soyad boş" diye değil, formül hatası olarak ve hangi hücre olduğuyla bildirilir. */
+    @Test
+    void hataSonucluFormul_formulHatasiMesaji() throws Exception {
+        byte[] dosya;
+        try (XSSFWorkbook k = new XSSFWorkbook(); ByteArrayOutputStream o = new ByteArrayOutputStream()) {
+            Sheet s = k.createSheet("Makinistler");
+            Row b = s.createRow(0);
+            for (int i = 0; i < TestMakinistExcel.MAKINIST_BASLIK.size(); i++) {
+                b.createCell(i).setCellValue(TestMakinistExcel.MAKINIST_BASLIK.get(i));
+            }
+            Row r = s.createRow(1);
+            r.createCell(0).setCellValue("F002");
+            r.createCell(1).setCellFormula("1/0");
+            r.createCell(3).setCellValue("Ankara");
+            r.createCell(5).setCellValue("31.12.2030");
+            r.createCell(6).setCellValue("31.12.2030");
+            r.createCell(7).setCellValue("31.12.2030");
+            k.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            k.write(o);
+            dosya = o.toByteArray();
+        }
+
+        Sonuc s = MakinistExcelOkuyucu.oku(dosya, TANIMLAR, LocalDate.of(2026, 11, 1));
+
+        assertThat(s.gecerli()).isEmpty();
+        assertThat(s.hatalar()).hasSize(1);
+        assertThat(s.hatalar().getFirst().neden()).startsWith("Formül hücresi (B) hata sonucu veriyor (#DIV/0!)");
+    }
 }

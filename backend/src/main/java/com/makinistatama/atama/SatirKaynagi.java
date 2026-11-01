@@ -32,6 +32,7 @@ class SatirKaynagi {
         if (makinistler.isEmpty()) {
             return List.of();
         }
+        atamalar.ozelPlan(); // büyük IN listesi + tarih aralığı: genel plana geçince ~900 ms (Gözlem-2)
         List<AtamaSatiri> satirlar = atamalar.aralik(makinistler, bas, bit);
         List<Intikal> intikalSatirlari = intikaller.satirlar(makinistler, bas.atStartOfDay(ZamanAyari.BOLGE).toInstant(),
                 bit.plusDays(1).atStartOfDay(ZamanAyari.BOLGE).toInstant());

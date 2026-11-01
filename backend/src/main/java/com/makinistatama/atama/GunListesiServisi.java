@@ -117,30 +117,45 @@ public class GunListesiServisi {
         LocalDate gun = bos.getFirst().tarih();
         Yuk y = yukleyici.yukleAralik(gun, gun, aktif);
         Map<Long, String> sonuc = new java.util.HashMap<>();
-        // Önceki seferlerde uygun çıkan makinistler (liste indeksi): bir sonraki seferde ÖNCE onlar denenir. Uygun kişi sicil sırasında geç gelse de sefer başına tarama kısalır
-        // (3.000 hat yetkisiz makinist + 100 sefer: 8 sn → ~0,2 sn). Yalnız "uygun var mı" soru olduğundan sonuç sıradan bağımsızdır; kimse uygun değilse özet için herkes liste sırasıyla toplanır.
+        // Kural girdisi birebir aynı makinistler (kayıt, belge, bröve, izin, yüklenen görevler) aynı sınıfta: sefer başına yalnız sınıfın temsilcisi değerlendirilir, sonuç sınıfa paylaşılır
+        // (kimse uygun değilken de seferler × makinist yerine seferler × sınıf; çıktı aynı çünkü kurallar makinist kimliğini okumaz). Özet sınıf ağırlıklarıyla toplanır (aynı sayılar).
+        // ponytail: görevi olan makinistin sınıfı tekil kalır (görev kimlikleri farklı); o yolda kazanç yok, gerekirse satır anahtarı kimliksiz yapılır.
+        Map<Yuk.Sinif, Integer> sinifNo = new java.util.HashMap<>();
+        List<MakinistDto> temsilci = new ArrayList<>();
+        List<Integer> adetListesi = new ArrayList<>();
+        for (MakinistDto m : aktif) {
+            Integer no = sinifNo.putIfAbsent(y.sinif(m), temsilci.size());
+            if (no == null) {
+                no = temsilci.size();
+                temsilci.add(m);
+                adetListesi.add(0);
+            }
+            adetListesi.set(no, adetListesi.get(no) + 1);
+        }
+        int[] adet = adetListesi.stream().mapToInt(Integer::intValue).toArray();
+        // Önceki seferlerde uygun çıkan sınıflar: bir sonraki seferde ÖNCE onlar denenir. Yalnız "uygun var mı" soru olduğundan sonuç sıradan bağımsızdır.
         java.util.Set<Integer> uygunlar = new java.util.LinkedHashSet<>();
         for (SeferDto s : bos) {
             if (!s.guncelKalkis().toInstant().isAfter(y.simdi())) {
                 continue;
             }
-            List<Ihlal>[] ihlalSirasi = new List[aktif.size()];
+            List<Ihlal>[] ihlalSirasi = new List[temsilci.size()];
             Integer uygun = null;
-            for (int i : uygunlar) {
-                if ((ihlalSirasi[i] = ihlaller(y, aktif.get(i), s)).isEmpty()) {
-                    uygun = i;
+            for (int c : uygunlar) {
+                if ((ihlalSirasi[c] = ihlaller(y, temsilci.get(c), s)).isEmpty()) {
+                    uygun = c;
                     break;
                 }
             }
-            for (int i = 0; uygun == null && i < ihlalSirasi.length; i++) {
-                if (ihlalSirasi[i] == null && (ihlalSirasi[i] = ihlaller(y, aktif.get(i), s)).isEmpty()) {
-                    uygun = i;
+            for (int c = 0; uygun == null && c < ihlalSirasi.length; c++) {
+                if (ihlalSirasi[c] == null && (ihlalSirasi[c] = ihlaller(y, temsilci.get(c), s)).isEmpty()) {
+                    uygun = c;
                 }
             }
             if (uygun != null) {
                 uygunlar.add(uygun);
             } else {
-                sonuc.put(s.id(), NedenOzeti.ozet(aktif.size(), NedenOzeti.birincil(List.of(ihlalSirasi)), y.parametreler()));
+                sonuc.put(s.id(), NedenOzeti.ozet(aktif.size(), NedenOzeti.birincil(List.of(ihlalSirasi), adet), adet, y.parametreler()));
             }
         }
         return sonuc;

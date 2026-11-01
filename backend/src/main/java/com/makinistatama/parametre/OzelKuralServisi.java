@@ -25,6 +25,7 @@ import com.makinistatama.kural.Siddet;
 import com.makinistatama.kural.Vardiya;
 import com.makinistatama.kural.ZamanHesabi;
 import com.makinistatama.ortak.AramaMetni;
+import com.makinistatama.ortak.MetinDenetimi;
 import com.makinistatama.ortak.UygulamaHatasi;
 import com.makinistatama.tanim.TanimDto;
 import com.makinistatama.tanim.TanimServisi;
@@ -163,6 +164,9 @@ public class OzelKuralServisi {
         String ad = istek.ad().strip().replaceAll("\\s+", " ");
         if (ad.isEmpty()) {
             throw UygulamaHatasi.dogrulama("ad", "Kural adı yazılmalı.");
+        }
+        if (MetinDenetimi.gorunumBozanKarakterVar(ad)) {
+            throw UygulamaHatasi.dogrulama("ad", "Kural adı kontrol ya da yön denetim karakteri içeremez.");
         }
         String h = istek.olcu().pencereHatasi(istek.pencere());
         if (h != null) {

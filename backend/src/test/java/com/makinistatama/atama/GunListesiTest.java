@@ -53,6 +53,25 @@ class GunListesiTest extends TestVeritabani {
         atamaci().get("/api/atama/gun?tarih=" + GUN).andExpect(jsonPath("$.satirlar[0].bosNeden").doesNotExist())
                 .andExpect(jsonPath("$.satirlar[1].bosNeden").value("0/2 uygun (yetkili 1, yetkisiz 1): çakışma 1, hat yetkisi 1")).andExpect(jsonPath("$.satirlar[2].bosNeden").doesNotExist());
     }
+
+    /**
+     * YENİ-2 (sınıf paylaşımı): kural girdisi aynı makinistlerin (Y001..Y003) sonucu paylaşılır; farklı olanlar (askıda Y004, bu seferde zaten görevli Z001) ayrı değerlendirilir. Özet metni
+     * tek tek değerlendirmeyle (eski kod) birebir aynıdır.
+     */
+    @Test
+    void bosSefer_ozdesMakinistSinifi_ozetTekTekDegerlendirmeyleAyni() throws Exception {
+        AtamaVeri v = new AtamaVeri(jdbc);
+        for (String sicil : new String[] { "Y001", "Y002", "Y003" }) {
+            v.makinist(sicil, false, "AKTIF");
+        }
+        v.makinist("Y004", false, "ASKIDA");
+        long z = v.makinist("Z001");
+        long b = v.seferEv("B", GUN, "11:00", "12:00");
+        v.atama(b, z, "YARDIMCI");
+
+        atamaci().get("/api/atama/gun?tarih=" + GUN).andExpect(jsonPath("$.satirlar[0].bosNeden").value("0/4 uygun (yetkili 1, yetkisiz 3): çakışma 1, hat yetkisi 3"));
+    }
+
     @Test
     void yuzSefer_dortAtanmamis_birIptal_birGecikmeli_alanlarDogru() throws Exception {
         AtamaVeri v = new AtamaVeri(jdbc);
