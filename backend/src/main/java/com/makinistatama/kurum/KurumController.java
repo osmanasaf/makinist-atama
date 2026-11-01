@@ -46,17 +46,24 @@ public class KurumController {
     @GetMapping("/logo")
     @Acik
     public ResponseEntity<byte[]> logo(@RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String eslesen) {
+        var surum = servis.logoSurumu().orElse(null); // baytsız: ETag eşleşirse logo satırı hiç okunmaz (anonim uç)
+        if (surum == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String etag = "\"" + surum + "\"";
+        if (etag.equals(eslesen)) {
+            return yanit(HttpStatus.NOT_MODIFIED, etag).build();
+        }
         var logo = servis.logo().orElse(null);
         if (logo == null) {
             return ResponseEntity.notFound().build();
         }
-        String etag = "\"" + logo.surum() + "\"";
-        var yanit = ResponseEntity.status(etag.equals(eslesen) ? HttpStatus.NOT_MODIFIED : HttpStatus.OK).eTag(etag).cacheControl(CacheControl.noCache())
-                .header("X-Content-Type-Options", "nosniff").header("Content-Security-Policy", "default-src 'none'; sandbox");
-        if (etag.equals(eslesen)) {
-            return yanit.build();
-        }
-        return yanit.contentType(MediaType.parseMediaType("PNG".equals(logo.tur()) ? "image/png" : "image/jpeg")).body(logo.bayt());
+        return yanit(HttpStatus.OK, "\"" + logo.surum() + "\"").contentType(MediaType.parseMediaType("PNG".equals(logo.tur()) ? "image/png" : "image/jpeg")).body(logo.bayt());
+    }
+
+    private static ResponseEntity.BodyBuilder yanit(HttpStatus durum, String etag) {
+        return ResponseEntity.status(durum).eTag(etag).cacheControl(CacheControl.noCache()).header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "default-src 'none'; sandbox");
     }
 
     @PutMapping

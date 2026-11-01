@@ -221,4 +221,39 @@ class SeferExcelOkuyucuTest {
         assertThat(s.hatalar()).isEmpty();
         assertThat(s.gecerli()).singleElement().satisfies(x -> assertThat(x.trenTuru()).isNull());
     }
+
+    /** OK-50 / QA BUG-1: sefer okuyucusu da ortak {@code ExcelOkuma.metin}'i kullanır; tren no formül hücresiyse hesaplanmış sonuç okunur, hesaplanmamışsa satır hatası olur. */
+    @Test
+    void trenNoFormulHucresi_hesaplanmisSonucOkunur_hesaplanmamisSatirHatasi() throws Exception {
+        for (boolean hesapla : new boolean[] { true, false }) {
+            try (XSSFWorkbook k = new XSSFWorkbook(); ByteArrayOutputStream o = new ByteArrayOutputStream()) {
+                Sheet s = k.createSheet("Seferler");
+                Row b = s.createRow(0);
+                for (int i = 0; i < TestExcel.BASLIK.size(); i++) {
+                    b.createCell(i).setCellValue(TestExcel.BASLIK.get(i));
+                }
+                Row r = s.createRow(1);
+                String[] d = satir("12.10.2026", "-", "08:00", "09:30");
+                for (int i = 0; i < d.length; i++) {
+                    if (i == 1) {
+                        r.createCell(i).setCellFormula("\"DE-\"&\"1503\"");
+                    } else {
+                        r.createCell(i).setCellValue(d[i]);
+                    }
+                }
+                if (hesapla) {
+                    k.getCreationHelper().createFormulaEvaluator().evaluateAll();
+                }
+                k.write(o);
+                Sonuc sonuc = SeferExcelOkuyucu.oku(o.toByteArray(), TANIMLAR);
+                if (hesapla) {
+                    assertThat(sonuc.hatalar()).isEmpty();
+                    assertThat(sonuc.gecerli()).singleElement().satisfies(x -> assertThat(x.trenNo()).isEqualTo("DE-1503"));
+                } else {
+                    assertThat(sonuc.gecerli()).isEmpty();
+                    assertThat(sonuc.hatalar()).singleElement().satisfies(h -> assertThat(h.neden()).contains("Formül").contains("değeri yapıştırın"));
+                }
+            }
+        }
+    }
 }

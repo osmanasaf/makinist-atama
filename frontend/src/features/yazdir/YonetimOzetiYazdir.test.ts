@@ -82,6 +82,12 @@ describe('YonetimOzetiYazdir (F4, FR-4.4, AK-4.7)', () => {
     expect(w.get('[role="alert"]').text()).toContain('Özet yüklenemedi')
   })
 
+  it('D-7: bozuk ay istek atmaz, "Ay geçersiz" der', async () => {
+    const w = await kur({ ay: '2026-13' })
+    expect(ozetApi.getir).not.toHaveBeenCalled()
+    expect(w.get('[role="alert"]').text()).toContain('Ay geçersiz')
+  })
+
   it('ay yoksa istek atılmaz, "Ay gerekli." gösterilir', async () => {
     const w = await kur({})
     expect(ozetApi.getir).not.toHaveBeenCalled()

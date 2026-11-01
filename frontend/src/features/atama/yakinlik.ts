@@ -77,7 +77,11 @@ export function atamaHaritasi(y: YakinlikYaniti | null | undefined): Map<number,
   return harita
 }
 
+/** İşaretlerin ölçüm metinleri ("Günlük süre ...; Haftalık dinlenme ..."); rozet metninden bağımsız. */
+export const isaretMetinleri = (isaretler: YakinlikIsareti[]): string =>
+  isaretler.map((i) => i.metin).join('; ')
+
 /** Masa işareti `title`/erişilebilir adı. */
 export function isaretlerMetni(isaretler: YakinlikIsareti[]): string {
-  return isaretler.length === 0 ? '' : `Sınıra yakın: ${isaretler.map((i) => i.metin).join('; ')}`
+  return isaretler.length === 0 ? '' : `Sınıra yakın: ${isaretMetinleri(isaretler)}`
 }

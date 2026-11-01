@@ -16,7 +16,7 @@ import com.makinistatama.parametre.ParametreServisi;
 import com.makinistatama.parametre.ProfilServisi;
 
 /**
- * Denetim paketi (F4, MK-181): denetçiye tek Excel, yedi sayfa. Yeni hesap yok: "Atama kayıtları" denetim raporunun sayfa üretimidir ({@link DegisiklikRaporServisi#sayfalar}, satır sayısı = {@code kayitSayisi}),
+ * Denetim paketi (F4, MK-181): denetçiye tek Excel, yedi sayfa. Yeni hesap yok: "Değişiklik kayıtları" denetim raporunun sayfa üretimidir ({@link DegisiklikRaporServisi#sayfalar}, satır sayısı = {@code kayitSayisi}),
  * "Adalet" adalet raporunun sayfasıdır, "Özet" {@link YonetimOzetiServisi}'nin aynı verisinden, "Kural değerleri" o anki parametre / şiddet / ayar / özel kural değerleridir (kaynak ve güvenilirlikle).
  * Tüm hücreler {@link TabloExcel}'den geçer: metin değer olarak yazılır, baştaki {@code = + - @} önüne {@code '} konur (formül enjeksiyonu). Veritabanında demo makinist varsa "DEMO – gerçek değil" etiketi.
  */
@@ -49,7 +49,7 @@ public class DenetimPaketiServisi {
         List<DegisiklikRaporuDto.Satir> satirlar = rapor.bolumler().stream().flatMap(b -> b.satirlar().stream()).toList();
         return TabloExcel.yaz(List.of(
                 ozetSayfasi(ozet),
-                new TabloExcel.Sayfa("Atama kayıtları", kayitlar.basliklar(), kayitlar.satirlar()),
+                new TabloExcel.Sayfa("Değişiklik kayıtları", kayitlar.basliklar(), kayitlar.satirlar()),
                 uyarililar(satirlar),
                 ayarDegisiklikleri(rapor),
                 kuralDegerleri(),
@@ -125,7 +125,7 @@ public class DenetimPaketiServisi {
         s.add(List.of("Tarih aralığı (takvim ayı)", ay.atDay(1) + " – " + ay.atEndOfMonth()));
         s.add(List.of("Üretim zamanı", zaman(o.uretimZamani())));
         s.add(Arrays.asList("Üreten", o.ureten()));
-        s.add(List.of("Kayıt sayısı (Atama kayıtları sayfası)", rapor.kayitSayisi()));
+        s.add(List.of("Kayıt sayısı (Değişiklik kayıtları sayfası)", rapor.kayitSayisi()));
         s.add(List.of("Standart sapma", "Popülasyon standart sapması (n'e bölünür): √( Σ (saatᵢ − ortalama)² / n ); Adalet raporundaki AKTIF makinist grubunun görev saatlerinden."));
         s.add(List.of("Belge uyumu", "Dönem değil, rapor alındığı günkü durumdur (belge panosuyla aynı sınıflama)."));
         s.add(List.of("Kaynak", "Sayılar mevcut raporlarla aynıdır: Adalet, Puantaj, Denetim (değişiklik) raporu, Yedek planı, Belge panosu, Atama Masası (doluluk, kırmızı)."));

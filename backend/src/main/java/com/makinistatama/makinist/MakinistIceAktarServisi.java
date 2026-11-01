@@ -60,6 +60,7 @@ public class MakinistIceAktarServisi {
                 eklenen++;
                 uyari += s.uyarilar().size();
                 if (!onizle) {
+                    // ponytail: satır başına ekle (~9 ms/satır: 300 satır ≈ 2,7 sn, 3.000 ≈ 27 sn, 5.000 ≈ 46 sn; tek seferlik kurulum). Tavan: ters vekil 60 sn okuma sınırı; gerekirse toplu (batch) yazım.
                     makinistler.ekle(s.istek());
                 }
             }

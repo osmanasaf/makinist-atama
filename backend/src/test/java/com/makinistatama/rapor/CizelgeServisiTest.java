@@ -212,6 +212,27 @@ class CizelgeServisiTest extends TestVeritabani {
         assertThat(hucre20.get("gorevler").get(0).get("trenNo").asText()).isEqualTo("T6");
     }
 
+    /** OK-50 (D-4): çakışan SERBEST intikal çizelgede de kırmızı işaretlenir; işaretli intikal sayısı yönetim özetindeki/üst çubuktaki {@code kirmiziIntikal} ile aynıdır (özet = çizelge). */
+    @Test
+    void kirmiziBayragi_serbestIntikaliDeIsaretler_sayiKirmiziSayisiylaAyni() throws Exception {
+        v.intikal(d1, v.ankara, v.eskisehir, EKIM, "08:00", "10:00"); // D001'in 06:00-14:00 görevi ile çakışır
+        JsonNode acik = cizelge("ay=2026-10&kontrol=true");
+        int isaretli = 0;
+        for (JsonNode h : satir(acik, "D001").get("hucreler")) {
+            if (h.has("gorevler")) {
+                for (JsonNode g : h.get("gorevler")) {
+                    if ("İntikal".equals(g.get("trenNo").asText()) && g.path("kirmizi").asBoolean(false)) {
+                        isaretli++;
+                    }
+                }
+            }
+        }
+        int sayi = JSON.readTree(t.get("/api/atama/kirmizi-sayisi?bas=2026-10-01&bit=2026-10-31").andReturn().getResponse().getContentAsString()).get("kirmiziIntikal").asInt();
+        assertThat(sayi).as("üst çubuk kırmızı intikal sayısı").isEqualTo(1);
+        assertThat(isaretli).as("çizelgede kırmızı işaretli intikal").isEqualTo(sayi);
+        assertThat(cizelge("ay=2026-10").toString()).as("kontrol kapalıyken yine kırmızı alanı yok").doesNotContain("\"kirmizi\"");
+    }
+
     @Test
     void dogrulama400_ayYok_ayAraligiDisi_gecersizTur() throws Exception {
         t.get("/api/rapor/cizelge").andExpect(status().isBadRequest());

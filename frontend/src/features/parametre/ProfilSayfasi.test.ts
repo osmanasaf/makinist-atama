@@ -197,6 +197,34 @@ describe('ProfilSayfasi', () => {
     expect(profilApi.onizle).toHaveBeenCalledTimes(2) // uygulamadan sonra fark yenilenir
   })
 
+  it('O-3: uygulama başarılıyken fark tablosu yenilenemezse "hiçbir değişiklik yapılmadı" denmez; sonuç görünür', async () => {
+    const w = await kur()
+    await hazirDugme(w, 'ab-2005-47').trigger('click')
+    await flushPromises()
+    await w.get('[data-test="neden"]').setValue('Kurum kararı')
+    await w.get('form.uygula-formu').trigger('submit')
+    await flushPromises()
+    vi.mocked(profilApi.onizle).mockRejectedValueOnce(
+      new ApiHata(504, 'ZAMAN_ASIMI', 'Sunucu zaman aşımına uğradı.'),
+    )
+    await w.get('dialog').get('form').trigger('submit')
+    await flushPromises()
+
+    expect(profilApi.uygula).toHaveBeenCalledTimes(1)
+    expect(w.text()).not.toContain('Hiçbir değişiklik yapılmadı')
+    expect(w.text()).toContain('Profil uygulandı; fark tablosu yenilenemedi')
+    expect(w.get('[data-test="sonuc"]').text()).toContain('2 ayar yazıldı')
+  })
+
+  it('O-6 (WCAG 2.5.3): "Farkları göster" düğmesinin erişilebilir adı görünen metinle başlar ve profili ayırt eder', async () => {
+    const w = await kur()
+    const adlar = w.findAll('[data-test^="hazir-"] button').map((b) => b.attributes('aria-label'))
+    expect(adlar).toEqual([
+      'Farkları göster: Proje varsayılanları profili',
+      'Farkları göster: AB 2005/47 referansı (örnek) profili',
+    ])
+  })
+
   it('hiç satır seçili değilken Uygula devre dışı', async () => {
     const w = await kur()
     await hazirDugme(w, 'ab-2005-47').trigger('click')

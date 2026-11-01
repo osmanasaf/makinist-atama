@@ -136,11 +136,12 @@ describe('kurum adı ve logosu kabukta (AK-1.8)', () => {
   describe('logo varken', () => {
     beforeEach(() => kurumGuncelle({ ad: AD, logoVar: true, logoSurum: 7 }))
 
-    it('üst çubuk: logo <img alt=kurum adı>, tren simgesi çıkar', async () => {
+    it('üst çubuk: logo süs görseli (alt=""; ad yanında yazılı, çift okunmaz), tren simgesi çıkar', async () => {
       const w = await uygulama('YONETICI')
       const img = w.get('.marka img')
       expect(img.attributes('src')).toBe('/api/kurum/logo?s=7')
-      expect(img.attributes('alt')).toBe(AD)
+      expect(img.attributes('alt')).toBe('') // OK-50 (D-9): ad zaten metin olarak yanında
+      expect(w.get('.marka').text()).toBe(AD)
       expect(w.find('.marka-isaret').exists()).toBe(false)
     })
 
@@ -148,20 +149,23 @@ describe('kurum adı ve logosu kabukta (AK-1.8)', () => {
       const w = await girisSayfasi()
       const img = w.get('.giris-marka img')
       expect(img.attributes('src')).toBe('/api/kurum/logo?s=7')
-      expect(img.attributes('alt')).toBe(AD)
+      expect(img.attributes('alt')).toBe('')
+      expect(w.get('.giris-marka h1').text()).toBe(AD)
     })
 
     it('makinist kabuğu', async () => {
       const w = await uygulama('MAKINIST')
       const img = w.get('.benim-marka img')
       expect(img.attributes('src')).toBe('/api/kurum/logo?s=7')
-      expect(img.attributes('alt')).toBe(AD)
+      expect(img.attributes('alt')).toBe('')
+      expect(w.get('.benim-marka').text()).toBe(AD)
     })
 
     it('yazdırma başlığı: ad yokken bile logo tek başına satır açar', () => {
       kurumGuncelle({ ad: null, logoVar: true, logoSurum: 7 })
       const w = yazdirSayfasi()
-      expect(w.get('[data-test=yazdir-kurum] img').attributes('alt')).toBe('Makinist Atama')
+      expect(w.get('[data-test=yazdir-kurum] img').attributes('alt')).toBe('')
+      expect(w.get('[data-test=yazdir-kurum]').text()).toBe('Makinist Atama')
     })
   })
 })

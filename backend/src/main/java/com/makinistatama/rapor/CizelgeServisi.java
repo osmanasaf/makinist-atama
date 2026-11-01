@@ -37,7 +37,7 @@ import com.makinistatama.tanim.ResmiTatilServisi;
 /**
  * Aylık çizelge ızgarası (F5, MK-177). TEK hesap kaynağı: satır toplamları {@link AdaletServisi#rapor} satırlarından (aynı {@code PuantajHesabi}; ikinci formül yok), izin günü
  * {@code MakinistDto.izinler} (yalnız ONAY), hücre görevleri {@code AtamaServisi.satirlar} (iptal sefer yok; gece yarısını geçen vardiya BAŞLADIĞI günün hücresinde = planlanan gün, MK-3),
- * kırmızı bayrağı {@code GunListesiServisi.kirmiziAtamaKimlikleri} ({@code kontrol=true}), resmi tatil {@link ResmiTatilServisi} (yalnız gösterim). Salt okuma; hiçbir şey yazmaz.
+ * kırmızı bayrağı {@code GunListesiServisi.kirmiziAtamaKimlikleri} ve {@code kirmiziIntikalKimlikleri} ({@code kontrol=true}; serbest intikal dahil, üst çubuk sayısıyla aynı kümeler), resmi tatil {@link ResmiTatilServisi} (yalnız gösterim). Salt okuma; hiçbir şey yazmaz.
  */
 @Service
 @Transactional(readOnly = true)
@@ -82,6 +82,7 @@ public class CizelgeServisi {
         List<MakinistDto> kisiler = makinistler.aktifDetaylar(Set.of(tur)).stream().filter(m -> garId == null || garId.equals(m.bagliGarId())).toList();
         Map<Long, List<AtamaSatiri>> satirlar = atamalar.satirlar(kisiler.stream().map(MakinistDto::id).toList(), bas, bit).stream().collect(Collectors.groupingBy(AtamaSatiri::makinistId));
         Set<Long> kirmizilar = kontrol ? gunListesi.kirmiziAtamaKimlikleri(bas, bit) : Set.of();
+        Set<Long> kirmiziIntikaller = kontrol ? gunListesi.kirmiziIntikalKimlikleri(bas, bit) : Set.of();
         LocalTime geceBas = p.saat("gece.baslangic");
         LocalTime geceBit = p.saat("gece.bitis");
 
@@ -92,7 +93,7 @@ public class CizelgeServisi {
             Map<Integer, List<CizelgeDto.Gorev>> gorevler = new TreeMap<>();
             satirlar.getOrDefault(m.id(), List.of()).stream().filter(a -> !a.tarih().isBefore(bas) && !a.tarih().isAfter(bit))
                     .sorted(Comparator.comparing(AtamaSatiri::kalkis).thenComparing(a -> a.seferId() == null ? 0L : a.seferId()))
-                    .forEach(a -> gorevler.computeIfAbsent(a.tarih().getDayOfMonth(), g -> new ArrayList<>()).add(gorev(a, geceBas, geceBit, kirmizilar)));
+                    .forEach(a -> gorevler.computeIfAbsent(a.tarih().getDayOfMonth(), g -> new ArrayList<>()).add(gorev(a, geceBas, geceBit, kirmizilar, kirmiziIntikaller)));
             List<CizelgeDto.Hucre> hucreler = hucreler(izinler, gorevler);
             sonuc.add(new CizelgeDto.Satir(m.id(), m.sicil(), m.adSoyad(), m.bagliGar(), t.gorevSaat(), t.geceSaat(), t.km(), t.seferSayisi(), t.yolculukSayisi(), t.izinGunu(), hucreler));
         }
@@ -115,9 +116,9 @@ public class CizelgeServisi {
         return gunler;
     }
 
-    private static CizelgeDto.Gorev gorev(AtamaSatiri a, LocalTime geceBas, LocalTime geceBit, Set<Long> kirmizilar) {
+    private static CizelgeDto.Gorev gorev(AtamaSatiri a, LocalTime geceBas, LocalTime geceBit, Set<Long> kirmizilar, Set<Long> kirmiziIntikaller) {
         return new CizelgeDto.Gorev(a.intikal() ? null : a.seferId(), a.trenNo(), saatMetni(a.kalkis()), saatMetni(a.varis()), a.rol(), gece(a, geceBas, geceBit) ? Boolean.TRUE : null,
-                a.yolculuk() ? Boolean.TRUE : null, a.atamaId() != null && kirmizilar.contains(a.atamaId()) ? Boolean.TRUE : null);
+                a.yolculuk() ? Boolean.TRUE : null, (a.intikal() ? kirmiziIntikaller.contains(-a.seferId()) : kirmizilar.contains(a.atamaId())) ? Boolean.TRUE : null); // serbest intikalde seferId = -intikal kimliği (MK-105)
     }
 
     private static String saatMetni(java.time.Instant an) {

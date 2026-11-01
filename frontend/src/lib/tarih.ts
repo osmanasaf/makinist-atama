@@ -61,3 +61,6 @@ export function kalanMetni(hedefMs: number, simdiMs: number): string {
   if (sa >= 48) return `${Math.floor(sa / 24)} gün sonra`
   return `${sa} sa${dk % 60 ? ` ${dk % 60} dk` : ''} sonra`
 }
+
+/** "YYYY-AA" biçiminde geçerli bir ay mı (rota sorgusu `?ay=`; "2026-13" ve "ekim" değil). */
+export const ayGecerliMi = (ay: string): boolean => /^\d{4}-(0[1-9]|1[0-2])$/.test(ay)

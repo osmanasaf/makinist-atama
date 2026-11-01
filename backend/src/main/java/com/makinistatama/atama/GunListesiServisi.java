@@ -107,6 +107,7 @@ public class GunListesiServisi {
      * UX-13: ASIL'ı olmayan, iptal ve geçmiş olmayan her sefer için, kurallara tam uyan (ihlalsiz) makinist yoksa "0/N uygun: ..." özeti (otomatik atamayla
      * aynı ölçüt ve özet). Bir günün tek yüklemesiyle hesaplanır; seferi boş olup adayı olanlar listede yoktur.
      */
+    @SuppressWarnings("unchecked") // List<Ihlal> dizisi
     private Map<Long, String> bosNedenleri(List<SeferDto> liste, Map<Long, List<Atama>> atamaMap) {
         List<SeferDto> bos = liste.stream().filter(s -> s.durum() != SeferDurumu.IPTAL && atamaMap.getOrDefault(s.id(), List.of()).stream().noneMatch(a -> a.rol() == AtamaRol.ASIL)).toList();
         if (bos.isEmpty()) {
@@ -116,27 +117,38 @@ public class GunListesiServisi {
         LocalDate gun = bos.getFirst().tarih();
         Yuk y = yukleyici.yukleAralik(gun, gun, aktif);
         Map<Long, String> sonuc = new java.util.HashMap<>();
+        // Önceki seferlerde uygun çıkan makinistler (liste indeksi): bir sonraki seferde ÖNCE onlar denenir. Uygun kişi sicil sırasında geç gelse de sefer başına tarama kısalır
+        // (3.000 hat yetkisiz makinist + 100 sefer: 8 sn → ~0,2 sn). Yalnız "uygun var mı" soru olduğundan sonuç sıradan bağımsızdır; kimse uygun değilse özet için herkes liste sırasıyla toplanır.
+        java.util.Set<Integer> uygunlar = new java.util.LinkedHashSet<>();
         for (SeferDto s : bos) {
             if (!s.guncelKalkis().toInstant().isAfter(y.simdi())) {
                 continue;
             }
-            List<List<Ihlal>> elenenler = new ArrayList<>();
-            boolean uygunVar = false;
-            for (MakinistDto m : aktif) {
-                boolean zatenGorevli = y.satirlar(m.id()).stream().anyMatch(sr -> sr.seferId().equals(s.id()));
-                List<Ihlal> ihlaller = zatenGorevli ? List.of(new Ihlal("K-10", Siddet.ENGEL, 0, 0, "", "Makinist bu seferde zaten görevli"))
-                        : KuralMotoru.degerlendirYazma(y.baglamZincirli(m, s));
-                if (ihlaller.isEmpty()) {
-                    uygunVar = true;
+            List<Ihlal>[] ihlalSirasi = new List[aktif.size()];
+            Integer uygun = null;
+            for (int i : uygunlar) {
+                if ((ihlalSirasi[i] = ihlaller(y, aktif.get(i), s)).isEmpty()) {
+                    uygun = i;
                     break;
                 }
-                elenenler.add(ihlaller);
             }
-            if (!uygunVar) {
-                sonuc.put(s.id(), NedenOzeti.ozet(aktif.size(), NedenOzeti.birincil(elenenler), y.parametreler()));
+            for (int i = 0; uygun == null && i < ihlalSirasi.length; i++) {
+                if (ihlalSirasi[i] == null && (ihlalSirasi[i] = ihlaller(y, aktif.get(i), s)).isEmpty()) {
+                    uygun = i;
+                }
+            }
+            if (uygun != null) {
+                uygunlar.add(uygun);
+            } else {
+                sonuc.put(s.id(), NedenOzeti.ozet(aktif.size(), NedenOzeti.birincil(List.of(ihlalSirasi)), y.parametreler()));
             }
         }
         return sonuc;
+    }
+
+    private static List<Ihlal> ihlaller(Yuk y, MakinistDto m, SeferDto s) {
+        boolean zatenGorevli = y.satirlar(m.id()).stream().anyMatch(sr -> sr.seferId().equals(s.id()));
+        return zatenGorevli ? List.of(new Ihlal("K-10", Siddet.ENGEL, 0, 0, "", "Makinist bu seferde zaten görevli")) : KuralMotoru.degerlendirYazma(y.baglamZincirli(m, s));
     }
 
     /** Aralıkta (iki uç dahil) kırmızı sefer / atama sayısı: üst çubuk rozeti (varsayılan: seçili gün + sonraki 7 gün, istemci seçer). */
@@ -159,6 +171,11 @@ public class GunListesiServisi {
         aralikDogrula(bas, bit);
         List<SeferDto> liste = seferler.aralikListesi(bas, bit);
         return kirmiziHesabi.hesapla(liste, atamalar(liste)).entrySet().stream().filter(e -> e.getValue().kirmizi()).map(Map.Entry::getKey).collect(Collectors.toSet());
+    }
+
+    /** Aylık çizelge (D-4): {@link #kirmiziSayisi}'ndaki kırmızı SERBEST intikal sayısının kimlik kümesi (aynı hesap; çizelge hücresinde intikal görevinin {@code seferId}'si {@code -kimlik}). */
+    public java.util.Set<Long> kirmiziIntikalKimlikleri(LocalDate bas, LocalDate bit) {
+        return intikaller.kirmiziKimlikleri(bas, bit);
     }
 
     /**

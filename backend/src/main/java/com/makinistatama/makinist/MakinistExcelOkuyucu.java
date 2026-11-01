@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -218,6 +219,7 @@ public final class MakinistExcelOkuyucu {
                 toplam++;
                 int no = i + 1;
                 List<String> sorunlar = new ArrayList<>();
+Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
                 List<String> uyarilar = new ArrayList<>();
                 String sicil = ExcelOkuma.metin(satir.getCell(k[0]), bicim).strip().toUpperCase(Locale.ROOT);
                 String ad = ExcelOkuma.metin(satir.getCell(k[1]), bicim);
@@ -335,6 +337,7 @@ public final class MakinistExcelOkuyucu {
                 }
                 int no = i + 1;
                 List<String> sorunlar = new ArrayList<>();
+Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
                 String sicil = ExcelOkuma.metin(satir.getCell(k[0]), bicim).strip().toUpperCase(Locale.ROOT);
                 Gecici m = makinistler.get(sicil);
                 if (sicil.isEmpty()) {

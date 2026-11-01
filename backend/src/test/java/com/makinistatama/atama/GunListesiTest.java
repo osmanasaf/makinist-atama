@@ -35,6 +35,24 @@ class GunListesiTest extends TestVeritabani {
         t.get("/api/atama/gun?tarih=" + GUN).andExpect(jsonPath("$.satirlar[0].bosNeden").doesNotExist());
     }
 
+
+    /**
+     * OK-50 (MRU sırası): uygun makinist sicil sırasında sonda iken de neden yalnız kimsenin uygun olmadığı seferde gelir ve özet liste sırasına göre aynıdır. A: Z001 uygun (neden yok);
+     * B: Z001 zaten bu seferde YARDIMCI, Y001 hat yetkisiz (neden: çakışma + hat yetkisi, eski taramayla aynı metin); C: Z001 yine uygun.
+     */
+    @Test
+    void bosSefer_uygunKisiSonda_nedenYalnizKimseUygunDegilse() throws Exception {
+        AtamaVeri v = new AtamaVeri(jdbc);
+        v.makinist("Y001", false, "AKTIF"); // hat yetkisi yok, sicil sırasında önce
+        long z = v.makinist("Z001");
+        v.seferEv("A", GUN, "08:00", "09:00");
+        long b = v.seferEv("B", GUN, "11:00", "12:00");
+        v.seferEv("C", GUN, "14:00", "15:00");
+        v.atama(b, z, "YARDIMCI");
+
+        atamaci().get("/api/atama/gun?tarih=" + GUN).andExpect(jsonPath("$.satirlar[0].bosNeden").doesNotExist())
+                .andExpect(jsonPath("$.satirlar[1].bosNeden").value("0/2 uygun (yetkili 1, yetkisiz 1): çakışma 1, hat yetkisi 1")).andExpect(jsonPath("$.satirlar[2].bosNeden").doesNotExist());
+    }
     @Test
     void yuzSefer_dortAtanmamis_birIptal_birGecikmeli_alanlarDogru() throws Exception {
         AtamaVeri v = new AtamaVeri(jdbc);

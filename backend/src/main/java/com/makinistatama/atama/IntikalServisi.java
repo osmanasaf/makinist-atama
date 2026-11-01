@@ -78,9 +78,14 @@ public class IntikalServisi {
 
     /** [bas, bit] arasındaki PLANLI intikallerden canlı olarak kırmızı olanların sayısı (OK-28: atama kırmızı sayacına katılmaz, ayrı gösterilir). */
     public int kirmiziSayisi(LocalDate bas, LocalDate bit) {
+        return kirmiziKimlikleri(bas, bit).size();
+    }
+
+    /** {@link #kirmiziSayisi}'nın AYNI hesabı, sayı yerine kırmızı intikal kimlikleri (aylık çizelge hücre bayrağı; çizelge = üst çubuk sayısı). */
+    public java.util.Set<Long> kirmiziKimlikleri(LocalDate bas, LocalDate bit) {
         aralikDogrula(bas, bit);
         List<Intikal> liste = depo.aralik(gunBasi(bas), gunBasi(bit.plusDays(1)), null);
-        return (int) kirmiziHesabi.intikalDurumlari(liste).values().stream().filter(KirmiziAtamaHesabi.Sonuc::kirmizi).count();
+        return kirmiziHesabi.intikalDurumlari(liste).entrySet().stream().filter(x -> x.getValue().kirmizi()).map(java.util.Map.Entry::getKey).collect(java.util.stream.Collectors.toSet());
     }
 
     /** Atamacı "görülmeyen" sayacı için (FR-05, OK-30): intikalin makinisti, kalkışı ve güncel özeti gördüğü an (görmediyse null). */

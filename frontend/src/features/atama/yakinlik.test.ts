@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   atamaHaritasi,
   adayHaritasi,
+  isaretMetinleri,
   isaretlerMetni,
   sureMetni,
   yorgunlukAlanlari,
@@ -84,6 +85,14 @@ describe('haritalar', () => {
     expect(adayHaritasi(yanit({ marjAktif: false })).size).toBe(0)
     expect(adayHaritasi(null).size).toBe(0)
     expect(atamaHaritasi(undefined).size).toBe(0)
+  })
+
+  it('D-12: isaretMetinleri yalnız ölçüm metinlerini birleştirir (rozet metni karışmaz); isaretlerMetni ona yaslanır', () => {
+    const isaretler = yanit().satirlar[0]!.yakinlik
+    expect(isaretMetinleri(isaretler)).toBe(isaretler.map((i) => i.metin).join('; '))
+    expect(isaretMetinleri(isaretler)).not.toContain('Sınıra yakın')
+    expect(isaretlerMetni(isaretler)).toBe(`Sınıra yakın: ${isaretMetinleri(isaretler)}`)
+    expect(isaretMetinleri([])).toBe('')
   })
 
   it('isaretlerMetni: title için işaret metinlerini birleştirir', () => {

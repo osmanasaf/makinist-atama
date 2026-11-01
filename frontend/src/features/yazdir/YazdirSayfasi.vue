@@ -34,7 +34,7 @@ withDefaults(
       <RouterLink class="btn" :to="geri">Geri</RouterLink>
     </div>
     <p v-if="kurumAdiGirildi || logoAdresi" class="yazdir-kurum" data-test="yazdir-kurum">
-      <img v-if="logoAdresi" class="yazdir-logo" :src="logoAdresi" :alt="kurumAdi" />
+      <img v-if="logoAdresi" class="yazdir-logo" :src="logoAdresi" alt="" />
       {{ kurumAdi }}
     </p>
     <h1>{{ baslik }}</h1>

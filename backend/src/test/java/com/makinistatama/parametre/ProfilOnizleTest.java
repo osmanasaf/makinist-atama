@@ -183,6 +183,23 @@ class ProfilOnizleTest extends ProfilTestTabani {
         assertThat(System.nanoTime() - bas).as("üstel eşik sınırsız metin üretmez").isLessThan(3_000_000_000L);
     }
 
+    /** OK-50 (D-1): profildeki kural adında sekme/çoklu boşluk varsa ad, mevcut kuralla AYNI biçimde normalleşir; "var olanı güncelle" görünür, "aynı ad var: geçersiz" değil. */
+    @Test
+    void ozelKural_adindaSekmeVeCokluBosluk_mevcutKuralla_eslesir() throws Exception {
+        AtamaVeri v = new AtamaVeri(jdbc);
+        Tarayici y = yonetici();
+        y.post("/api/ozel-kural", ozelKuralGovdesi("Gece Nöbeti", "8", "ENGEL", v.ankara, v.hat)).andExpect(status().isCreated());
+        ObjectNode paket = disaAktar(y);
+        ObjectNode kural = (ObjectNode) paket.get("ozelKurallar").get(0);
+        kural.put("ad", "Gece	 	Nöbeti");
+        kural.put("esik", 9);
+
+        JsonNode o = onizle(y, paket);
+
+        assertThat(satir(o, "OZEL_KURAL:gece nobeti").get("durum").asString()).isEqualTo("DEGISIR");
+        assertThat(o.get("ozet").get("gecersiz").asInt()).isZero();
+    }
+
     @Test
     void ozelKural_ayniAdIkiKez_ikinciGecersiz() throws Exception {
         AtamaVeri v = new AtamaVeri(jdbc);

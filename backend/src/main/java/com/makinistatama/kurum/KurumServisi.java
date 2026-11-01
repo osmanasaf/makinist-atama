@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.makinistatama.degisiklik.DegisiklikServisi;
 import com.makinistatama.degisiklik.DegisiklikServisi.Kayit;
 import com.makinistatama.degisiklik.DegisiklikTuru;
+import com.makinistatama.ortak.MetinDenetimi;
 import com.makinistatama.ortak.UygulamaHatasi;
 
 /**
@@ -61,6 +62,12 @@ public class KurumServisi {
         return satir().sihirbazGizli();
     }
 
+    /** Logo sürümü (ETag); baytlar okunmaz: koşullu istek (If-None-Match) eşleşince logo satırı hiç yüklenmez. Logo yoksa boş. */
+    public Optional<Long> logoSurumu() {
+        var o = depo.findProjectedById(KIMLIK);
+        return o.getLogoBoyut() > 0 ? Optional.of(o.getVersiyon()) : Optional.empty();
+    }
+
     public Optional<KurumDto.Logo> logo() {
         Kurum k = satir();
         return k.logo() == null ? Optional.empty() : Optional.of(new KurumDto.Logo(k.logo(), k.logoTur(), depo.findProjectedById(KIMLIK).getVersiyon()));
@@ -75,8 +82,8 @@ public class KurumServisi {
         if (ad.length() > EN_FAZLA_AD) {
             throw UygulamaHatasi.dogrulama("ad", "Kurum adı en fazla " + EN_FAZLA_AD + " karakter olabilir.");
         }
-        if (ad.chars().anyMatch(Character::isISOControl)) {
-            throw UygulamaHatasi.dogrulama("ad", "Kurum adı kontrol karakteri içeremez.");
+        if (MetinDenetimi.gorunumBozanKarakterVar(ad)) {
+            throw UygulamaHatasi.dogrulama("ad", "Kurum adı kontrol ya da yön denetim karakteri içeremez.");
         }
         Kurum k = satir();
         String eski = k.ad();

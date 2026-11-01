@@ -297,7 +297,7 @@ public class OzelKuralServisi {
         if (g.ad() == null || g.ad().isBlank()) {
             throw UygulamaHatasi.dogrulama("ad", "Kural adı yazılmalı.");
         }
-        String ad = g.ad().strip().replaceAll("\s+", " ");
+        String ad = g.ad().strip().replaceAll("\\s+", " ");
         if (g.olcu() == null || g.pencere() == null || g.karsilastirma() == null || g.esik() == null || g.siddet() == null || g.gerekce() == null || g.gerekce().isBlank()) {
             throw UygulamaHatasi.dogrulama("ozelKurallar", "'" + ad + "': ölçü, pencere, koşul, eşik, şiddet ve gerekçe yazılmalı.");
         }

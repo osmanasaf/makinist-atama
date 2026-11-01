@@ -168,7 +168,14 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
             </td>
             <td role="cell">
               <span class="aday-ad">{{ a.adSoyad }}</span>
-              <small class="alt-bilgi">{{ a.sicil }} · {{ a.bagliGar }}</small>
+              <small class="alt-bilgi"
+                >{{ a.sicil }} · {{ a.bagliGar
+                }}<YakinlikNotu
+                  v-if="yakinlik && yakinlikSatiri(a)"
+                  bolum="rozet"
+                  :satir="yakinlikSatiri(a)!"
+                  :esikler="yakinlik.esikler"
+              /></small>
             </td>
             <td role="cell" class="sayisal">{{ sayiBicimle(a.buAySaat) }}</td>
             <td role="cell" class="sayisal">{{ sayiBicimle(a.buAyKm) }}</td>
@@ -182,6 +189,7 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
               <Rozet v-if="a === onerilen" ton="basari" metin="Önerilen" boyut="sm" />
               <YakinlikNotu
                 v-if="yakinlik && yakinlikSatiri(a)"
+                bolum="ayrinti"
                 :satir="yakinlikSatiri(a)!"
                 :esikler="yakinlik.esikler"
                 :acik="acikSatir === i"
@@ -354,7 +362,7 @@ function tus(e: KeyboardEvent, i: number, a: Aday) {
   font-size: var(--yazi-xs);
 }
 .aday-tablo td.aday-durum {
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
   grid-row: 2;
   white-space: normal;
   margin-top: var(--aralik-2);

@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import { blobIndir } from '@/lib/indir'
 import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import Rozet from '@/bilesenler/Rozet.vue'
 import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
@@ -32,35 +33,38 @@ async function sablonIndir() {
   sablonHata.value = ''
   try {
     const { blob, ad } = await makinistApi.iceAktarSablon()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = ad ?? 'makinist-sablonu.xlsx'
-    a.click()
-    URL.revokeObjectURL(url)
+    blobIndir(blob, ad ?? 'makinist-sablonu.xlsx')
   } catch (e) {
     sablonHata.value = e instanceof ApiHata ? e.detail : 'Şablon indirilemedi.'
   }
 }
 
+/** Dosya seçim sırası: önizleme sürerken başka dosya seçilirse eski dosyanın yanıtı atılır (bayat önizlemeyle onay olmaz). */
+let sira = 0
 async function dosyaSecildi(olay: Event) {
+  const bu = ++sira
   const secilen = (olay.target as HTMLInputElement).files?.[0] ?? null
   dosya.value = secilen
   sonuc.value = null
   hata.value = ''
-  if (!secilen) return
+  if (!secilen) {
+    mesgul.value = false
+    return
+  }
   if (secilen.size > EN_COK_MB * 1024 * 1024) {
     dosya.value = null
+    mesgul.value = false
     hata.value = `Dosya çok büyük. En çok ${EN_COK_MB} MB yüklenebilir.`
     return
   }
   mesgul.value = true
   try {
-    sonuc.value = await makinistApi.iceAktar(secilen, true)
+    const yanit = await makinistApi.iceAktar(secilen, true)
+    if (bu === sira) sonuc.value = yanit
   } catch (e) {
-    hataYaz(e, 'Dosya okunamadı.')
+    if (bu === sira) hataYaz(e, 'Dosya okunamadı.')
   } finally {
-    mesgul.value = false
+    if (bu === sira) mesgul.value = false
   }
 }
 
@@ -113,7 +117,16 @@ async function onayla() {
     <VeriDurumu v-if="mesgul && !sonuc" durum="yukleniyor" metin="Dosya okunuyor…" />
 
     <template v-if="sonuc">
-      <p class="bildirim bildirim-bilgi" role="status">
+      <p
+        v-if="sonuc.onizleme && sonuc.toplamSatir === 0"
+        class="bildirim bildirim-uyari"
+        role="note"
+        data-test="bos-dosya"
+      >
+        Dosyada satır yok. Makinistler sayfasına personel satırlarını yazın (şablondaki örnek
+        satırların yerine) ve dosyayı yeniden seçin.
+      </p>
+      <p v-else class="bildirim bildirim-bilgi" role="status">
         <template v-if="sonuc.onizleme">
           Toplam satır: {{ sonuc.toplamSatir }} · Eklenecek: {{ sonuc.eklenen }} · Atlanacak (zaten
           var): {{ sonuc.zatenVar }} · Hatalı: {{ sonuc.hataSayisi }} · Uyarı:
@@ -198,7 +211,7 @@ async function onayla() {
         </table>
       </div>
 
-      <div v-if="sonuc.onizleme" class="eylemler">
+      <div v-if="sonuc.onizleme && sonuc.toplamSatir > 0" class="eylemler">
         <button
           type="button"
           class="btn btn-birincil"
@@ -215,7 +228,7 @@ async function onayla() {
           güncellenmez.</small
         >
       </div>
-      <div v-else class="eylemler">
+      <div v-else-if="!sonuc.onizleme" class="eylemler">
         <RouterLink class="btn btn-birincil" :to="{ name: 'makinistler' }"
           >Personel listesine git</RouterLink
         >

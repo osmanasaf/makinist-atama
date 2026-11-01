@@ -17,6 +17,8 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.usermodel.XSSFCell;
 
 /**
  * Excel (.xlsx) okuyucularının ortak güvenlik ön denetimi ve hücre okuma yardımcıları (MK-169). {@code SeferExcelOkuyucu} ve
@@ -117,11 +119,41 @@ public final class ExcelOkuma {
         if (c == null) {
             return "";
         }
+        if (c.getCellType() == CellType.FORMULA) { // formül ÇALIŞTIRILMAZ: dosyada saklanan sonuç okunur (POI aksi halde formül metnini verir)
+            if (formulSonucsuz(c)) {
+                return "";
+            }
+            return switch (c.getCachedFormulaResultType()) {
+                case STRING -> c.getStringCellValue().strip();
+                case NUMERIC -> DateUtil.isCellDateFormatted(c) ? bicim.formatRawCellContents(c.getNumericCellValue(), c.getCellStyle().getDataFormat(), c.getCellStyle().getDataFormatString()).strip()
+                        : sayiMetni(c.getNumericCellValue());
+                case BOOLEAN -> c.getBooleanCellValue() ? "TRUE" : "FALSE";
+                default -> "";
+            };
+        }
         if (c.getCellType() == CellType.NUMERIC && !DateUtil.isCellDateFormatted(c)) {
-            double d = c.getNumericCellValue();
-            return d == Math.rint(d) ? Long.toString((long) d) : BigDecimal.valueOf(d).toPlainString();
+            return sayiMetni(c.getNumericCellValue());
         }
         return bicim.formatCellValue(c).strip();
+    }
+
+    private static String sayiMetni(double d) {
+        return d == Math.rint(d) ? Long.toString((long) d) : BigDecimal.valueOf(d).toPlainString();
+    }
+
+    /** Formül hücresi, ama hesaplanmış sonucu dosyada yok: dosyayı Excel değil bir kütüphane üretmiştir (Excel kaydederken sonucu yazar); değer varmış gibi okunmaz. */
+    public static boolean formulSonucsuz(Cell c) {
+        return c != null && c.getCellType() == CellType.FORMULA && !(c instanceof XSSFCell x && x.getCTCell().isSetV());
+    }
+
+    /** Satırda sonucu olmayan formül hücresi varsa satır sorunu (yoksa null): kullanıcıya ne yapacağını söyler. */
+    public static String formulSorunu(Row satir) {
+        for (Cell c : satir) {
+            if (formulSonucsuz(c)) {
+                return "Formül hücresi (" + CellReference.convertNumToColString(c.getColumnIndex()) + ") dosyada hesaplanmış değer taşımıyor; dosyayı Excel'de açıp kaydedin ya da değeri yapıştırın";
+            }
+        }
+        return null;
     }
 
     public static LocalDate tarih(Cell c, List<String> sorunlar) {
@@ -134,8 +166,12 @@ public final class ExcelOkuma {
             sorunlar.add(etiket + " boş");
             return null;
         }
+        if (formulSonucsuz(c)) {
+            sorunlar.add(etiket + " geçersiz: formülün hesaplanmış değeri dosyada yok (değeri yapıştırın)");
+            return null;
+        }
         try {
-            if (c.getCellType() == CellType.NUMERIC) {
+            if (c.getCellType() == CellType.NUMERIC || (c.getCellType() == CellType.FORMULA && c.getCachedFormulaResultType() == CellType.NUMERIC)) {
                 return c.getLocalDateTimeCellValue().toLocalDate();
             }
             String m = c.getStringCellValue().strip();

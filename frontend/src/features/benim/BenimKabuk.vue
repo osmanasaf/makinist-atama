@@ -45,7 +45,7 @@ async function cik() {
     <header class="benim-ust">
       <div>
         <span class="benim-marka">
-          <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" :alt="kurumAdi" />
+          <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" alt="" />
           {{ kurumAdi }}
         </span>
         <span class="benim-ad">{{ kullanici?.adSoyad }}</span>

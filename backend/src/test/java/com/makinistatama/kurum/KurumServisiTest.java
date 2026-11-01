@@ -95,6 +95,15 @@ class KurumServisiTest extends TestVeritabani {
         assertThat(jdbc.queryForObject("SELECT eski FROM degisiklik_kaydi WHERE tur = 'KURUM_GUNCELLE' ORDER BY id DESC LIMIT 1", String.class)).isEqualTo("Örnek İşletme");
     }
 
+    /** OK-50 (QA Gözlem-3): kurum adı yön denetim (bidi) ve sıfır genişlikli biçim karakterlerini (Unicode Cf) de reddeder; metin başka satırı/etiketi tersine çeviremez. */
+    @Test
+    void adYaz_bidiVeSifirGenislikKarakteri_reddedilir_normalTurkceKabul() {
+        for (String kotu : new String[] { "bayrak‮kotu", "a⁦b", "a​b", "a‏b", "﻿Ad" }) {
+            assertThatThrownBy(() -> servis.adYaz(kotu)).isInstanceOf(UygulamaHatasi.class).hasMessageContaining("karakter");
+        }
+        assertThat(servis.adYaz("Şişli Ağır İşletme – A.Ş.").ad()).isEqualTo("Şişli Ağır İşletme – A.Ş.");
+    }
+
     @Test
     void sihirbazGizle_tercihYazar() {
         assertThat(servis.sihirbazGizli()).isFalse();

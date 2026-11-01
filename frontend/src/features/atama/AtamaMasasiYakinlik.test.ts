@@ -201,6 +201,33 @@ describe('AtamaMasasi: sınıra yakınlık (F3, MK-176)', () => {
     expect(atamaApi.gunYakinlik).toHaveBeenCalledTimes(2)
   })
 
+  it('O-1: yakınlık ucu yavaş/takılı olsa da aday listesi hemen çizilir ve seçilebilir; yakınlık geç gelirse işaretler sonradan belirir', async () => {
+    let bitir!: (y: YakinlikYaniti) => void
+    vi.mocked(atamaApi.adayYakinlik).mockReturnValue(new Promise((c) => (bitir = c)))
+    const w = await kur()
+    await satirlar(w)[1]!.trigger('click')
+    await flushPromises()
+    const aday = w.get('tr.aday')
+    expect(aday.text()).toContain('Aday Bir') // liste yakınlığı beklemeden geldi
+    expect(w.find('[aria-label="Aday personel"][aria-busy="true"]').exists()).toBe(false)
+    expect(aday.find('[data-test="yakinlik-isareti"]').exists()).toBe(false)
+    bitir(adayYaniti())
+    await flushPromises()
+    expect(w.get('tr.aday').find('[data-test="yakinlik-isareti"]').text()).toContain('10 s 40 dk')
+  })
+
+  it('O-1: sefer değişince önceki seferin yakınlığı yeni adaylara yapışmaz (yeni yakınlık gelene kadar işaret yok)', async () => {
+    const w = await kur()
+    await satirlar(w)[1]!.trigger('click')
+    await flushPromises()
+    expect(w.get('tr.aday').find('[data-test="yakinlik-isareti"]').exists()).toBe(true)
+    vi.mocked(atamaApi.adayYakinlik).mockReturnValue(new Promise(() => {})) // ikinci seferin yakınlığı gelmiyor
+    await satirlar(w)[2]!.trigger('click')
+    await flushPromises()
+    expect(w.find('tr.aday').exists()).toBe(true)
+    expect(w.find('tr.aday [data-test="yakinlik-isareti"]').exists()).toBe(false)
+  })
+
   it('marj kapalı yanıtı (marjAktif=false): ne masada ne aday panelinde işaret ya da yorgunluk', async () => {
     vi.mocked(atamaApi.gunYakinlik).mockImplementation(() =>
       Promise.resolve({ marjAktif: false, esikler, satirlar: [] }),

@@ -46,7 +46,7 @@ async function cik() {
     >
     <header v-if="kullanici && kabukVar()" class="ust-cubuk">
       <span class="marka">
-        <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" :alt="kurumAdi" />
+        <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" alt="" />
         <span v-else class="marka-isaret"><Simge ad="tren" /></span>
         {{ kurumAdi }}
       </span>

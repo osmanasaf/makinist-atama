@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ApiHata } from '@/api/istemci'
 import OzetGovdesi from '@/features/rapor/OzetGovdesi.vue'
 import { ozetApi, type YonetimOzeti } from '@/features/rapor/ozetApi'
+import { ayGecerliMi } from '@/lib/tarih'
 import YazdirSayfasi from './YazdirSayfasi.vue'
 
 /**
@@ -20,6 +21,10 @@ const filtre = computed(
 onMounted(async () => {
   if (!props.ay) {
     hata.value = 'Ay gerekli.'
+    return
+  }
+  if (!ayGecerliMi(props.ay)) {
+    hata.value = 'Ay geçersiz: YYYY-AA biçiminde olmalı (ör. 2026-10).'
     return
   }
   try {

@@ -7,6 +7,7 @@ import { gunBasligi, gunMetni, hucreGorunumu, IZIN_KODLARI } from '@/features/ra
 import { TUR_ETIKETLERI } from '@/features/makinist/makinistApi'
 import { tanimApi } from '@/features/tanim/tanimApi'
 import { sayiBicimle } from '@/lib/sayi'
+import { ayGecerliMi } from '@/lib/tarih'
 import YazdirSayfasi from './YazdirSayfasi.vue'
 
 /**
@@ -46,6 +47,10 @@ onMounted(async () => {
     hata.value = 'Ay gerekli.'
     return
   }
+  if (!ayGecerliMi(props.ay)) {
+    hata.value = 'Ay geçersiz: YYYY-AA biçiminde olmalı (ör. 2026-10).'
+    return
+  }
   try {
     yanit.value = await cizelgeApi.getir(props.ay, {
       tur: kondukturMu.value ? 'KONDUKTOR' : undefined,
@@ -64,7 +69,22 @@ onMounted(async () => {
   }
 })
 
-const donem = computed(() => (props.ay ? gunMetni(props.ay, 1).replace(/^1 /, '') : ''))
+/**
+ * Basılı hücreye sığan kod (QA BUG-3): hücre genişliği (A4 ≈ 26 px, A3 ≈ 37 px) tam tren no'ya yetmez; "AS-035" tireden bölünüp satır yüksekliğini bozuyordu. Kod bölünmez (nowrap);
+ * sığmayacak kadar uzunsa öndeki harf kısmı atılıp numara basılır (tam no erişilebilir adda ve ekran çizelgesinde; açıklama satırında yazılı). Numaranın kendisi ASLA
+ * kırpılmaz ("32001" → "2001" yanlış tren olurdu): numara da sığmıyorsa tam kod basılır ve hücrede satır kırar (`kirilir`).
+ */
+const SIGAN_KARAKTER = { A4: 4, A3: 5 } as const
+const siganKod = (kod: string) => {
+  const en = SIGAN_KARAKTER[boyut.value]
+  if (kod.length <= en) return { metin: kod, kirilir: false }
+  const no = /\d+$/.exec(kod)?.[0]
+  return no && no.length <= en ? { metin: no, kirilir: false } : { metin: kod, kirilir: true }
+}
+
+const donem = computed(() =>
+  props.ay && ayGecerliMi(props.ay) ? gunMetni(props.ay, 1).replace(/^1 /, '') : '',
+)
 const filtre = computed(
   () =>
     `Dönem: ${donem.value} · Personel: ${TUR_ETIKETLERI[kondukturMu.value ? 'KONDUKTOR' : 'MAKINIST']}` +
@@ -148,8 +168,8 @@ const satirlar = computed(() => {
             >
               <template v-if="v">
                 <span class="gorunmez">{{ v.ad }}</span>
-                <span aria-hidden="true"
-                  >{{ v.kod }}<b v-if="v.ek">+{{ v.ek }}</b></span
+                <span aria-hidden="true" :class="{ kirilir: siganKod(v.kod).kirilir }"
+                  >{{ siganKod(v.kod).metin }}<b v-if="v.ek" class="ek">+{{ v.ek }}</b></span
                 >
                 <Simge v-if="v.gece" ad="ay" boyut="0.8em" />
                 <span v-if="boyut === 'A3' && v.saat" class="hucre-saat" aria-hidden="true">{{
@@ -165,7 +185,8 @@ const satirlar = computed(() => {
         </tbody>
       </table>
       <p class="aciklama">
-        Kodlar: tren no (görev; A3'te altında kalkış saati) · +N aynı günde N görev daha ·
+        Kodlar: tren no (görev; A3'te altında kalkış saati; hücreye sığmayan uzun no'da yalnız
+        numara kısmı) · +N aynı günde N görev daha ·
         {{
           Object.values(IZIN_KODLARI)
             .map((i) => `${i.kod} ${i.ad}`)
@@ -202,11 +223,19 @@ const satirlar = computed(() => {
 .cizelge-yazdir .kol-toplam {
   width: 2.8%;
 }
-/* Uzun tren no hücreyi taşırmaz: sütun genişliğinde (tire/rakam sınırında) satır kırar; satır yüksekliği serbest, satır sayfada bölünmez */
+/* Tren no BÖLÜNMEZ (siganKod uzun kodu kısaltır); aynı günde ikinci görev "+N" kendi satırında. Satır sayfada bölünmez. */
 .cizelge-yazdir td.hucre {
+  white-space: nowrap;
+  line-height: 1.05;
+}
+.cizelge-yazdir td.hucre .ek {
+  display: block;
+}
+/* Numara bile hücreye sığmıyorsa kırpılmaz, satır kırar (satır uzar ama tren no doğru kalır) */
+.cizelge-yazdir td.hucre .kirilir {
+  display: block;
   white-space: normal;
   overflow-wrap: anywhere;
-  line-height: 1.05;
 }
 .cizelge-yazdir th.sutun-ad {
   text-align: left;

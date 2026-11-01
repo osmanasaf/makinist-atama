@@ -41,6 +41,16 @@ describe('KurumAyari (F1, AK-1.7/1.8)', () => {
     expect(w.get('#kurum-ad-yardim').text()).toContain('ürün adı (Makinist Atama)')
   })
 
+  it('D-10: yardım metni doğrulamayla uyumlu: ad kaydedildikten sonra boş bırakılamaz (boş ad "Kurum adı boş olamaz." ile reddedilir)', async () => {
+    const w = mount(KurumAyari)
+    expect(w.get('#kurum-ad-yardim').text()).toContain('boş bırakılamaz')
+    expect(w.get('#kurum-ad-yardim').text()).not.toContain('Girilmezse')
+    await w.get('#kurum-ad').setValue('   ')
+    await w.get('form').trigger('submit')
+    expect(w.get('#kurum-ad-hata').text()).toBe('Kurum adı boş olamaz.')
+    expect(kurumApi.adYaz).not.toHaveBeenCalled()
+  })
+
   it('adı kırpıp kaydeder; kabuk durumu güncellenir; bildirim role=status', async () => {
     vi.mocked(kurumApi.adYaz).mockResolvedValue({ ad: AD, logoVar: false, logoSurum: 1 })
     const w = mount(KurumAyari)

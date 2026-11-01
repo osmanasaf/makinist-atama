@@ -2,7 +2,10 @@ package com.makinistatama.guvenlik;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import com.makinistatama.Tarayici;
@@ -10,11 +13,17 @@ import com.makinistatama.TestVeritabani;
 import com.makinistatama.atama.AtamaVeri;
 import com.makinistatama.kurum.KurumGorselleri;
 
+import jakarta.persistence.EntityManagerFactory;
+
 /**
  * F1 / MK-168 kapı kanıtı: kurum adı + logo okuma ANONİM (giriş sayfası marka gösterir) ve yalnız ad + logo bilgisi döner; yazma uçları anonim 401, atamacı/makinist 403, yönetici 200;
  * /api/kurum altındaki başka her yol anonim 401. Logo yanıtı sabit içerik türü + nosniff + CSP ile verilir.
  */
+@TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class KurumYetkiTest extends TestVeritabani {
+
+    @Autowired
+    EntityManagerFactory emf;
 
     private static final String AD_GOVDESI = "{\"ad\":\"Örnek İşletme (demo)\"}";
 
@@ -44,6 +53,21 @@ class KurumYetkiTest extends TestVeritabani {
         assertThat(logo.getContentAsByteArray()).isEqualTo(KurumGorselleri.png());
         var yeniden = anonim.istek(MockMvcRequestBuilders.get("/api/kurum/logo").header("If-None-Match", logo.getHeader("ETag"))).andReturn().getResponse();
         assertThat(yeniden.getStatus()).as("ETag eşleşince 304").isEqualTo(304);
+    }
+
+    /** O-4: anonim logo ucu, ETag eşleşince (304) logo baytını veritabanından HİÇ yüklemez (kimlik doğrulamasız her istekte 256 KB'lık satır okuması olmasın). */
+    @Test
+    void anonim_logo304_baytiYuklemez() throws Exception {
+        yonetici().istek(MockMvcRequestBuilders.put("/api/kurum/logo").contentType("application/octet-stream").content(KurumGorselleri.png()));
+        Tarayici anonim = new Tarayici(mvc);
+        String etag = anonim.get("/api/kurum/logo").andReturn().getResponse().getHeader("ETag");
+        var istatistik = emf.unwrap(SessionFactory.class).getStatistics();
+
+        istatistik.clear();
+        var yeniden = anonim.istek(MockMvcRequestBuilders.get("/api/kurum/logo").header("If-None-Match", etag)).andReturn().getResponse();
+
+        assertThat(yeniden.getStatus()).isEqualTo(304);
+        assertThat(istatistik.getEntityLoadCount()).as("304'te kurum varlığı (logo baytı) yüklenmemeli").isZero();
     }
 
     @Test

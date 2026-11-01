@@ -52,6 +52,24 @@ describe('KurulumSihirbazi (F1, AK-1.9)', () => {
     kurumSifirla()
   })
 
+  it('D-8: sunucu bilinmeyen bir adım kodu gönderirse ekran çökmez; adım yalnız ad ve ayrıntıyla görünür', async () => {
+    const d = adimlar(0)
+    d.adimlar.push({
+      kod: 'YENI_ADIM',
+      ad: 'Yeni adım',
+      yapildi: false,
+      ayrinti: 'Ayrıntı',
+    } as never)
+    vi.mocked(kurulumApi.durum).mockResolvedValue(d)
+    const w = await kur()
+    const li = w.findAll('ol.kurulum-adimlar > li')
+    expect(li).toHaveLength(6)
+    expect(li[5]!.get('h2').text()).toBe('Yeni adım')
+    expect(li[5]!.text()).toContain('Ayrıntı')
+    expect(li[5]!.find('a').exists()).toBe(false)
+    expect(li[1]!.find('a').exists()).toBe(true) // bilinen adımlar etkilenmez
+  })
+
   it('beş adım sırayla; durum sunucudan gelir; yapılan "Tamam", yapılmayan "Bekliyor" (metin + simge)', async () => {
     vi.mocked(kurulumApi.durum).mockResolvedValue(adimlar(2))
     const w = await kur()

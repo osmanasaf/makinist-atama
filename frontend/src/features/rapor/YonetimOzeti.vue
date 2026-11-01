@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
 import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
 import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
+import { blobIndir } from '@/lib/indir'
 import { bugun, zamanBicimle } from '@/lib/tarih'
 import OzetGovdesi from './OzetGovdesi.vue'
 import { bosDonem, ozetApi, type YonetimOzeti } from './ozetApi'
@@ -53,12 +54,7 @@ async function paketIndir() {
   indiriliyor.value = true
   try {
     const { blob, ad } = await ozetApi.denetimPaketi(uygulanan.value)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = ad ?? `denetim-paketi-${uygulanan.value}.xlsx`
-    a.click()
-    URL.revokeObjectURL(url)
+    blobIndir(blob, ad ?? `denetim-paketi-${uygulanan.value}.xlsx`)
   } catch (e) {
     hata.value = e instanceof ApiHata ? e.detail : 'Denetim paketi indirilemedi.'
   } finally {
@@ -71,7 +67,12 @@ async function paketIndir() {
   <section class="rapor-sayfa">
     <SayfaBasligi baslik="Yönetim özeti">
       <template v-if="ozet" #eylemler>
-        <button type="button" class="btn" :disabled="indiriliyor" @click="paketIndir">
+        <button
+          type="button"
+          class="btn"
+          :aria-disabled="indiriliyor ? 'true' : undefined"
+          @click="paketIndir"
+        >
           Denetim paketi (Excel)
         </button>
         <RouterLink
@@ -85,7 +86,7 @@ async function paketIndir() {
       </template>
     </SayfaBasligi>
 
-    <form class="arac-cubugu" @submit.prevent="getir">
+    <form class="arac-cubugu" novalidate @submit.prevent="getir">
       <div class="alan alan-zorunlu">
         <label for="ozet-ay">Ay</label>
         <input
@@ -99,7 +100,9 @@ async function paketIndir() {
         />
         <AlanHatasi id="ozet-ay-hata" :metin="ayHata" />
       </div>
-      <button type="submit" class="btn btn-birincil" :disabled="mesgul">Özeti getir</button>
+      <button type="submit" class="btn btn-birincil" :aria-disabled="mesgul ? 'true' : undefined">
+        Özeti getir
+      </button>
     </form>
 
     <VeriDurumu v-if="mesgul" durum="yukleniyor" metin="Özet hazırlanıyor…" />

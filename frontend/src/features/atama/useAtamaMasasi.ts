@@ -67,7 +67,7 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
     }
   }
 
-  /** Aday yakınlığı: hata sessiz düşer (null); aday listesini geciktirmemek için `adaylar` ile aynı anda başlar. */
+  /** Aday yakınlığı: hata sessiz düşer (null). Yalnız bilgi: aday listesi bunu BEKLEMEZ (`adaylariYukle`), yavaş/takılan uç atamayı geciktirmez. */
   async function adayYakinligiGetir(seferId: number, r: AtamaRolu): Promise<YakinlikYaniti | null> {
     try {
       return (await atamaApi.adayYakinlik(seferId, r)) ?? null
@@ -102,13 +102,14 @@ export function useAtamaMasasi(tarih: Ref<Tarih>) {
     }
     adayYukleniyor.value = true
     const anahtar = `${seciliId.value}:${rol.value}`
-    const yakinlik = adayYakinligiGetir(seciliId.value, rol.value)
+    if (anahtar !== adayAnahtari.value) adayYakinlik.value = null // başka sefer/rol: eski listenin yakınlığı yeni adaylara yapışmasın
+    void adayYakinligiGetir(seciliId.value, rol.value).then((yak) => {
+      if (sira === adaySayac) adayYakinlik.value = yak // geç gelirse işaretler sonradan belirir (O-1)
+    })
     try {
       const sonuc = await atamaApi.adaylar(seciliId.value, rol.value)
-      const yak = await yakinlik
       if (sira === adaySayac) {
         adaylar.value = sonuc
-        adayYakinlik.value = yak
         adayAnahtari.value = anahtar
       }
     } catch (e) {

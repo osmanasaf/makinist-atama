@@ -1,9 +1,32 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { bugun, gunKaydir, kalanMetni, saatBicimle, tarihBicimle, zamanBicimle } from './tarih'
+import {
+  ayGecerliMi,
+  bugun,
+  gunKaydir,
+  kalanMetni,
+  saatBicimle,
+  tarihBicimle,
+  zamanBicimle,
+} from './tarih'
 
 afterEach(() => vi.useRealTimers())
 
 describe('tarih', () => {
+  it('ayGecerliMi: yalnız YYYY-AA (01-12)', () => {
+    for (const iyi of ['2026-01', '2026-12', '1999-10']) expect(ayGecerliMi(iyi)).toBe(true)
+    for (const kotu of [
+      '',
+      'ekim',
+      '2026-13',
+      '2026-00',
+      '2026-1',
+      '2026-10-01',
+      ' 2026-10',
+      '26-10',
+    ])
+      expect(ayGecerliMi(kotu)).toBe(false)
+  })
+
   it('tarihBicimle ISO tarihi gg.aa.yyyy yapar, boşta boş döner', () => {
     expect(tarihBicimle('2026-10-30')).toBe('30.10.2026')
     expect(tarihBicimle(null)).toBe('')

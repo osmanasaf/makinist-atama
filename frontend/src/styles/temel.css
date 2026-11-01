@@ -416,6 +416,8 @@ textarea[aria-invalid='true'] {
 .btn:hover:not(:disabled) {
   background: var(--renk-n-100);
 }
+/* aria-disabled: işlem sürerken odak düğmede kalır (disabled odağı body'ye düşürür); davranış yazılımda korunur */
+.btn[aria-disabled='true'],
 .btn:disabled {
   background: var(--renk-n-100);
   border-color: var(--renk-n-300);

@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -174,6 +175,7 @@ public final class SeferExcelOkuyucu {
             }
             int no = i + 1;
             List<String> sorunlar = new ArrayList<>();
+Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
             LocalDate tarih = ExcelOkuma.tarih(satir.getCell(k[0]), sorunlar);
             String trenNo = ExcelOkuma.metin(satir.getCell(k[1]), bicim);
             String anahtar = trenAnahtari(trenNo);
@@ -310,6 +312,7 @@ public final class SeferExcelOkuyucu {
             }
             int no = i + 1;
             List<String> sorunlar = new ArrayList<>();
+Optional.ofNullable(ExcelOkuma.formulSorunu(satir)).ifPresent(sorunlar::add);
             String trenNo = ExcelOkuma.metin(satir.getCell(k[0]), bicim);
             if (trenNo.isEmpty()) {
                 sorunlar.add("Tren no boş");

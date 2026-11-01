@@ -177,6 +177,89 @@ describe('CizelgeYazdir: A3/A4 ilan baskısı (F5, AK-5.8)', () => {
     expect(w.get('[role="alert"]').text()).toContain('Çizelge alınamadı')
   })
 
+  it('D-7: bozuk ay (2026-13, ekim) istek atmaz; "Ay geçersiz" der, dönem satırında "Invalid Date" yazmaz', async () => {
+    for (const ay of ['2026-13', 'ekim', '2026-1']) {
+      vi.mocked(cizelgeApi.getir).mockClear()
+      const w = await kur({ ay, boyut: 'A4' })
+      expect(cizelgeApi.getir).not.toHaveBeenCalled()
+      expect(w.get('[role="alert"]').text()).toContain('Ay geçersiz')
+      expect(w.text()).not.toContain('Invalid Date')
+    }
+  })
+
+  it("BUG-3: basılı hücrede tren no bölünmez: sığmayan uzun no yalnız numarasıyla, kısa no aynen; tam no erişilebilir adda; '+N' kendi satırında", async () => {
+    const uzun: CizelgeYaniti = {
+      ...yanit,
+      satirlar: [
+        {
+          ...yanit.satirlar[0]!,
+          hucreler: [
+            {
+              gun: 1,
+              gorevler: [
+                { seferId: 7, trenNo: 'AS-035', kalkis: '06:00', varis: '14:00', rol: 'ASIL' },
+                { seferId: 8, trenNo: 'T1', kalkis: '15:00', varis: '17:00', rol: 'ASIL' },
+              ],
+            },
+            {
+              gun: 2,
+              gorevler: [
+                { seferId: 9, trenNo: 'T5', kalkis: '06:00', varis: '14:00', rol: 'ASIL' },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    for (const boyut of ['A4', 'A3']) {
+      vi.mocked(cizelgeApi.getir).mockResolvedValue(uzun)
+      const w = await kur({ ay: '2026-10', boyut })
+      const d = w.findAll('tbody tr')[0]!.findAll('td.hucre')
+      expect(d[0]!.get('[aria-hidden="true"]').text()).toContain('035')
+      expect(d[0]!.get('[aria-hidden="true"]').text()).not.toContain('AS-')
+      expect(d[0]!.get('.gorunmez').text()).toContain('AS-035')
+      expect(d[0]!.get('b.ek').text()).toBe('+1')
+      expect(d[1]!.get('[aria-hidden="true"]').text()).toBe('T5')
+    }
+    const kaynak = readFileSync(
+      join(process.cwd(), 'src/features/yazdir/CizelgeYazdir.vue'),
+      'utf8',
+    )
+    expect(kaynak).toMatch(/td\.hucre \{[^}]*white-space: nowrap/)
+    expect(kaynak).not.toMatch(/td\.hucre \{[^}]*overflow-wrap: anywhere/)
+  })
+
+  it('BUG-3: numara hiç kırpılmaz: sığmayan uzun numara tam basılır ve hücrede satır kırar', async () => {
+    const uzunNo: CizelgeYaniti = {
+      ...yanit,
+      satirlar: [
+        {
+          ...yanit.satirlar[0]!,
+          hucreler: [
+            {
+              gun: 1,
+              gorevler: [
+                { seferId: 7, trenNo: '32001', kalkis: '06:00', varis: '14:00', rol: 'ASIL' },
+              ],
+            },
+            {
+              gun: 2,
+              gorevler: [
+                { seferId: 9, trenNo: 'B-123456', kalkis: '06:00', varis: '14:00', rol: 'ASIL' },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+    vi.mocked(cizelgeApi.getir).mockResolvedValue(uzunNo)
+    const w = await kur({ ay: '2026-10', boyut: 'A4' })
+    const d = w.findAll('tbody tr')[0]!.findAll('td.hucre')
+    expect(d[0]!.get('[aria-hidden="true"]').text()).toBe('32001')
+    expect(d[0]!.get('[aria-hidden="true"]').classes()).toContain('kirilir')
+    expect(d[1]!.get('[aria-hidden="true"]').text()).toBe('B-123456')
+  })
+
   it('ay yoksa istek atılmaz, "Ay gerekli." gösterilir', async () => {
     const w = await kur({ boyut: 'A4' })
     expect(cizelgeApi.getir).not.toHaveBeenCalled()

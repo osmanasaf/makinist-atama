@@ -46,7 +46,7 @@ async function gonder() {
 <template>
   <section class="giris-kutusu" data-yogunluk="dokunma">
     <div class="giris-marka">
-      <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" :alt="kurumAdi" />
+      <img v-if="logoAdresi" class="marka-logo" :src="logoAdresi" alt="" />
       <span v-else class="marka-isaret"><Simge ad="tren" boyut="1.5rem" /></span>
       <h1>{{ kurumAdi }}</h1>
     </div>

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.makinistatama.degisiklik.DegisiklikServisi;
 import com.makinistatama.degisiklik.DegisiklikServisi.Kayit;
 import com.makinistatama.degisiklik.DegisiklikTuru;
+import com.makinistatama.ortak.MetinDenetimi;
 import com.makinistatama.ortak.UygulamaHatasi;
 
 /**
@@ -47,6 +48,9 @@ public class ResmiTatilServisi {
     public ResmiTatilDto ekle(ResmiTatilIstegi istek) {
         yilDogrula(istek.tarih().getYear(), "tarih");
         String ad = istek.ad().strip();
+        if (MetinDenetimi.gorunumBozanKarakterVar(ad)) {
+            throw UygulamaHatasi.dogrulama("ad", "Tatil adı kontrol ya da yön denetim karakteri içeremez.");
+        }
         if (depo.existsById(istek.tarih())) {
             throw UygulamaHatasi.cakisma("TATIL_VAR", "Bu tarih için resmi tatil zaten tanımlı.");
         }

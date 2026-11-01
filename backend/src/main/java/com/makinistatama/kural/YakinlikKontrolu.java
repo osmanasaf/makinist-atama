@@ -252,7 +252,7 @@ public final class YakinlikKontrolu {
         }
     }
 
-    /** K-18 ile aynı ön koşul: aday gece nöbeti YENİ bir gece haftası yaratıyorsa ardışık hafta sayısı (iki yönlü) sınıra bakılır. */
+    /** K-18 ile aynı ön koşul: aday gece nöbeti YENİ bir gece haftası yaratıyorsa ardışık hafta sayısı (iki yönlü) sınıra bakılır; yalnız gerçek seri (≥ 2 hafta) işaretlenir. */
     private static void ardisikHafta(List<Yakinlik> o, Parametreler p, Onhesap h, YakinlikAyarlari a) {
         LocalDate w = ZamanHesabi.haftaBasi(ZamanHesabi.gun(h.adayNobet().baslangic()));
         int min = (int) Math.max(1, p.tamsayi("gece.hafta_min_gorev"));
@@ -270,7 +270,7 @@ public final class YakinlikKontrolu {
         }
         long max = p.tamsayi("gece.ard_hafta_max");
         int seri = geri + 1 + ileri;
-        if (seri <= max && max - seri <= a.geceHafta()) { // seri > max ihlaldir: işaret yok
+        if (seri >= 2 && seri <= max && max - seri <= a.geceHafta()) { // seri 1 "ardışık" değildir (OK-50b); seri > max ihlaldir: işaret yok
             o.add(new Yakinlik("K-18", seri, max, max - seri, "hafta", "Ardışık gece haftası: " + seri + " / " + max));
         }
     }

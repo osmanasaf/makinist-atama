@@ -37,6 +37,16 @@ class ResmiTatilTest extends TestVeritabani {
         return "{\"tarih\":\"" + tarih + "\",\"ad\":\"" + ad + "\"}";
     }
 
+    /** OK-50 (D-14): tatil adı da kurum adı gibi kontrol ve yön denetim karakteri içeremez; mevcut kayıtlar etkilenmez. */
+    @Test
+    void ad_kontrolVeYonDenetimKarakteri_400_normalTurkceKabul() throws Exception {
+        for (String kotu : new String[] { "Bayram\u0007", "Bayram\u202Egnirts", "Ba\u200Bram" }) {
+            yonetici.post("/api/resmi-tatil", govde("2026-10-29", kotu)).andExpect(status().isBadRequest());
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM resmi_tatil", Integer.class)).isZero();
+        yonetici.post("/api/resmi-tatil", govde("2026-10-29", "Cumhuriyet Bayramı (öğleden sonra)")).andExpect(status().isCreated());
+    }
+
     @Test
     void tohumsuz_personelOkur_yoneticiYazar_atamaciYazamaz_anonim401() throws Exception {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM resmi_tatil", Integer.class)).as("migration tohumlamaz (bayram tarihi iddiası yok)").isZero();

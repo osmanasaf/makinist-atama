@@ -32,7 +32,7 @@ import { atanmamisMi } from '@/features/ana/yapilacaklar'
 import { hizliAtanabilir, sonrakiBos } from './hizliDoldur'
 import { seferOku, suzgecOku, type MasaSuzgeci } from './masaBaglantisi'
 import { useAtamaMasasi } from './useAtamaMasasi'
-import { atamaHaritasi, isaretlerMetni } from './yakinlik'
+import { atamaHaritasi, isaretMetinleri, isaretlerMetni } from './yakinlik'
 import { GERI_AL_SURESI_MS, useGeriAl } from './useGeriAl'
 import ZamanSeridi, { type CubukDurumu } from './ZamanSeridi.vue'
 import {
@@ -60,6 +60,9 @@ const { satirlar, seciliId, seciliSatir, rol, adaylar } = masa
 const yakinlikAtamalari = computed(() => atamaHaritasi(masa.gunYakinlik.value))
 const yakinlikMetni = (m: GunMakinisti) =>
   isaretlerMetni(yakinlikAtamalari.value.get(m.atamaId)?.yakinlik ?? [])
+/** Gizli (erişilebilir ad) metni: rozetin görünür "Sınıra yakın"ından sonra yalnız ölçümler; metin biçimine string değiştirmeyle bağlı değil (D-12). */
+const yakinlikOlcumu = (m: GunMakinisti) =>
+  isaretMetinleri(yakinlikAtamalari.value.get(m.atamaId)?.yakinlik ?? [])
 void masa.gunuYukle()
 void masa.kirmiziYukle()
 void masa.gordumYukle()
@@ -856,7 +859,7 @@ async function kapat(yenile: boolean) {
                       :title="yakinlikMetni(m)"
                       ><Rozet ton="bilgi" simge="bilgi" metin="Sınıra yakın" boyut="sm" /><span
                         class="gorunmez"
-                        >{{ yakinlikMetni(m).replace('Sınıra yakın', '') }}</span
+                        >: {{ yakinlikOlcumu(m) }}</span
                       ></span
                     >
                     <button

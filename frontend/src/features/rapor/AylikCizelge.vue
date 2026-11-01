@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
 import { sayiBicimle } from '@/lib/sayi'
@@ -34,7 +34,13 @@ let sayac = 0
 async function getir() {
   const sira = ++sayac
   const secim = { ay: ay.value, tur: tur.value, garId: garId.value }
-  if (!secim.ay) return
+  if (!secim.ay) {
+    // ay alanı boşaltıldı: eski ayın tablosu kalmasın, ne yapılacağı söylensin (D-7)
+    yanit.value = null
+    hata.value = 'Ay seçin.'
+    yukleniyor.value = false
+    return
+  }
   yukleniyor.value = true
   hata.value = ''
   try {
@@ -84,6 +90,7 @@ const gorunen = computed(() =>
   satirlar.value.slice(sayfa.value * SAYFA_BOYUTU, (sayfa.value + 1) * SAYFA_BOYUTU),
 )
 const sayfaAraligi = computed(() => {
+  if (satirlar.value.length === 0) return '0'
   const ilk = sayfa.value * SAYFA_BOYUTU + 1
   return `${ilk}–${ilk + gorunen.value.length - 1} / ${satirlar.value.length}`
 })
@@ -92,10 +99,23 @@ watch([arama, yanit], () => {
   sayfa.value = 0
   odak.value = { r: 0, c: 0 }
 })
-function sayfaGit(yeni: number) {
+const oncekiDugme = ref<HTMLButtonElement | null>(null)
+const sonrakiDugme = ref<HTMLButtonElement | null>(null)
+async function sayfaGit(yeni: number) {
   sayfa.value = Math.min(Math.max(yeni, 0), sayfaSayisi.value - 1)
   odak.value = { r: 0, c: 0 }
+  // Basılan düğme son/ilk sayfada pasif olur: odak sayfaya düşmesin, karşıdaki düğmeye geçsin (WCAG 2.4.3)
+  await nextTick()
+  const aktif = document.activeElement
+  const kayip = aktif === document.body || aktif === null
+  if (sayfa.value >= sayfaSayisi.value - 1 && (kayip || aktif === sonrakiDugme.value))
+    oncekiDugme.value?.focus()
+  else if (sayfa.value === 0 && (kayip || aktif === oncekiDugme.value)) sonrakiDugme.value?.focus()
 }
+
+/** Hücrenin GÖRÜNEN metni (kod + "+N" + saat): erişilebilir ad bununla başlar (WCAG 2.5.3 Label in Name). */
+const gorunenMetin = (v: { kod: string; ek: number; saat: string }) =>
+  `${v.kod}${v.ek ? `+${v.ek}` : ''} ${v.saat}`.trim()
 
 const gunler = computed(() =>
   Array.from({ length: yanit.value?.gunSayisi ?? 0 }, (_, i) => {
@@ -245,8 +265,10 @@ const yazdirBaglantisi = (boyut: 'A4' | 'A3') => ({
         <button
           type="button"
           class="btn"
+          id="cizelge-kontrol-dugme"
           data-test="kontrol"
           :aria-pressed="kontrol"
+          aria-labelledby="cizelge-kontrol-etiketi cizelge-kontrol-dugme"
           aria-describedby="cizelge-kontrol-not"
           @click="kontrol = !kontrol"
         >
@@ -257,12 +279,24 @@ const yazdirBaglantisi = (boyut: 'A4' | 'A3') => ({
     </form>
 
     <VeriDurumu v-if="yukleniyor && !yanit" durum="yukleniyor" metin="Çizelge hazırlanıyor…" />
-    <VeriDurumu v-else-if="hata" durum="hata" :metin="hata" />
+    <VeriDurumu v-else-if="hata" durum="hata" :metin="hata">
+      <template #eylem>
+        <button type="button" class="btn btn-kucuk" data-test="yeniden-dene" @click="getir">
+          Yeniden dene
+        </button>
+      </template>
+    </VeriDurumu>
     <VeriDurumu
       v-else-if="yanit && yanit.satirlar.length === 0"
       durum="bos"
       metin="Bu süzgeçte personel yok."
     />
+    <VeriDurumu
+      v-else-if="yanit && satirlar.length === 0"
+      durum="bos"
+      metin="Aramayla eşleşen personel yok."
+    />
+    <p class="gorunmez" role="status">{{ yukleniyor && yanit ? 'Çizelge güncelleniyor…' : '' }}</p>
 
     <template v-if="yanit && yanit.satirlar.length > 0">
       <ul class="cizelge-gosterge" aria-label="Hücre göstergesi">
@@ -294,6 +328,7 @@ const yazdirBaglantisi = (boyut: 'A4' | 'A3') => ({
           <button
             type="button"
             class="btn btn-kucuk"
+            ref="oncekiDugme"
             data-test="onceki-sayfa"
             :disabled="sayfa === 0"
             @click="sayfaGit(sayfa - 1)"
@@ -303,6 +338,7 @@ const yazdirBaglantisi = (boyut: 'A4' | 'A3') => ({
           <button
             type="button"
             class="btn btn-kucuk"
+            ref="sonrakiDugme"
             data-test="sonraki-sayfa"
             :disabled="sayfa >= sayfaSayisi - 1"
             @click="sayfaGit(sayfa + 1)"
@@ -311,8 +347,14 @@ const yazdirBaglantisi = (boyut: 'A4' | 'A3') => ({
           </button>
         </template>
       </nav>
-      <div ref="kap" class="cizelge-kap">
-        <table class="cizelge-tablo" @keydown="tus" @focusin="hucreOdaginda">
+      <div ref="kap" class="cizelge-kap" :aria-busy="yukleniyor">
+        <table
+          class="cizelge-tablo"
+          role="grid"
+          aria-readonly="true"
+          @keydown="tus"
+          @focusin="hucreOdaginda"
+        >
           <caption class="gorunmez">
             {{
               altYazi
@@ -369,7 +411,7 @@ const yazdirBaglantisi = (boyut: 'A4' | 'A3') => ({
                     class="hucre-ic"
                     tabindex="-1"
                     :to="hedef(yanit.ay, c + 1, v.seferId)"
-                    :aria-label="v.ad"
+                    :aria-label="`${gorunenMetin(v)}: ${v.ad}`"
                   >
                     <span class="hucre-kod"
                       >{{ v.kod }}<b v-if="v.ek" class="hucre-ek">+{{ v.ek }}</b></span

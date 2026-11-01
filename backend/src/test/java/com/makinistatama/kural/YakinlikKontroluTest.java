@@ -163,6 +163,20 @@ class YakinlikKontroluTest {
         assertThat(y.olculen()).isEqualTo(3.0);
     }
 
+    /** OK-50b: tek gece haftası "ardışık" değildir. {@code gece.ard_hafta_max=1} iken her gece görevi "1 / 1" işaretleniyordu (demo masada satırların %56'sı); seri ≥ 2 olmadıkça yakınlık üretilmez. */
+    @Test
+    void K18_tekGeceHaftasi_ardisikDegil_sinir1iken_yakinlikYok_seri2ihlal() {
+        Parametreler p = param("gece.ard_hafta_max", "1");
+        Gorev aday = gorev(99, "2026-10-12T22:00", "2026-10-13T02:00");
+        Gorev h1 = gorev(1, "2026-10-06T22:00", "2026-10-07T02:00");
+        assertThat(kod(yak(aday, List.of(), p), "K-18")).as("seri 1, sınır 1: ardışık değil").isEmpty();
+        assertThat(ihlal(aday, List.of(), p, "K-18")).as("ihlal de yok").isEmpty();
+        assertThat(kod(yak(aday, List.of(h1), p), "K-18")).as("seri 2 > 1: ihlal, işaret yok").isEmpty();
+        assertThat(ihlal(aday, List.of(h1), p, "K-18")).hasSize(1);
+        Parametreler iki = param("gece.ard_hafta_max", "2");
+        assertThat(kod(yak(aday, List.of(h1), iki), "K-18").getFirst().kalan()).as("seri 2 = sınır 2: gerçek ardışıklık, işaret kalır").isEqualTo(0.0);
+    }
+
     @Test
     void K18_haftaZatenGeceHaftasiysaYeniSeriYok() {
         Parametreler p = param("gece.ard_hafta_max", "1");

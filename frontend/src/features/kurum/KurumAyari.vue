@@ -121,7 +121,8 @@ async function logoKaldir() {
         />
         <p id="kurum-ad-yardim" class="alan-yardim">
           Giriş sayfasında, üst çubukta, personel ekranında ve yazdırılan listelerin başlığında
-          görünür. Girilmezse ürün adı ({{ URUN_ADI }}) gösterilir.
+          görünür. Hiç ad girilmediyse ürün adı ({{ URUN_ADI }}) gösterilir; ad bir kez
+          kaydedildikten sonra boş bırakılamaz, yalnız değiştirilebilir.
         </p>
         <AlanHatasi id="kurum-ad-hata" :metin="adHata" />
       </div>

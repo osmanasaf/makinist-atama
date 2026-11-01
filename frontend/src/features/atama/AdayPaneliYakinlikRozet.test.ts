@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import AdayPaneli from './AdayPaneli.vue'
 import type { Aday, YakinlikIsareti, YakinlikYaniti } from './atamaApi'
 
-// OK-48: F3 "Sınıra yakın" bilgisi aday panelinde AYRI satır eklemez: adayın durum satırında kısa rozet ("Sınıra yakın" / "Sınıra yakın (n)"),
+// OK-48/OK-49: F3 "Sınıra yakın" bilgisi aday panelinde AYRI satır eklemez: adayın sicil · gar satırında kısa rozet ("Sınıra yakın" / "Sınıra yakın (n)"),
 // erişilebilir ad tüm ölçüm metinlerini içerir, görünür ölçüm metinleri yalnız odaklı adayda açılır.
 const aday = (id: number): Aday => ({
   makinistId: id,
@@ -46,11 +46,14 @@ const kur = () =>
 const satir = (w: ReturnType<typeof kur>, i: number) => w.findAll('tr[data-aday]')[i]!
 
 describe('AdayPaneli: "Sınıra yakın" kısa rozet (OK-48)', () => {
-  it('rozet durum hücresinde satır içi; ayrı liste/blok yok; n=1 sayısız, n>1 "(n)"', () => {
+  it('rozet adayın sicil · gar satırında satır içi (OK-49); ayrı liste/blok yok; n=1 sayısız, n>1 "(n)"', () => {
     const w = kur()
     const not1 = satir(w, 0).get('[data-test="yakinlik-notu"]')
     expect(not1.element.tagName).toBe('SPAN')
-    expect(not1.element.parentElement?.classList.contains('aday-durum')).toBe(true)
+    // OK-49: rozet durum hücresinden adayın sicil · gar satırına taşındı (orada yer boş; satıra yükseklik katmaz)
+    expect(not1.element.parentElement?.classList.contains('alt-bilgi')).toBe(true)
+    expect(not1.element.closest('.aday-durum')).toBeNull()
+    expect(satir(w, 0).get('.alt-bilgi').text()).toMatch(/^D001 · Ankara *Sınıra yakın/)
     expect(satir(w, 0).find('.yakinlik-listesi').exists()).toBe(false)
     expect(not1.get('.rozet').text()).toBe('Sınıra yakın')
     expect(satir(w, 1).get('[data-test="yakinlik-notu"] .rozet').text()).toBe('Sınıra yakın (2)')
@@ -77,6 +80,17 @@ describe('AdayPaneli: "Sınıra yakın" kısa rozet (OK-48)', () => {
     expect(w.findAll('[data-test="yakinlik-ayrinti"]')).toHaveLength(1)
     await satir(w, 1).trigger('focusout')
     expect(w.find('[data-test="yakinlik-ayrinti"]').exists()).toBe(false)
+  })
+
+  it('OK-49: rozet yerinden bağımsız, odaklı adayda ölçüm ayrıntısı ve yorgunluk eşikleri durum hücresinde açılır; rozet tek kalır', async () => {
+    const w = kur()
+    await satir(w, 1).trigger('focusin')
+    expect(satir(w, 1).find('.aday-durum [data-test="yakinlik-ayrinti"]').exists()).toBe(true)
+    expect(satir(w, 1).find('.aday-durum [data-test="yorgunluk-detay"]').exists()).toBe(true)
+    // OK-50 (D-11): özet zaten okunuyor; eşik ayrıntısı çift okunmasın (yakınlık ayrıntısıyla aynı yöntem)
+    expect(satir(w, 1).get('[data-test="yorgunluk-detay"]').attributes('aria-hidden')).toBe('true')
+    expect(satir(w, 1).find('.aday-durum [data-test="yakinlik-isareti"]').exists()).toBe(false)
+    expect(satir(w, 1).findAll('[data-test="yakinlik-isareti"]')).toHaveLength(1)
   })
 
   it('tek odak yöntemi: aynı satırda yorgunluk ayrıntısı ve yakınlık ayrıntısı birlikte açılır, rozet bilgi tonunda kalır', async () => {

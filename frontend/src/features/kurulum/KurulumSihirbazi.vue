@@ -18,6 +18,10 @@ const hata = ref('')
 const yukleniyor = ref(true)
 const gizleMesgul = ref(false)
 
+/** Sunucu yeni bir adım kodu gönderirse (TS tipi çalışma zamanında koruma değildir) adım yalnız ad ve ayrıntıyla görünür; ekran çökmez. */
+const eylem = (kod: string) =>
+  (EYLEMLER as Record<string, (typeof EYLEMLER)[keyof typeof EYLEMLER] | undefined>)[kod]
+
 /** Adım -> ilgili mevcut sayfa ve eylem metni. KURUM adımı satır içi form kullanır (bağlantı yok). */
 const EYLEMLER: Record<
   Exclude<KurulumAdimKodu, 'KURUM'>,
@@ -118,13 +122,13 @@ onMounted(yukle)
           </div>
           <p class="soluk">{{ a.ayrinti }}</p>
           <KurumAyari v-if="a.kod === 'KURUM'" @degisti="yukle" />
-          <template v-else>
-            <p class="soluk">{{ EYLEMLER[a.kod].not }}</p>
+          <template v-else-if="eylem(a.kod)">
+            <p class="soluk">{{ eylem(a.kod)!.not }}</p>
             <RouterLink
               class="btn"
               :class="{ 'btn-birincil': !a.yapildi }"
-              :to="EYLEMLER[a.kod].hedef"
-              >{{ EYLEMLER[a.kod].metin }}</RouterLink
+              :to="eylem(a.kod)!.hedef"
+              >{{ eylem(a.kod)!.metin }}</RouterLink
             >
           </template>
         </li>

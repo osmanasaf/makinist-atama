@@ -1,6 +1,7 @@
 package com.makinistatama.olcek;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
@@ -63,6 +64,32 @@ class GunListesiPerfTest extends TestVeritabani {
         long bas = System.nanoTime();
         sorgu(t, gun);
         assertThat((System.nanoTime() - bas) / 1_000_000).as("300 atamalı gün listesi ms").isLessThan(3000);
+    }
+
+    /**
+     * OK-50: kimsenin atanmadığı 100 seferli günde "boş sefer nedeni" (UX-13) hesabı, uygun kişiyi sicil sırasında GEÇ bulduğunda da hızlı kalmalı. Eski kod her sefer için listeyi baştan tarıyordu:
+     * hat yetkisiz 3.000 makinist sicil sırasında öne düşünce 100 × 3.000 kural değerlendirmesi (QA: 8,1 sn). Çıktı değişmez: uygun kişi varsa neden yok.
+     */
+    @Test
+    void gunListesi_uygunKisiSicilSirasindaGecBulunsa_bosSeferNedeni_tekSaniyeAlti() throws Exception {
+        LocalDate gun = LocalDate.now(ZamanAyari.BOLGE).plusDays(5);
+        var v = new AtamaVeri(jdbc);
+        for (int i = 0; i < 3000; i++) {
+            v.makinist(String.format("A%04d", i), false, "AKTIF"); // hat yetkisi yok: ENGEL
+        }
+        for (int i = 0; i < 3; i++) {
+            v.makinist("Z00" + i); // yetkili, sicil sırasında en sonda
+        }
+        for (int i = 0; i < 100; i++) {
+            int dk = (i * 13) % (22 * 60);
+            v.sefer("S" + i, gun, LocalTime.of(dk / 60, dk % 60).toString(), LocalTime.of(dk / 60, dk % 60).plusMinutes(30).toString());
+        }
+        Tarayici t = atamaci();
+        t.get("/api/atama/gun?tarih=" + gun).andExpect(status().isOk()); // ısınma
+
+        long bas = System.nanoTime();
+        t.get("/api/atama/gun?tarih=" + gun).andExpect(status().isOk()).andExpect(jsonPath("$.satirlar.length()").value(100)).andExpect(jsonPath("$.satirlar[?(@.bosNeden != null)]").isEmpty());
+        assertThat((System.nanoTime() - bas) / 1_000_000).as("3.003 makinistli, 100 atanmamış seferli gün listesi ms").isLessThan(1000);
     }
 
     /** F2b: her sefere bir de YOLCU satırı eklenince de sorgu sayısı atama sayısından bağımsızdır (yolculuk ayarı yükleme başına en çok bir kez okunur). */

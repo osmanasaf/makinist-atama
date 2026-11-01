@@ -7,6 +7,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiHata } from '@/api/istemci'
+import { blobIndir } from '@/lib/indir'
 import AlanHatasi from '@/bilesenler/AlanHatasi.vue'
 import Diyalog from '@/bilesenler/Diyalog.vue'
 import Dugme from '@/bilesenler/Dugme.vue'
@@ -147,12 +148,7 @@ async function disaAktar() {
   genelHata.value = ''
   try {
     const { blob, ad } = await profilApi.disaAktar()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = ad ?? 'makinist-atama-profil.json'
-    a.click()
-    URL.revokeObjectURL(url)
+    blobIndir(blob, ad ?? 'makinist-atama-profil.json')
   } catch (e) {
     genelHata.value = hataMetni(e, 'Ayarlar dışa aktarılamadı.')
   }
@@ -185,8 +181,13 @@ async function uygula() {
   try {
     const paket = onizleme.value.paket
     const s = await profilApi.uygula(paket, [...secili.value], neden.value.trim())
-    onayAcik.value = false
-    await onizlemeKur(paket, kaynakAdi.value) // yazılanlar artık "Aynı" görünür
+    onayAcik.value = false // ayarlar yazıldı: bundan sonraki hiçbir hata "hiçbir değişiklik yapılmadı" dememeli (O-3)
+    try {
+      await onizlemeKur(paket, kaynakAdi.value) // yazılanlar artık "Aynı" görünür
+    } catch {
+      genelHata.value =
+        'Profil uygulandı; fark tablosu yenilenemedi. Sayfayı yenileyip kontrol edin.'
+    }
     sonuc.value = s
   } catch (e) {
     onayAcik.value = false
@@ -238,7 +239,7 @@ async function uygula() {
         </div>
         <Dugme
           :disabled="mesgul"
-          :aria-label="`${h.ad} profilinin farklarını göster`"
+          :aria-label="`Farkları göster: ${h.ad} profili`"
           @click="hazirAc(h)"
           >Farkları göster</Dugme
         >

@@ -148,8 +148,9 @@ describe('Aylık çizelge ızgarası (F5, AK-5.5..5.7, 5.9)', () => {
     const { w, router } = await kur()
     const baglanti = w.findAll('tbody tr')[0]!.findAll('td.hucre')[0]!.get('a')
     expect(baglanti.attributes('href')).toBe('/atama?tarih=2026-10-01&sefer=7')
+    // OK-50 (O-6, WCAG 2.5.3): erişilebilir ad görünen metinle ("T1+1 06:00") başlar, önceki ad aynen devam eder
     expect(baglanti.attributes('aria-label')).toBe(
-      'Makinist 1, 1 Ekim 2026: T1 06:00–14:00, Asıl; T9 15:00–17:00, Asıl',
+      'T1+1 06:00: Makinist 1, 1 Ekim 2026: T1 06:00–14:00, Asıl; T9 15:00–17:00, Asıl',
     )
     await baglanti.trigger('click')
     await flushPromises()

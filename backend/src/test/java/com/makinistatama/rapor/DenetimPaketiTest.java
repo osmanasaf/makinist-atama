@@ -25,7 +25,7 @@ import com.makinistatama.TestVeritabani;
 import com.makinistatama.atama.AtamaVeri;
 
 /**
- * F4 / AK-4.5 / MK-181 / T5.4: denetim paketi 7 sayfa (adlar ve başlıklar sabit), "Atama kayıtları" satır sayısı denetim raporunun {@code kayitSayisi}'na eşit, hiçbir hücre formül değil (formül enjeksiyonu
+ * F4 / AK-4.5 / MK-181 / T5.4: denetim paketi 7 sayfa (adlar ve başlıklar sabit), "Değişiklik kayıtları" satır sayısı denetim raporunun {@code kayitSayisi}'na eşit, hiçbir hücre formül değil (formül enjeksiyonu
  * koruması {@code TabloExcel}'de), demo etiketi, kural değerleri kaynak/güvenilirlikle.
  */
 class DenetimPaketiTest extends TestVeritabani {
@@ -76,9 +76,9 @@ class DenetimPaketiTest extends TestVeritabani {
             for (int i = 0; i < k.getNumberOfSheets(); i++) {
                 adlar.add(k.getSheetName(i));
             }
-            assertThat(adlar).containsExactly("Özet", "Atama kayıtları", "Uyarılı atamalar", "Ayar değişiklikleri", "Kural değerleri", "Adalet", "Rapor bilgisi");
+            assertThat(adlar).containsExactly("Özet", "Değişiklik kayıtları", "Uyarılı atamalar", "Ayar değişiklikleri", "Kural değerleri", "Adalet", "Rapor bilgisi");
             assertThat(satir(k.getSheet("Özet").getRow(0))).containsExactly("Alan", "Değer");
-            assertThat(satir(k.getSheet("Atama kayıtları").getRow(0))).containsExactly("Zaman", "Kim", "Bölüm", "Tür", "Sicil", "Tren no", "Sefer tarihi", "Eski", "Yeni", "Neden", "Not",
+            assertThat(satir(k.getSheet("Değişiklik kayıtları").getRow(0))).containsExactly("Zaman", "Kim", "Bölüm", "Tür", "Sicil", "Tren no", "Sefer tarihi", "Eski", "Yeni", "Neden", "Not",
                     "Uyarılı", "Uyarı gerekçesi", "Uyaran kural", "Otomatik");
             assertThat(satir(k.getSheet("Uyarılı atamalar").getRow(0))).containsExactly("Zaman", "Kim", "Sicil", "Tren no", "Sefer tarihi", "Uyarı gerekçesi (atamacı)", "Uyaran kural");
             assertThat(satir(k.getSheet("Ayar değişiklikleri").getRow(0))).containsExactly("Zaman", "Kim", "Tür", "Eski", "Yeni", "Neden", "Not");
@@ -94,7 +94,7 @@ class DenetimPaketiTest extends TestVeritabani {
         int kayit = JsonPath.<Number>read(rapor, "$.kayitSayisi").intValue();
         assertThat(kayit).isGreaterThanOrEqualTo(3); // atama(uyarılı) + parametre + özel kural
         try (var k = paket()) {
-            assertThat(k.getSheet("Atama kayıtları").getLastRowNum()).isEqualTo(kayit); // başlık + kayıt
+            assertThat(k.getSheet("Değişiklik kayıtları").getLastRowNum()).isEqualTo(kayit); // başlık + kayıt
             assertThat(k.getSheet("Uyarılı atamalar").getLastRowNum()).isEqualTo(1);
             assertThat(satir(k.getSheet("Uyarılı atamalar").getRow(1))).contains("G", "'" + ENJEKSIYON);
             List<String> ayarTurleri = new ArrayList<>();
