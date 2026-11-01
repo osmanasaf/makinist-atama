@@ -37,7 +37,7 @@ describe('Benim: kullanılabilirlik (07-qa UX)', () => {
     expect((w.get('#eski-parola').element as HTMLInputElement).value).toBe('gecici-parola-1')
   })
 
-  it('özet: gece saati ve ortalamaya fark açıklanır; boş ayda ortalama görev saati gösterilmez', async () => {
+  it('özet: gece saati açıklanır; ortalamaya fark ve ortalama görev saati hiç gösterilmez (OK-35)', async () => {
     const bos: Ozet = {
       ay: '2026-11',
       adaleteDahil: true,
@@ -48,8 +48,6 @@ describe('Benim: kullanılabilirlik (07-qa UX)', () => {
       kmBilinmeyenSefer: 0,
       geceSaat: 0,
       izinGunu: 5,
-      ortalamaSaat: 0,
-      farkYuzde: null,
     }
     vi.mocked(benimApi.ozet).mockResolvedValue(bos)
     const router = createRouter({
@@ -60,9 +58,8 @@ describe('Benim: kullanılabilirlik (07-qa UX)', () => {
     await flushPromises()
 
     expect(w.text()).toContain('gece vardiyası saatlerine denk gelen')
-    expect(w.text()).toContain('aynı türdeki personelin ortalamasına göre')
-    expect(w.text()).toContain('Ortalama yok')
-    expect(w.text()).not.toContain('Ortalama görev saati')
+    expect(w.text()).not.toMatch(/ortalama/i)
+    expect(w.text()).not.toContain('Ortalamaya fark')
   })
 
   it('belge: süresi dolan ya da yaklaşan için "başvurun" cümlesi; geçerli belgede yok', async () => {

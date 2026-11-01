@@ -1,4 +1,5 @@
 // Yalnız testler için ortak örnek veri (üretim kodu içe aktarmaz).
+import type { DOMWrapper } from '@vue/test-utils'
 import type { GunMakinisti, GunSatiri } from './atamaApi'
 
 export const makinist = (ek: Partial<GunMakinisti> = {}): GunMakinisti => ({
@@ -33,3 +34,9 @@ export const satir = (seferId: number, ek: Partial<GunSatiri> = {}): GunSatiri =
   bosNeden: null,
   ...ek,
 })
+
+/** K7 (MK-148): menüye taşınan satır eylemini tetikler. ⋯ menüsünü açar, `aria-label` sonu `son` olan öğeye tıklar (ör. 'gecikme gir', 'iptal et', 'seferini böl'). */
+export async function eylemTetikle(satirKabi: DOMWrapper<Element>, son: string): Promise<void> {
+  await satirKabi.get('button[aria-haspopup="menu"]').trigger('click')
+  await satirKabi.get(`[role="menuitem"][aria-label$="${son}"]`).trigger('click')
+}

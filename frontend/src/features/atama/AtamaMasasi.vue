@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { ApiHata } from '@/api/istemci'
 import { kaydirmaDavranisi } from '@/lib/odak'
 import { bugun, gunKaydir, saatBicimle, tarihBicimle } from '@/lib/tarih'
 import { trenAdi } from '@/lib/trenAdi'
 import { durumMetni, gecikmeMetni } from '@/features/yazdir/durumMetni'
 import IntikalSeridi from '@/features/intikal/IntikalSeridi.vue'
 import Dugme from '@/bilesenler/Dugme.vue'
+import EylemMenusu, { type EylemOgesi } from '@/bilesenler/EylemMenusu.vue'
 import Rozet from '@/bilesenler/Rozet.vue'
 import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
 import Simge from '@/bilesenler/Simge.vue'
@@ -22,11 +24,25 @@ import SeferDegisiklikDialog from './SeferDegisiklikDialog.vue'
 import UygunSeferlerDialog from './UygunSeferlerDialog.vue'
 import YerineAtaDialog from './YerineAtaDialog.vue'
 import YolculukOneriDialog from './YolculukOneriDialog.vue'
-import { geceAyariYukle, geceMi } from './gece'
-import { ROL_ONEKLERI } from './atamaApi'
+import { geceAraligi, geceAyariYukle, geceMi } from './gece'
+import { atamaApi, ROL_ETIKETLERI, ROL_ONEKLERI } from './atamaApi'
 import type { Aday, AtamaRolu, GunMakinisti, GunSatiri, Oneri, UygunSefer } from './atamaApi'
 import { useYoklama } from '@/features/benim/useYoklama'
+import { atanmamisMi } from '@/features/ana/yapilacaklar'
+import { hizliAtanabilir, sonrakiBos } from './hizliDoldur'
+import { suzgecOku, type MasaSuzgeci } from './masaBaglantisi'
 import { useAtamaMasasi } from './useAtamaMasasi'
+import { useGeriAl } from './useGeriAl'
+import ZamanSeridi, { type CubukDurumu } from './ZamanSeridi.vue'
+import {
+  cubuk as cubukHesapla,
+  geceBantlari,
+  gunDakikasi,
+  izgara as izgaraHesapla,
+  pencere as pencereHesapla,
+  saatEtiketleri,
+  simdiYuzde,
+} from './zamanCizelgesi'
 
 const route = useRoute()
 const router = useRouter()
@@ -45,7 +61,11 @@ void masa.gordumYukle()
 void masa.takasYukle()
 void geceAyariYukle() // gece göstergesi ayardaki pencereyi (gece.baslangic/bitis) izler
 // Makinistler "gördüm" dedikçe ve takas talepleri geldikçe masa kendiliğinden güncellensin (60 sn; sekme gizliyken durur).
-useYoklama(() => masa.sessizYenile())
+const simdi = ref(Date.now()) // "şimdi" çizgisi yoklamayla (60 sn) ilerler
+useYoklama(() => {
+  simdi.value = Date.now()
+  return masa.sessizYenile()
+})
 
 function gunDegistir(t: string) {
   if (TARIH_DESENI.test(t)) void router.replace({ query: { ...route.query, tarih: t } })
@@ -95,17 +115,71 @@ const kisi = (m: GunMakinisti) => `${m.ad} (${m.sicil})`
 const kondukturEksikSayisi = computed(() => satirlar.value.filter((s) => s.kondukturEksik).length)
 
 /** Satır süzgeci (yalnız ön yüz, MK-139): sayaç düğmesi aç/kapa; aynı düğme tekrar basılınca süzgeç kalkar. */
-type SatirSuzgeci = 'atanmamis' | 'kirmizi' | 'konduktor'
-const suzgec = ref<SatirSuzgeci | null>(null)
+type SatirSuzgeci = MasaSuzgeci
+// Adres sorgusu (`?suzgec=`) süzgeci açar; çip tıklaması yerel kalır, sorguyu yeniden yazmaz (MK-156).
+const suzgec = ref<SatirSuzgeci | null>(suzgecOku(route.query.suzgec))
+watch(
+  () => route.query.suzgec,
+  (v) => (suzgec.value = suzgecOku(v)),
+)
 const suzgecDugme = (k: SatirSuzgeci) => (suzgec.value = suzgec.value === k ? null : k)
 const SUZGEC_KOSULU: Record<SatirSuzgeci, (s: GunSatiri) => boolean> = {
   atanmamis: (s) => s.durum !== 'IPTAL' && !asil(s),
   kirmizi: (s) => s.kirmizi,
   konduktor: (s) => s.durum !== 'IPTAL' && !!s.kondukturEksik,
+  gormeyen: (s) => s.makinistler.some((m) => m.gordu === 'GORMEDI'),
+  bitmeyen: (s) => atanmamisMi(s, simdi.value),
 }
 const gorunenSatirlar = computed(() =>
   suzgec.value ? satirlar.value.filter(SUZGEC_KOSULU[suzgec.value]) : satirlar.value,
 )
+/** Görünüm anahtarı (B1, MK-159): Liste varsayılan; seçim tarayıcıda hatırlanır (erişilemezse yalnız bu oturum). */
+type Gorunum = 'liste' | 'cizelge'
+const GORUNUM_ANAHTARI = 'atama.masa.gorunum'
+function gorunumOku(): Gorunum {
+  try {
+    return localStorage.getItem(GORUNUM_ANAHTARI) === 'cizelge' ? 'cizelge' : 'liste'
+  } catch {
+    return 'liste'
+  }
+}
+const gorunum = ref<Gorunum>(gorunumOku())
+const cizelgede = computed(() => gorunum.value === 'cizelge')
+function gorunumSec(g: Gorunum) {
+  gorunum.value = g
+  try {
+    localStorage.setItem(GORUNUM_ANAHTARI, g)
+  } catch {
+    // tercih kalıcı olmaz; masa çalışmaya devam eder
+  }
+}
+/** Çizelge geometrisi yalnız Çizelge görünümünde hesaplanır (Liste'ye maliyeti yok). Pencere tüm günden, süzgeçten bağımsız: süzgeç değişince eksen oynamaz. */
+const cizelge = computed(() => {
+  if (!cizelgede.value) return null
+  const p = pencereHesapla(satirlar.value, tarih.value)
+  const etiketler = saatEtiketleri(p)
+  return {
+    p,
+    etiketler,
+    bantlar: geceBantlari(geceAraligi.value, p),
+    simdi: simdiYuzde(simdi.value, tarih.value, p),
+    izgara: izgaraHesapla(p),
+  }
+})
+const cubukDurumu = (s: GunSatiri): CubukDurumu =>
+  s.durum === 'IPTAL' ? 'iptal' : s.kirmizi ? 'kirmizi' : asil(s) ? 'atanmis' : 'bos'
+const CUBUK_DURUM_METNI: Record<CubukDurumu, string> = {
+  atanmis: 'atanmış',
+  bos: 'boş, asıl makinist yok',
+  kirmizi: 'kontrol bekliyor',
+  iptal: 'iptal',
+}
+/** Çubuğun erişilebilir adı: sefer, güzergâh, saat (gece yarısını geçiyorsa belirtilir) ve durum metni. */
+const cubukEtiketi = (s: GunSatiri) =>
+  `${trenAdi(s)} ${guzergah(s)}, ${saatBicimle(s.guncelKalkis)}–${saatBicimle(s.guncelVaris)}` +
+  (gunDakikasi(s.guncelVaris, tarih.value) > 1440 ? ' (ertesi güne sürüyor)' : '') +
+  `, ${CUBUK_DURUM_METNI[cubukDurumu(s)]}`
+
 /** Satırda uyarı notu olan (kırmızı değil) görevli: sol şeritte uyarı rengi. */
 const uyarili = (s: GunSatiri) => !s.kirmizi && s.makinistler.some((m) => m.uyarilar.length > 0)
 
@@ -138,6 +212,35 @@ const bolunebilir = (s: GunSatiri) =>
 /** "Birleştir": yalnız parçalı, planlı sefer (koşulları sunucu denetler; gerekçe diyalogda gösterilir). */
 const birlestirilebilir = (s: GunSatiri) => s.durum === 'PLANLI' && s.parcaNo != null
 
+/** Satırın ⋯ menüsü (MK-148): Gecikme, Böl, Birleştir; ayırıcıdan sonra yıkıcı İptal. `etiket`ler eski düğme adlarıdır. */
+function menuOgeleri(s: GunSatiri): EylemOgesi[] {
+  const ad = trenAdi(s)
+  return [
+    { kimlik: 'gecikme', ad: 'Gecikme', etiket: `${ad} seferine gecikme gir`, simge: 'gecikme' },
+    {
+      kimlik: 'bol',
+      ad: 'Böl',
+      etiket: `${ad} seferini böl`,
+      simge: 'bol',
+      gizli: !bolunebilir(s),
+    },
+    {
+      kimlik: 'birlestir',
+      ad: 'Birleştir',
+      etiket: `${ad} seferini birleştir`,
+      simge: 'birlestir',
+      gizli: !birlestirilebilir(s),
+    },
+    {
+      kimlik: 'iptal',
+      ad: 'İptal',
+      etiket: `${ad} seferini iptal et`,
+      simge: 'iptal',
+      tehlike: true,
+    },
+  ]
+}
+
 /** Atama onayı: sefer kimliği açıkça tutulur (Uygun seferler akışında seçili satırdan farklı olabilir). */
 type DiyalogDurumu = {
   seferId: number
@@ -159,25 +262,149 @@ const diyalog = ref<DiyalogDurumu | null>(null)
 const diger = ref<DigerDiyalog | null>(null)
 const bilgi = ref('')
 
+const geriAl = useGeriAl()
+/** Hızlı atama sürerken ikinci tetik (çift Enter) yok sayılır; sunucu `ZATEN_ATANMIS` ikinci savunma. */
+const hizliKilit = ref(false)
+const hizliHata = ref('')
+const adayPaneli = ref<InstanceType<typeof AdayPaneli> | null>(null)
+
 // BUG-12: gün değişince (adres, geri tuşu, ok düğmeleri) önceki günün seferine ait açık diyalog kalmasın.
 watch(tarih, () => {
   diyalog.value = null
   diger.value = null
   bilgi.value = ''
+  hizliHata.value = ''
+  geriAl.temizle()
 })
 
 function adayAta(aday: Aday) {
   const s = seciliSatir.value
-  if (!s) return
+  if (!s || hizliKilit.value) return
+  // D1/B-01: liste yüklenirken ya da başka sefer/role aitken (bayat) hiçbir atama başlamaz
+  if (masa.adayYukleniyor.value || masa.adayAnahtari.value !== `${s.seferId}:${rol.value}`) return
   bilgi.value = ''
-  diyalog.value = {
-    seferId: s.seferId,
-    etiket: seferEtiketi(s),
-    aday,
-    rol: rol.value,
-    // yolcuda "değiştir" yoktur: bir seferde birden çok yolcu olabilir (F2b)
-    mevcut: rol.value === 'YOLCU' ? null : (s.makinistler.find((m) => m.rol === rol.value) ?? null),
+  hizliHata.value = ''
+  // yolcuda "değiştir" yoktur: bir seferde birden çok yolcu olabilir (F2b)
+  const mevcut =
+    rol.value === 'YOLCU' ? null : (s.makinistler.find((m) => m.rol === rol.value) ?? null)
+  // OK-34 (MK-150): temiz aday + boş rol → onaysız ata + Geri al; uyarı/engel/değiştir/yolcu mevcut diyalogla
+  if (hizliAtanabilir(aday, rol.value, mevcut)) {
+    void hizliAta(s, aday)
+    return
   }
+  diyalog.value = { seferId: s.seferId, etiket: seferEtiketi(s), aday, rol: rol.value, mevcut }
+}
+
+const seferKisa = (s: GunSatiri) => `${trenAdi(s)} ${saatBicimle(s.guncelKalkis)}`
+
+/** Odak gövdede kaldıysa (Geri al düğmesi/aday satırı DOM'dan kalktı) seçili satıra, yoksa panel başlığına taşı (WCAG 2.4.3). */
+async function odakOnar() {
+  await nextTick()
+  const a = document.activeElement
+  if (a && a !== document.body && a.isConnected) return
+  const hedef = liste.value?.querySelector<HTMLElement>('tr.secili') ?? panelBasligi.value
+  hedef?.focus()
+}
+watch(
+  () => geriAl.bekleyen.value,
+  (b) => {
+    if (!b) void odakOnar() // süre doldu ya da kullanıldı
+  },
+)
+
+/** Odak aday panelindeyse yeni seferin adayları yüklenince Önerilen satırına taşınır (MK-154: odak çalınmaz). */
+let odakBekliyor = false
+watch(masa.adayYukleniyor, (yukleniyor) => {
+  if (yukleniyor || !odakBekliyor) return
+  odakBekliyor = false
+  void nextTick(() => {
+    if (!adayPaneli.value?.odakla()) panelBasligi.value?.focus()
+  })
+})
+const panelOdakta = () => !!panel.value?.contains(document.activeElement)
+
+/** OK-34/O1: temiz adayı onaysız ata, ASIL'da seçimi sıradaki boş sefere ilerlet, Geri al şeridini başlat. */
+async function hizliAta(s: GunSatiri, aday: Aday) {
+  hizliKilit.value = true
+  const rolu = rol.value
+  const paneldeydi = panelOdakta()
+  try {
+    const sonuc = await atamaApi.ata(s.seferId, { makinistId: aday.makinistId, rol: rolu })
+    // Sıradaki sefer eski listeden bulunur (şu anki sefer zaten dışlanır); yeniden okuma sonra yapılır.
+    const sonraki = rolu === 'ASIL' ? sonrakiBos(gorunenSatirlar.value, s.seferId) : null
+    const sonrakiSatir = satirlar.value.find((x) => x.seferId === sonraki)
+    const rolEki = rolu === 'ASIL' ? '' : ` (${ROL_ETIKETLERI[rolu]})`
+    let mesaj = `Atandı${rolEki}: ${sonuc.ad} (${sonuc.sicil}) → ${seferKisa(s)}.`
+    if (rolu === 'ASIL')
+      mesaj += sonrakiSatir ? ` Sıradaki: ${seferKisa(sonrakiSatir)}.` : ' Boş sefer kalmadı.'
+    mesaj += ' Geri almak için Ctrl+Z.'
+    geriAl.baslat({ atamaId: sonuc.atamaId, seferId: s.seferId, rol: rolu, mesaj })
+    if (sonraki !== null) {
+      odakBekliyor = paneldeydi
+      masa.sec(sonraki) // adaylar izleyici ile yüklenir
+      await Promise.all([
+        masa.gunuYukle(),
+        masa.kirmiziYukle(),
+        masa.gordumYukle(),
+        masa.takasYukle(),
+      ])
+    } else {
+      await masa.yenile()
+    }
+  } catch (e) {
+    const ihlaller =
+      e instanceof ApiHata ? (e.ihlaller ?? []).filter((i) => !e.detail.includes(i.metin)) : []
+    hizliHata.value = [
+      e instanceof ApiHata ? e.detail : 'Atama yapılamadı.',
+      ...ihlaller.map((i) => i.metin),
+    ].join(' ')
+    await masa.yenile() // sunucu durumu bizim bildiğimizden farklı olabilir
+  } finally {
+    hizliKilit.value = false
+  }
+}
+
+async function geriAlTetik() {
+  const sonuc = await geriAl.geriAl()
+  if (!sonuc) return
+  if (sonuc.tur === 'hata') hizliHata.value = sonuc.mesaj
+  else bilgi.value = sonuc.mesaj
+  await masa.yenile()
+  await odakOnar()
+}
+
+/** "Sıradaki boş" (düğme ve N): sonraki atanmamış sefere seçim + aday paneline odak; kalmadıysa bildirir. */
+function siradakiBos() {
+  const sonraki = sonrakiBos(gorunenSatirlar.value, seciliId.value)
+  hizliHata.value = ''
+  if (sonraki === null) {
+    bilgi.value = 'Boş sefer kalmadı.'
+    return
+  }
+  bilgi.value = ''
+  odakBekliyor = true
+  masa.sec(sonraki)
+}
+
+/** Tek harf kısayolu yalnız masa/panel odaktayken ve yazı alanı dışında (WCAG 2.1.4). Ctrl+Z modifiyelidir. */
+function izgaraTus(e: KeyboardEvent) {
+  const hedef = e.target as HTMLElement
+  if (hedef.closest('input, select, textarea, [contenteditable], [role="menu"]')) return
+  if (e.altKey || e.shiftKey) return
+  if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'n') {
+    e.preventDefault()
+    siradakiBos()
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && geriAl.bekleyen.value) {
+    e.preventDefault()
+    void geriAlTetik()
+  }
+}
+
+function menuSec(s: GunSatiri, kimlik: string) {
+  if (kimlik === 'gecikme') digerAc({ tur: 'degisiklik', kip: 'gecikme', satir: s })
+  else if (kimlik === 'iptal') digerAc({ tur: 'degisiklik', kip: 'iptal', satir: s })
+  else if (kimlik === 'bol') digerAc({ tur: 'bol', satir: s })
+  else if (kimlik === 'birlestir') digerAc({ tur: 'birlestir', satir: s })
 }
 
 function kaldirAc(s: GunSatiri, m: GunMakinisti) {
@@ -285,6 +512,24 @@ async function kapat(yenile: boolean) {
     </SayfaBasligi>
 
     <div class="sayac-seridi">
+      <div class="suzgec gorunum-anahtari" role="group" aria-label="Görünüm">
+        <button
+          type="button"
+          class="btn btn-kucuk"
+          :aria-pressed="gorunum === 'liste'"
+          @click="gorunumSec('liste')"
+        >
+          Liste
+        </button>
+        <button
+          type="button"
+          class="btn btn-kucuk"
+          :aria-pressed="gorunum === 'cizelge'"
+          @click="gorunumSec('cizelge')"
+        >
+          Çizelge
+        </button>
+      </div>
       <button
         v-if="masa.kirmizi.value"
         type="button"
@@ -312,10 +557,10 @@ async function kapat(yenile: boolean) {
         type="button"
         class="cip cip-uyari"
         :class="{ dolu: masa.atanmamisSayisi.value > 0 }"
-        :aria-pressed="suzgec === 'atanmamis'"
+        :aria-pressed="suzgec === 'atanmamis' || suzgec === 'bitmeyen'"
         data-test="atanmamis-sayac"
         title="Asıl makinisti olmayan seferler (iptaller hariç). Düğme: yalnız bunları listeler."
-        @click="suzgecDugme('atanmamis')"
+        @click="suzgecDugme(suzgec === 'bitmeyen' ? 'bitmeyen' : 'atanmamis')"
       >
         <Simge ad="daire" boyut="1.1em" />Atanmamış:
         <strong>{{ masa.atanmamisSayisi.value }}</strong> sefer
@@ -334,12 +579,15 @@ async function kapat(yenile: boolean) {
         /></span>
         Kondüktör eksik: <strong>{{ kondukturEksikSayisi }}</strong> sefer
       </button>
-      <p
+      <button
         v-if="masa.gordum.value"
+        type="button"
         class="cip cip-uyari"
         :class="{ dolu: masa.gordum.value.gorulmeyen > 0 }"
+        :aria-pressed="suzgec === 'gormeyen'"
         data-test="gordum-sayac"
-        :title="`Seçili gün + sonraki 7 gün, kalkışı geçmemiş atamalar ve intikaller: ${masa.gordum.value.gorulen} gördü, ${masa.gordum.value.gorulmeyen} görmedi, ${masa.gordum.value.hesapsiz} personelin hesabı yok`"
+        :title="`Seçili gün + sonraki 7 gün, kalkışı geçmemiş atamalar ve intikaller: ${masa.gordum.value.gorulen} gördü, ${masa.gordum.value.gorulmeyen} görmedi, ${masa.gordum.value.hesapsiz} personelin hesabı yok. Düğme: bu günün görmeyen satırlarını listeler.`"
+        @click="suzgecDugme('gormeyen')"
       >
         <Simge ad="daire" boyut="1.1em" />Görülmeyen:
         <strong>{{ masa.gordum.value.gorulmeyen }}</strong>
@@ -349,7 +597,7 @@ async function kapat(yenile: boolean) {
         <span v-if="masa.gordum.value.uyari > 0" class="cip-alt gordum-uyari">
           <Simge ad="uyari" boyut="1em" />{{ masa.gordum.value.uyari }} kalkışa yakın
         </span>
-      </p>
+      </button>
       <p
         v-if="masa.takasBekleyen.value !== null"
         class="cip cip-bilgi"
@@ -373,27 +621,100 @@ async function kapat(yenile: boolean) {
       >
         Adaylara geç
       </button>
+      <button
+        v-if="masa.gun.value && masa.atanmamisSayisi.value > 0"
+        type="button"
+        class="btn btn-kucuk"
+        data-test="siradaki-bos"
+        aria-keyshortcuts="N"
+        title="Sıradaki atanmamış sefere geç (masa ya da panel odaktayken N)"
+        @click="siradakiBos"
+      >
+        Sıradaki boş (N)
+      </button>
       <span v-if="seciliSatir" class="ipucu" data-test="sag-ok-ipucu">ya da satırda → tuşu</span>
     </div>
+    <p v-if="suzgec === 'bitmeyen'" class="soluk bitmeyen-notu" data-test="bitmeyen-notu">
+      Yalnız henüz bitmeyen atanmamış seferler listeleniyor (ana sayfadaki sayı).
+      <button
+        type="button"
+        class="btn btn-kucuk"
+        data-test="bitenleri-goster"
+        @click="suzgec = 'atanmamis'"
+      >
+        Bitenleri de göster
+      </button>
+    </p>
+
+    <ul v-if="cizelgede" class="cizelge-aciklama" aria-hidden="true">
+      <li><span class="cubuk cubuk-ornek cubuk-atanmis"></span>Atanmış</li>
+      <li><span class="cubuk cubuk-ornek cubuk-bos"></span>Boş</li>
+      <li><span class="cubuk cubuk-ornek cubuk-kirmizi"></span>Kontrol bekliyor</li>
+      <li><span class="cubuk cubuk-ornek cubuk-iptal"></span>İptal</li>
+      <li><span class="aciklama-gece"></span>Gece</li>
+      <li><span class="aciklama-simdi"></span>Şimdi</li>
+      <li><span class="aciklama-plan"></span>Planlanan kalkış (gecikmede)</li>
+    </ul>
 
     <div role="status">
-      <p v-if="bilgi" class="bildirim bildirim-bilgi">{{ bilgi }}</p>
+      <div
+        v-if="geriAl.bekleyen.value"
+        class="bildirim bildirim-bilgi geri-al-seridi"
+        data-test="geri-al-seridi"
+        @pointerenter="geriAl.duraklat()"
+        @pointerleave="geriAl.surdur()"
+        @focusin="geriAl.duraklat()"
+        @focusout="geriAl.surdur()"
+      >
+        <span>{{ geriAl.bekleyen.value.mesaj }}</span>
+        <button
+          type="button"
+          class="btn btn-kucuk"
+          data-test="geri-al"
+          aria-keyshortcuts="Control+Z"
+          @click="geriAlTetik"
+        >
+          <Simge ad="geri-al" boyut="1.1em" />Geri al
+        </button>
+      </div>
+      <p v-else-if="bilgi" class="bildirim bildirim-bilgi">{{ bilgi }}</p>
     </div>
+    <p v-if="hizliHata" class="bildirim bildirim-hata" role="alert">{{ hizliHata }}</p>
     <p v-if="masa.gunHatasi.value" class="bildirim bildirim-hata" role="alert">
       {{ masa.gunHatasi.value }}
     </p>
 
     <IntikalSeridi :tarih="tarih" @degisti="masa.yenile()" />
 
-    <div class="atama-izgara" :class="{ secimsiz: !seciliSatir }">
+    <div
+      class="atama-izgara"
+      :class="{ secimsiz: !seciliSatir }"
+      :aria-busy="hizliKilit"
+      @keydown="izgaraTus"
+    >
       <div ref="liste" class="tablo-kap masa-kap">
-        <table class="tablo masa-tablo" :aria-label="`${tarihBicimle(tarih)} seferleri`">
+        <table
+          class="tablo masa-tablo"
+          :class="{ 'masa-tablo--cizelge': cizelgede }"
+          :aria-label="`${tarihBicimle(tarih)} seferleri`"
+        >
           <thead>
             <tr>
               <th class="kol-saat">Saat</th>
-              <th>Tren no</th>
+              <th class="kol-tren">Tren no</th>
               <th class="kol-guzergah">Güzergâh</th>
               <th class="kol-ayrinti">Araç · Hat</th>
+              <th v-if="cizelge" class="kol-zaman">
+                <span class="gorunmez">Zaman</span>
+                <div class="zaman-ekseni" aria-hidden="true">
+                  <span
+                    v-for="e in cizelge.etiketler"
+                    :key="e.etiket"
+                    :style="{ left: e.yuzde + '%' }"
+                    >{{ e.etiket }}</span
+                  >
+                </div>
+              </th>
               <th class="makinist-sutun">Personel</th>
               <th class="kol-durum">Durum</th>
               <th class="kol-islem">İşlem</th>
@@ -432,7 +753,11 @@ async function kapat(yenile: boolean) {
                   ><Simge ad="ay" boyut="0.9em" /><span class="gorunmez">gece</span></span
                 >
               </td>
-              <td class="kol-tren" :data-guzergah="guzergah(s)">
+              <td
+                class="kol-tren"
+                :data-guzergah="guzergah(s)"
+                :data-saat="saatBicimle(s.guncelKalkis)"
+              >
                 <span class="tren-no">{{ trenAdi(s) }}</span>
               </td>
               <td class="kol-guzergah">
@@ -440,6 +765,18 @@ async function kapat(yenile: boolean) {
               </td>
               <td class="kol-ayrinti">
                 <span>{{ s.aracTipi }}</span> <span class="soluk">{{ s.hat }}</span>
+              </td>
+              <td v-if="cizelge" class="kol-zaman">
+                <ZamanSeridi
+                  :cubuk="cubukHesapla(s, tarih, cizelge.p)"
+                  :durum="cubukDurumu(s)"
+                  :etiket="cubukEtiketi(s)"
+                  :yazi="guzergah(s)"
+                  :bantlar="cizelge.bantlar"
+                  :simdi="cizelge.simdi"
+                  :izgara-sol="cizelge.izgara.solYuzde"
+                  :izgara-adim="cizelge.izgara.adimYuzde"
+                />
               </td>
               <td class="makinist-sutun">
                 <div class="personel-icerik">
@@ -450,7 +787,7 @@ async function kapat(yenile: boolean) {
                     :class="[`gorevli-${m.rol.toLowerCase()}`, { 'gordum-uyarili': m.gorduUyari }]"
                     :title="ROL_METINLERI[m.rol]"
                   >
-                    <span class="gorevli-ad"
+                    <span class="gorevli-ad" :title="cizelgede ? kisi(m) : undefined"
                       ><b
                         v-if="ROL_ONEKLERI[m.rol]"
                         class="rozet rozet-sm"
@@ -507,10 +844,18 @@ async function kapat(yenile: boolean) {
                     >
                       <Simge ad="ara" boyut="1.1em" />Uygun seferler
                     </button>
-                    <div v-if="m.kirmizi" class="kirmizi-neden">
+                    <div
+                      v-if="m.kirmizi"
+                      class="kirmizi-neden"
+                      :title="cizelgede ? m.kirmiziNedenler.join('; ') : undefined"
+                    >
                       <Simge ad="engel" boyut="1em" />{{ m.kirmiziNedenler.join('; ') }}
                     </div>
-                    <div v-if="m.uyarilar.length > 0" class="uyari-notu">
+                    <div
+                      v-if="m.uyarilar.length > 0"
+                      class="uyari-notu"
+                      :title="cizelgede ? `Uyarı: ${m.uyarilar.join('; ')}` : undefined"
+                    >
                       <Simge ad="uyari" boyut="1em" />Uyarı: {{ m.uyarilar.join('; ') }}
                     </div>
                     <div v-if="s.durum === 'IPTAL'" class="soluk iptal-notu">
@@ -547,12 +892,26 @@ async function kapat(yenile: boolean) {
                   ton="engel"
                   simge="iptal"
                   :metin="durumMetni(s)"
+                  :title="cizelgede ? durumMetni(s) : undefined"
                   boyut="sm"
                 />
                 <template v-else>
-                  <Rozet v-if="s.kirmizi" ton="engel" simge="engel" metin="KONTROL" boyut="sm" />
-                  <span v-if="s.kalkisGecikmeDk > 0" class="gecikme">
-                    <Simge ad="gecikme" boyut="1em" />{{ gecikmeMetni(s) }}
+                  <Rozet
+                    v-if="s.kirmizi"
+                    ton="engel"
+                    simge="engel"
+                    metin="KONTROL"
+                    :title="cizelgede ? 'KONTROL' : undefined"
+                    boyut="sm"
+                  />
+                  <span
+                    v-if="s.kalkisGecikmeDk > 0"
+                    class="gecikme"
+                    :title="cizelgede ? gecikmeMetni(s) : undefined"
+                  >
+                    <Simge ad="gecikme" boyut="1em" /><span class="gecikme-metin">{{
+                      gecikmeMetni(s)
+                    }}</span>
                   </span>
                 </template>
               </td>
@@ -560,77 +919,50 @@ async function kapat(yenile: boolean) {
                 <div class="islem-dugmeleri">
                   <template v-if="s.durum !== 'IPTAL'">
                     <button
+                      v-if="!asil(s)"
                       type="button"
                       :tabindex="tb(s)"
-                      class="btn btn-kucuk btn-kare"
-                      :aria-label="`${trenAdi(s)} seferine gecikme gir`"
-                      title="Gecikme"
-                      @click.stop="digerAc({ tur: 'degisiklik', kip: 'gecikme', satir: s })"
+                      class="btn btn-kucuk btn-birincil"
+                      :aria-label="`${trenAdi(s)} seferine ata`"
+                      @click.stop="adaylaraGec(s.seferId)"
                     >
-                      <Simge ad="gecikme" boyut="1.1em" /><span class="eylem-metin">Gecikme</span>
+                      <Simge ad="kisi" boyut="1.1em" /><span class="btn-metin">Ata</span>
                     </button>
                     <button
+                      v-else
                       type="button"
                       :tabindex="tb(s)"
-                      class="btn btn-kucuk btn-kare"
-                      :aria-label="`${trenAdi(s)} seferini iptal et`"
-                      title="İptal"
-                      @click.stop="digerAc({ tur: 'degisiklik', kip: 'iptal', satir: s })"
-                    >
-                      <Simge ad="iptal" boyut="1.1em" /><span class="eylem-metin">İptal</span>
-                    </button>
-                    <button
-                      v-if="bolunebilir(s)"
-                      type="button"
-                      :tabindex="tb(s)"
-                      class="btn btn-kucuk btn-kare"
-                      :aria-label="`${trenAdi(s)} seferini böl`"
-                      title="Böl"
-                      @click.stop="digerAc({ tur: 'bol', satir: s })"
-                    >
-                      <Simge ad="bol" boyut="1.1em" /><span class="eylem-metin">Böl</span>
-                    </button>
-                    <button
-                      v-if="birlestirilebilir(s)"
-                      type="button"
-                      :tabindex="tb(s)"
-                      class="btn btn-kucuk btn-kare"
-                      :aria-label="`${trenAdi(s)} seferini birleştir`"
-                      title="Birleştir"
-                      @click.stop="digerAc({ tur: 'birlestir', satir: s })"
-                    >
-                      <Simge ad="birlestir" boyut="1.1em" /><span class="eylem-metin"
-                        >Birleştir</span
-                      >
-                    </button>
-                    <button
-                      v-if="asil(s)"
-                      type="button"
-                      :tabindex="tb(s)"
-                      class="btn btn-kucuk btn-kare"
+                      class="btn btn-kucuk"
                       :class="{ 'btn-birincil': s.kirmizi }"
                       :aria-label="`${trenAdi(s)} seferinde yerine ata`"
-                      title="Yerine ata"
                       @click.stop="digerAc({ tur: 'yerine', satir: s })"
                     >
-                      <Simge ad="takas" boyut="1.1em" /><span class="eylem-metin">Yerine ata</span>
+                      <Simge ad="kisi-degistir" boyut="1.1em" /><span class="btn-metin"
+                        >Yerine ata</span
+                      >
                     </button>
+                    <EylemMenusu
+                      :etiket="`${trenAdi(s)} seferi için diğer işlemler`"
+                      :ogeler="menuOgeleri(s)"
+                      :sekme-sirasi="tb(s)"
+                      @sec="menuSec(s, $event)"
+                    />
                   </template>
                 </div>
               </td>
             </tr>
             <tr v-if="masa.gun.value === null && !masa.gunHatasi.value">
-              <td colspan="7">
+              <td colspan="8">
                 <VeriDurumu durum="yukleniyor" metin="Yükleniyor…" />
               </td>
             </tr>
             <tr v-else-if="satirlar.length === 0 && !masa.gunHatasi.value">
-              <td colspan="7">
+              <td colspan="8">
                 <VeriDurumu durum="bos" metin="Bu gün için sefer yok." />
               </td>
             </tr>
             <tr v-else-if="satirlar.length > 0 && gorunenSatirlar.length === 0">
-              <td colspan="7">
+              <td colspan="8">
                 <VeriDurumu durum="bos" metin="Süzgece uyan sefer yok.">
                   <template #eylem>
                     <button type="button" class="btn btn-kucuk" @click="suzgec = null">
@@ -652,6 +984,7 @@ async function kapat(yenile: boolean) {
           </button>
           <h2 ref="panelBasligi" tabindex="-1">Adaylar: {{ seferEtiketi(seciliSatir) }}</h2>
           <AdayPaneli
+            ref="adayPaneli"
             v-model:rol="rol"
             :adaylar="adaylar"
             :yukleniyor="masa.adayYukleniyor.value"
@@ -924,6 +1257,198 @@ button.cip:hover {
   display: none;
   white-space: nowrap;
 }
+/*
+ * Çizelge görünümü (yalnız 1101 px üstü): Güzergâh ve Araç · Hat sütunlarının yerini Zaman alır (DOM'da kalırlar; yazdırmada geri gelir).
+ * Güzergâh çubuğun yanında yazılıdır; tren numarasının altında Güzergâh yerine kalkış saati görünür (Saat sütunu gizlenir). 1100 px altında Liste düzeni geçerlidir.
+ */
+.kol-zaman {
+  width: 40%;
+  min-width: 12rem;
+}
+@media (min-width: 1101px) {
+  .atama-izgara .masa-tablo.masa-tablo--cizelge .kol-guzergah,
+  .atama-izgara .masa-tablo.masa-tablo--cizelge .kol-ayrinti,
+  .atama-izgara .masa-tablo.masa-tablo--cizelge .kol-saat {
+    display: none;
+  }
+  /* OK-42c: Saat sütunu Tren no hücresinin ikinci satırına iner (yalnız kalkış; tam aralık çubuğun adında): sütun payı Zaman'a gider. */
+  .atama-izgara .masa-tablo.masa-tablo--cizelge .kol-tren::after {
+    content: attr(data-saat);
+    display: block;
+    font-family: var(--yazi-ailesi);
+    font-size: var(--yazi-xs);
+    font-weight: var(--yazi-agirlik-normal);
+    font-variant-numeric: tabular-nums;
+    color: var(--renk-metin-ikincil);
+  }
+}
+/*
+ * OK-42: Çizelgede Zaman sütunu geniş olsun (1366 + aday paneli: ≥ 360 px) ve satır alçak kalsın (≤ 48 px; kırmızı satır dahil).
+ * İşlem düğmeleri simge (adı aria-label'da, metin görünmez), Durum rozeti simge (metin title'da), gecikme metni simgeye iner (title'da), hücre dolgusu dar;
+ * ihlal / uyarı metinleri tek satır, kesilir (tam metin title'da, aday panelinde). Liste görünümü etkilenmez.
+ */
+@media (min-width: 1101px) {
+  /* Sabit düzen: dar sütunlar belli, Zaman kalan genişliği alır; Personel adı kesilir (tam ad title'da). */
+  .masa-tablo--cizelge {
+    table-layout: fixed;
+  }
+  .masa-tablo--cizelge th {
+    box-sizing: border-box;
+  }
+  .masa-tablo--cizelge th.kol-zaman {
+    width: auto;
+    min-width: 0;
+  }
+  .masa-tablo--cizelge th.kol-tren {
+    width: 3.5rem;
+  }
+  .masa-tablo--cizelge th.makinist-sutun {
+    width: 8.5rem;
+    min-width: 0;
+  }
+  .atama-izgara.secimsiz .masa-tablo--cizelge th.makinist-sutun {
+    width: 22%;
+  }
+  .masa-tablo--cizelge th.kol-durum {
+    width: 2.75rem;
+  }
+  .masa-tablo--cizelge th.kol-islem {
+    width: 4.25rem;
+  }
+  .masa-tablo--cizelge th,
+  .masa-tablo--cizelge td {
+    padding-left: var(--aralik-2);
+    padding-right: var(--aralik-2);
+  }
+  .masa-tablo--cizelge td {
+    padding-top: var(--aralik-1);
+    padding-bottom: var(--aralik-1);
+  }
+  .masa-tablo--cizelge .kol-islem .btn-metin,
+  .masa-tablo--cizelge .kol-durum :deep(.rozet-metin),
+  .masa-tablo--cizelge .gecikme-metin {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .masa-tablo--cizelge .kol-islem .btn-kucuk {
+    padding: var(--aralik-1);
+    min-width: 1.75rem;
+  }
+  .masa-tablo--cizelge .gorevli {
+    display: flex;
+    max-width: 100%;
+    gap: 0 var(--aralik-1); /* dar Personel hücresinde ad daha çok yer bulsun */
+    padding-left: var(--aralik-2);
+  }
+  .masa-tablo--cizelge .gorevli-ad {
+    flex: 1 1 0; /* kalan yeri alır, kesilir; gördü simgesi ve kaldır düğmesi aynı satırda kalır */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .masa-tablo--cizelge .kaldir-dugme {
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    padding: 0;
+  }
+  .masa-tablo--cizelge .kirmizi-neden,
+  .masa-tablo--cizelge .uyari-notu,
+  .masa-tablo--cizelge .iptal-notu {
+    flex: 1 1 100%; /* notlar kendi satırında */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+@media (min-width: 1500px) {
+  .atama-izgara .masa-tablo--cizelge th.makinist-sutun {
+    width: 20%;
+  }
+}
+@media (max-width: 1100px) {
+  .kol-zaman,
+  .gorunum-anahtari,
+  .cizelge-aciklama {
+    display: none;
+  }
+}
+/* D1/QA-5: Geri al şeridi akışta yer tutmaz; açılıp kapanırken tablo ve aday paneli kaymaz (yanlış satıra tık olmasın). */
+.geri-al-seridi {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--aralik-5);
+  z-index: 20;
+  width: fit-content;
+  max-width: min(46rem, calc(100vw - 2rem));
+  margin: 0 auto;
+  box-shadow: var(--golge-2);
+}
+.bitmeyen-notu {
+  margin: 0 0 var(--aralik-3);
+}
+.zaman-ekseni {
+  container-type: inline-size;
+  position: relative;
+  height: 1rem;
+  margin: 0 0.75rem;
+  font-family: var(--yazi-mono);
+  font-size: var(--yazi-xs);
+  font-weight: var(--yazi-agirlik-orta);
+  color: var(--renk-metin-ikincil);
+}
+.zaman-ekseni span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+/* Dar eksende (aday paneli açık, 1366) etiketler dört saatte bire iner; ızgara çizgileri iki saatte bir kalır. */
+@container (max-width: 17rem) {
+  .zaman-ekseni span:nth-child(even) {
+    display: none;
+  }
+}
+.kol-zaman .zaman-seridi {
+  margin: 0 0.5rem;
+}
+.zaman-ekseni {
+  margin: 0 0.5rem;
+}
+.cizelge-aciklama {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--aralik-2) var(--aralik-5);
+  margin: 0 0 var(--aralik-3);
+  padding: 0;
+  list-style: none;
+  color: var(--renk-metin-ikincil);
+  font-size: var(--yazi-xs);
+}
+.cizelge-aciklama li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--aralik-2);
+}
+.aciklama-gece {
+  width: 1.5rem;
+  height: 0.75rem;
+  background: var(--renk-cubuk-gece);
+  border: 1px solid var(--renk-cizgi);
+}
+.aciklama-simdi {
+  width: 2px;
+  height: 0.9rem;
+  background: var(--renk-cubuk-simdi);
+}
+.aciklama-plan {
+  height: 0.9rem;
+  border-left: 2px dotted var(--renk-metin-ikincil);
+}
 @media (min-width: 1500px) {
   .atama-izgara.secimsiz .kol-ayrinti {
     display: table-cell;
@@ -1083,36 +1608,6 @@ button.cip:hover {
   display: flex;
   gap: var(--aralik-1) var(--aralik-2);
 }
-.islem-dugmeleri .btn {
-  position: relative;
-}
-/* Eylem düğmeleri simgedir; metin DOM'da (görünmez). Geniş ekranda ve seçim yokken metin görünür (MK-134). */
-.eylem-metin {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-@media (min-width: 1600px) {
-  .atama-izgara.secimsiz .eylem-metin {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip-path: none;
-  }
-}
-@media (min-width: 1800px) {
-  .eylem-metin {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip-path: none;
-  }
-}
 .masa-nobet {
   padding: 0 var(--aralik-3) var(--aralik-3);
 }
@@ -1197,6 +1692,18 @@ button.cip:hover {
   .kol-islem,
   .kaldir-dugme,
   .btn {
+    display: none;
+  }
+  /* Yazdırmada Liste kullanılır: çizelge sütunu çıkar, Güzergâh geri gelir. */
+  .kol-zaman,
+  .cizelge-aciklama {
+    display: none;
+  }
+  .atama-izgara .masa-tablo.masa-tablo--cizelge .kol-guzergah,
+  .atama-izgara .masa-tablo.masa-tablo--cizelge .kol-saat {
+    display: table-cell;
+  }
+  .atama-izgara .masa-tablo.masa-tablo--cizelge .kol-tren::after {
     display: none;
   }
   .sefer-satiri,

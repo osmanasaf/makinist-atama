@@ -179,7 +179,12 @@ describe('AtamaMasasi', () => {
   })
 
   it('atama sonrası gün listesi ve adaylar yenilenir, "Atama yapıldı." bildirilir', async () => {
-    vi.mocked(atamaApi.ata).mockResolvedValue({} as Awaited<ReturnType<typeof atamaApi.ata>>)
+    // K8 (OK-34): temiz aday artık onay diyaloğu açmadan atanır; aynı `ata` gövdesi, başarı Geri al şeridiyle bildirilir
+    vi.mocked(atamaApi.ata).mockResolvedValue({
+      atamaId: 55,
+      ad: 'Aday Bir',
+      sicil: 'D007',
+    } as Awaited<ReturnType<typeof atamaApi.ata>>)
     const { w } = await kur()
     await satirlar(w)[1]!.trigger('click')
     await flushPromises()
@@ -187,15 +192,14 @@ describe('AtamaMasasi', () => {
     expect(atamaApi.adaylar).toHaveBeenCalledTimes(1)
 
     await w.get('tr.aday').trigger('click')
-    expect(w.find('dialog').exists()).toBe(true)
-    await w.get('dialog form').trigger('submit')
     await flushPromises()
+    expect(w.find('dialog').exists()).toBe(false)
 
     expect(atamaApi.ata).toHaveBeenCalledWith(2, { makinistId: 7, rol: 'ASIL', gerekce: undefined })
     expect(atamaApi.gun).toHaveBeenCalledTimes(2)
     expect(atamaApi.adaylar).toHaveBeenCalledTimes(2)
-    expect(w.find('dialog').exists()).toBe(false)
-    expect(w.get('[role="status"]').text()).toBe('Atama yapıldı.')
+    expect(w.get('[role="status"]').text()).toContain('Atandı: Aday Bir (D007)')
+    expect(w.get('[data-test="geri-al"]').text()).toBe('Geri al')
   })
 
   it('dolu rolde aday seçmek "değiştir" diyaloğu açar ve neden gönderir', async () => {

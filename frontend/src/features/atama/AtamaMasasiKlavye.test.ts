@@ -71,13 +71,14 @@ describe('AtamaMasasi: klavyeyle gezinme', () => {
     const tablo = w.get('table.masa-tablo').element
     const duraklar = sekmeDuraklari(tablo)
     expect(w.findAll('tr.sefer-satiri')).toHaveLength(SATIR_SAYISI)
-    // etkin satır + onun Kaldır/Gecikme/İptal/Böl/Yerine ata düğmeleri
+    // etkin satır + onun Kaldır/Ata (ya da Yerine ata)/⋯ düğmeleri
     expect(duraklar.length).toBeLessThanOrEqual(8)
     expect(duraklar[0]!.tagName).toBe('TR')
-    // eylemler fareyle erişilebilir kalır: tabindex -1 olsa da düğme var ve tıklanır
-    expect(
-      w.findAll('tr.sefer-satiri')[50]!.find('button[aria-label$="seferine gecikme gir"]').exists(),
-    ).toBe(true)
+    // eylemler fareyle erişilebilir kalır: tabindex -1 olsa da ⋯ düğmesi var; menü açılınca Gecikme öğesi var (K7)
+    const satir50 = w.findAll('tr.sefer-satiri')[50]!
+    expect(satir50.get('button[aria-haspopup="menu"]').attributes('tabindex')).toBe('-1')
+    await satir50.get('button[aria-haspopup="menu"]').trigger('click')
+    expect(satir50.find('button[aria-label$="seferine gecikme gir"]').exists()).toBe(true)
   })
 
   it('↓ etkin satırı taşır: yeni satır tabindex 0, eskisi -1', async () => {
@@ -126,7 +127,7 @@ describe('AtamaMasasi: klavyeyle gezinme', () => {
 
   it('satırın içindeki düğmede → paneli açmaz (yalnız satırın kendisinde)', async () => {
     const w = await kur()
-    const dugme = w.findAll('tr.sefer-satiri')[0]!.get('button[aria-label$="seferine gecikme gir"]')
+    const dugme = w.findAll('tr.sefer-satiri')[0]!.get('button[aria-haspopup="menu"]') // K7: gecikme düğmesi menüye taşındı; satır içi düğme olarak ⋯
     await dugme.trigger('keydown', { key: 'ArrowRight' })
     expect(w.find('aside h2').exists()).toBe(false)
   })

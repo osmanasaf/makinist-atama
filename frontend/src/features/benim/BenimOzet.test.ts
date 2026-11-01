@@ -18,8 +18,6 @@ const ozet: Ozet = {
   kmBilinmeyenSefer: 2,
   geceSaat: 31,
   izinGunu: 3,
-  ortalamaSaat: 98,
-  farkYuzde: 14.8,
 }
 
 async function kur() {
@@ -35,14 +33,15 @@ async function kur() {
 describe('BenimOzet', () => {
   beforeEach(() => vi.resetAllMocks())
 
-  it('özeti gösterir: sefer, saat, km, gece, izin, ortalamaya fark; planlanan dahil notu', async () => {
+  it('özeti gösterir: sefer, saat, km, gece, izin; planlanan dahil notu; ortalama/fark YOK (OK-35)', async () => {
     vi.mocked(benimApi.ozet).mockResolvedValue(ozet)
     const w = await kur()
     const metin = w.text()
     expect(metin).toContain('14')
     expect(metin).toContain('112,5')
     expect(metin).toContain('4.380')
-    expect(metin).toContain('+14,8 %')
+    expect(metin).not.toMatch(/ortalama/i)
+    expect(metin).not.toContain('fark')
     expect(metin).toContain('Planlanan seferler dahildir')
     expect(metin).toContain('2 seferin km bilgisi girilmediği')
     expect(w.findAll('#ozet-ay option')).toHaveLength(14) // son 12 ay + bu ay + gelecek ay
@@ -72,16 +71,15 @@ describe('BenimOzet', () => {
     )
   })
 
-  it('adalet dışı makinist (askıda) ve ortalama yok durumları; hata', async () => {
+  it('adalet dışı makinist (askıda) ve hata durumları', async () => {
     vi.mocked(benimApi.ozet).mockResolvedValueOnce({
       ...ozet,
       adaleteDahil: false,
-      farkYuzde: null,
       seferSayisi: 0,
     })
     const w = await kur()
     expect(w.text()).toContain('özet dışındasınız')
-    expect(w.text()).toContain('Ortalama yok')
+    expect(w.text()).not.toContain('Ortalama')
     vi.mocked(benimApi.ozet).mockRejectedValueOnce(new ApiHata(400, 'DOGRULAMA', 'Ay aralık dışı.'))
     expect((await kur()).get('[role=alert]').text()).toContain('Ay aralık dışı.')
   })

@@ -121,4 +121,21 @@ class KirmiziAtamaTest extends TestVeritabani {
         atamaci().get("/api/atama/kirmizi-sayisi?bas=2026-01-01&bit=2026-12-31").andExpect(status().isBadRequest());
         atamaci().get("/api/atama/kirmizi-sayisi?bas=2026-10-13").andExpect(status().isBadRequest());
     }
+
+    /** B-2: pano derin bağlantısı için aralıktaki EN ERKEN kırmızı sefer günü; kırmızı yoksa null (anahtar yanıtta var). */
+    @Test
+    void kirmiziSayisi_ilkKirmiziGun_enErkenKirmiziGun_yoksaNull() throws Exception {
+        long m2 = v.makinist("D002");
+        long a2 = v.sefer("A2", D13, "10:00", "18:00", v.ankara, v.ankara);
+        long c2 = v.sefer("C2", LocalDate.of(2026, 10, 14), "06:00", "10:00", v.ankara, v.ankara);
+        v.atama(a2, m2, "ASIL");
+        v.atama(c2, m2, "ASIL");
+        Tarayici t = atamaci();
+        t.get("/api/atama/kirmizi-sayisi?bas=" + D12 + "&bit=" + D13).andExpect(jsonPath("$.kirmiziSefer").value(0)).andExpect(jsonPath("$.ilkKirmiziGun").value(org.hamcrest.Matchers.nullValue()));
+
+        gecikme(a, 150); // D13 (m) kırmızı
+        gecikme(a2, 150); // D14 (m2) kırmızı
+        t.get("/api/atama/kirmizi-sayisi?bas=" + D12 + "&bit=2026-10-14").andExpect(jsonPath("$.kirmiziSefer").value(2)).andExpect(jsonPath("$.ilkKirmiziGun").value("2026-10-13"));
+        t.get("/api/atama/kirmizi-sayisi?bas=2026-10-14&bit=2026-10-14").andExpect(jsonPath("$.ilkKirmiziGun").value("2026-10-14"));
+    }
 }

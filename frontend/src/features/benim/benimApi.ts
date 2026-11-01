@@ -94,8 +94,6 @@ export interface BenimOzet {
   kmBilinmeyenSefer: number
   geceSaat: number
   izinGunu: number
-  ortalamaSaat: number
-  farkYuzde: number | null
   /** Yolcu olarak gidilen sefer sayısı (F2b): görev saatine dahil, km'ye değil; eski yanıtlarda yok. */
   yolculukSayisi?: number
 }

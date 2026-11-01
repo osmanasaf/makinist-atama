@@ -4,8 +4,13 @@ import Simge from './Simge.vue'
 import { SIMGELER, type SimgeAdi } from './simgeler'
 
 describe('Simge', () => {
-  it('simge seti 36 simgeyi aşmaz', () => {
-    expect(Object.keys(SIMGELER).length).toBeLessThanOrEqual(36)
+  it('simge seti 41 simgeyi aşmaz', () => {
+    expect(Object.keys(SIMGELER).length).toBeLessThanOrEqual(41)
+  })
+
+  it('MK-149: H2 çakışma çözümü ve Tur A için beş yeni simge var', () => {
+    for (const ad of ['tablo', 'kisi-degistir', 'yatak-belge', 'daha', 'geri-al'])
+      expect(Object.keys(SIMGELER)).toContain(ad)
   })
 
   it.each(Object.keys(SIMGELER) as SimgeAdi[])('%s: path üretir, dekoratif', (ad) => {

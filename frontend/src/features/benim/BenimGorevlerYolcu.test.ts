@@ -80,7 +80,12 @@ describe('BenimGorevler: yolcu görevi (F2b)', () => {
   })
 
   it('yolcu görevi de "Gördüm" ister (tebliğ kanıtı rol-bağımsız)', async () => {
-    const w = await kur([gorev({ rol: 'YOLCU', gordu: 'YENI', gorduZamani: null })])
+    // OK-41b: sonraki görev kartı kendi Gördüm'ünü taşır; bu test Yeni bölümündeki kartı sınar → önde görülmüş bir görev
+    const erken = new Date(Date.now() + 24 * 3600_000).toISOString()
+    const w = await kur([
+      gorev({ rol: 'YOLCU', gordu: 'YENI', gorduZamani: null }),
+      gorev({ atamaId: 2, guncelKalkis: erken, guncelVaris: erken }),
+    ])
 
     expect(w.find('article').text()).toContain('YENİ')
     expect(

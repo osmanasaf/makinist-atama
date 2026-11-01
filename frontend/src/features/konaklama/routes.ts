@@ -15,7 +15,7 @@ const routes: RouteRecordRaw[] = [
     name: 'konaklama-rapor',
     component: () => import('./KonaklamaRaporu.vue'),
     meta: {
-      menu: { ad: 'Konaklama Raporu', sira: 48, grup: 'Raporlar', simge: 'ay' },
+      menu: { ad: 'Konaklama Raporu', sira: 48, grup: 'Raporlar', simge: 'yatak-belge' },
       baslik: 'Konaklama raporu',
     },
   },

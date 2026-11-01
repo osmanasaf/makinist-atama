@@ -71,7 +71,7 @@ const ozet: GordumOzeti = {
   uyari: 1,
 }
 
-async function kur() {
+async function kur(sorgu = '') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -79,7 +79,7 @@ async function kur() {
       { path: '/yazdir/gun/:tarih', name: 'yazdir-gun', component: bos },
     ],
   })
-  await router.push('/atama?tarih=2026-10-12')
+  await router.push(`/atama?tarih=2026-10-12${sorgu}`)
   const w = mount(AtamaMasasi, { global: { plugins: [router] } })
   await flushPromises()
   return w
@@ -125,6 +125,26 @@ describe('AtamaMasasi: gördüm görünürlüğü', () => {
     expect(sayac.text()).toContain('telefon hesabı yok: 3')
     expect(sayac.text()).toContain('1 kalkışa yakın')
     expect(atamaApi.gordumOzeti).toHaveBeenCalledWith('2026-10-12', '2026-10-19')
+  })
+
+  it('OK-41c: Görülmeyen sayacı süzgeç düğmesidir (aria-pressed); yalnız görmeyen satırları listeler, tekrar basınca kalkar', async () => {
+    const w = await kur()
+    const sayac = w.get('[data-test=gordum-sayac]')
+    expect(sayac.element.tagName).toBe('BUTTON')
+    expect(sayac.attributes('aria-pressed')).toBe('false')
+    await sayac.trigger('click')
+    expect(sayac.attributes('aria-pressed')).toBe('true')
+    const satirlar = w.findAll('tr.sefer-satiri')
+    expect(satirlar).toHaveLength(2) // yalnız GORMEDI olanlar (#2, #3)
+    expect(satirlar.every((s) => s.find('[data-test=gormedi]').exists())).toBe(true)
+    await sayac.trigger('click')
+    expect(w.findAll('tr.sefer-satiri')).toHaveLength(5)
+  })
+
+  it('OK-41c: ?suzgec=gormeyen ile açılınca yalnız görmeyen satırlar ve sayaç basılı', async () => {
+    const w = await kur('&suzgec=gormeyen')
+    expect(w.findAll('tr.sefer-satiri')).toHaveLength(2)
+    expect(w.get('[data-test=gordum-sayac]').attributes('aria-pressed')).toBe('true')
   })
 
   it('sayaç yüklenemezse masa yine çalışır, rozet gösterilmez', async () => {

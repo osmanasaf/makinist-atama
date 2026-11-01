@@ -225,3 +225,70 @@ describe('AdayPaneli: nöbet notu', () => {
     expect(w.find('[data-test="nobet-notu"]').exists()).toBe(false)
   })
 })
+
+describe('AdayPaneli: Önerilen aday ve ortalamaya fark (O1, OK-35)', () => {
+  const metin = (w: ReturnType<typeof kur>) => w.findAll('tr[data-aday]').map((r) => r.text())
+
+  it('"Önerilen" rozeti yalnız ilk temiz adayda (metinli); uyarılı/engelli adayda yok', () => {
+    const temiz1 = aday({ makinistId: 10, adSoyad: 'Temiz Bir' })
+    const temiz2 = aday({ makinistId: 11, adSoyad: 'Temiz İki' })
+    const w = kur([uyarili, engelli, temiz1, temiz2])
+    const t = metin(w)
+    expect(t.map((x) => x.includes('Önerilen'))).toEqual([false, false, true, false])
+    expect(w.findAll('.rozet-basari').filter((r) => r.text() === 'Önerilen')).toHaveLength(1)
+  })
+
+  it('temiz aday yoksa hiçbir satırda "Önerilen" yok', () => {
+    expect(metin(kur([uyarili, engelli, seferde])).some((x) => x.includes('Önerilen'))).toBe(false)
+  })
+
+  it('ASIL: "Fark" sütunu işaretli yüzde; açıklama "aday havuzu ortalamasına göre"', () => {
+    const w = kur([
+      aday({ makinistId: 1, buAySaat: 90 }),
+      aday({ makinistId: 2, buAySaat: 110 }),
+      aday({ makinistId: 3, buAySaat: 100 }),
+    ])
+    expect(w.get('th.kol-fark').attributes('title')).toContain('aday havuzu')
+    expect(w.text()).toContain('aday havuzu ortalamasına göre')
+    expect(w.findAll('td.aday-fark').map((c) => c.text())).toEqual(['-%10', '+%10', '%0'])
+  })
+
+  it('ortalama 0 ise "—"; YOLCU rolünde sütun hiç yok', () => {
+    const sifir = kur([aday({ buAySaat: 0 }), aday({ makinistId: 2, buAySaat: 0 })])
+    expect(sifir.findAll('td.aday-fark').map((c) => c.text())).toEqual(['—', '—'])
+    const yolcu = mount(AdayPaneli, { props: { adaylar: [aday({})], rol: 'YOLCU' } })
+    expect(yolcu.find('th.kol-fark').exists()).toBe(false)
+    expect(yolcu.find('td.aday-fark').exists()).toBe(false)
+    expect(yolcu.text()).not.toContain('ortalaması')
+  })
+
+  it('odakla(): Önerilen satırına, yoksa ilk satıra odak verir', () => {
+    const temiz = aday({ makinistId: 10, adSoyad: 'Temiz' })
+    const w = mount(AdayPaneli, {
+      props: { adaylar: [uyarili, temiz], rol: 'ASIL' },
+      attachTo: document.body,
+    })
+    w.vm.odakla()
+    expect(document.activeElement).toBe(w.findAll('tr[data-aday]')[1]!.element)
+    w.unmount()
+    const w2 = mount(AdayPaneli, {
+      props: { adaylar: [uyarili, engelli], rol: 'ASIL' },
+      attachTo: document.body,
+    })
+    w2.vm.odakla()
+    expect(document.activeElement).toBe(w2.findAll('tr[data-aday]')[0]!.element)
+    w2.unmount()
+  })
+
+  it('D1/B-01: yükleniyorken (aria-busy) satırlar seçilemez: tık ve Enter sec yaymaz, satır aria-disabled', async () => {
+    const w = mount(AdayPaneli, { props: { adaylar: [aday({})], rol: 'ASIL', yukleniyor: true } })
+    expect(satir(w, 0).attributes('aria-disabled')).toBe('true')
+    await satir(w, 0).trigger('click')
+    await satir(w, 0).trigger('keydown', { key: 'Enter' })
+    expect(w.emitted('sec')).toBeUndefined()
+    await w.setProps({ yukleniyor: false })
+    expect(satir(w, 0).attributes('aria-disabled')).toBeUndefined()
+    await satir(w, 0).trigger('click')
+    expect(w.emitted('sec')).toHaveLength(1)
+  })
+})

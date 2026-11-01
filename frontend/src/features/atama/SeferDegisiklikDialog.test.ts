@@ -81,6 +81,9 @@ describe('SeferDegisiklikDialog', () => {
       expect(w.text()).toContain('Gecikme gir')
       expect(w.text()).not.toContain('geri alınamaz')
       expect((w.get('#sefer-kalkis-gecikme').element as HTMLInputElement).value).toBe('20')
+      // H4 (AK-3.3): gecikme kipinde neden varsayılan "Gecikme"; hâlâ zorunlu (boş seçilince onay kapanır)
+      expect((w.get('#sefer-neden').element as HTMLSelectElement).value).toBe('GECIKME')
+      await w.get('#sefer-neden').setValue('')
       expect(onay(w).attributes('disabled')).toBeDefined() // neden yok
       await w.get('#sefer-kalkis-gecikme').setValue('90')
       await w.get('#sefer-neden').setValue('GECIKME')
@@ -162,6 +165,74 @@ describe('SeferDegisiklikDialog', () => {
     const w = kur('iptal')
     await w.get('button[type="button"]:not([aria-label="Kapat"])').trigger('click')
     expect(w.emitted('kapat')).toEqual([[false]])
+  })
+})
+
+describe('SeferDegisiklikDialog: hızlı gecikme (H4, AK-3.1..3.5)', () => {
+  const cipler = (w: ReturnType<typeof kur>) => w.findAll('[role="group"] button')
+
+  it('dk çipleri 15/30/60/90/120; tıklayınca değer yazılır, çip basılı olur, odak dk alanına döner', async () => {
+    const w = mount(SeferDegisiklikDialog, {
+      props: { kip: 'gecikme', seferId: 11, seferEtiketi: 'T1', kalkisGecikmeDk: 0 },
+      attachTo: document.body,
+    })
+    expect(cipler(w).map((c) => c.text())).toEqual(['15 dk', '30 dk', '60 dk', '90 dk', '120 dk'])
+    expect(cipler(w).every((c) => c.attributes('aria-pressed') === 'false')).toBe(true)
+    await cipler(w)[1]!.trigger('click')
+    const alan = w.get('#sefer-kalkis-gecikme')
+    expect((alan.element as HTMLInputElement).value).toBe('30')
+    expect(cipler(w)[1]!.attributes('aria-pressed')).toBe('true')
+    expect(document.activeElement).toBe(alan.element)
+    w.unmount()
+  })
+
+  it('açılışta odak dk alanında ve değer seçili (yazınca ezilir)', () => {
+    const sec = vi.spyOn(HTMLInputElement.prototype, 'select') // jsdom number girdisinde seçim aralığı vermez
+    const w = mount(SeferDegisiklikDialog, {
+      props: { kip: 'gecikme', seferId: 11, seferEtiketi: 'T1', kalkisGecikmeDk: 20 },
+      attachTo: document.body,
+    })
+    const alan = w.get('#sefer-kalkis-gecikme').element as HTMLInputElement
+    expect(document.activeElement).toBe(alan)
+    expect(sec.mock.instances[0]).toBe(alan)
+    expect(alan.hasAttribute('autofocus')).toBe(true)
+    sec.mockRestore()
+    w.unmount()
+  })
+
+  it('AK-3.5/3.6: çip + Enter (form gönderimi) → gövde {kalkisGecikmeDk, neden:GECIKME}, varış yok, yazma/seçim yok', async () => {
+    vi.mocked(atamaApi.seferGecikme).mockResolvedValue(sefer)
+    const w = kur('gecikme', { kalkisGecikmeDk: 0 })
+    await cipler(w)[1]!.trigger('click')
+    await w.get('form').trigger('submit')
+    await flushPromises()
+    expect(atamaApi.seferGecikme).toHaveBeenCalledWith(11, {
+      kalkisGecikmeDk: 30,
+      varisGecikmeDk: undefined,
+      neden: 'GECIKME',
+      nedenNotu: undefined,
+    })
+  })
+
+  it('AK-3.4: varış alanı "Varış farklıysa" ayrıntısında; kayıtlı varış ≠ kalkış ise açık başlar', () => {
+    const kapali = kur('gecikme', { kalkisGecikmeDk: 30, varisGecikmeDk: 30 })
+    expect(kapali.get('details summary').text()).toBe('Varış farklıysa')
+    expect(kapali.get('details').element.hasAttribute('open')).toBe(false)
+    expect(kapali.find('details #sefer-varis-gecikme').exists()).toBe(true)
+    const acik = kur('gecikme', { kalkisGecikmeDk: 30, varisGecikmeDk: 45 })
+    expect(acik.get('details').element.hasAttribute('open')).toBe(true)
+  })
+
+  it('iptal kipinde çip ve varsayılan neden yok; "Önce neden seçin." korunur', () => {
+    const w = kur('iptal')
+    expect(w.find('[role="group"]').exists()).toBe(false)
+    expect((w.get('#sefer-neden').element as HTMLSelectElement).value).toBe('')
+    expect(w.get('.diyalog-neden').text()).toBe('Önce neden seçin.')
+  })
+
+  it('mevcut gecikme varsa "Şu an: N dk" ipucu görünür', () => {
+    expect(kur('gecikme', { kalkisGecikmeDk: 20 }).text()).toContain('Şu an: 20 dk')
+    expect(kur('gecikme', { kalkisGecikmeDk: 0 }).text()).not.toContain('Şu an')
   })
 })
 

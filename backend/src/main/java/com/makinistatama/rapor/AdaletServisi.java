@@ -94,7 +94,7 @@ public class AdaletServisi {
     }
 
     /**
-     * Makinistin kendi özeti (MK-30): {@link #rapor(YearMonth)} sonucundan KENDİ satırı ve ortalama alınır (ikinci formül yok; adalet raporuyla aynı sayı).
+     * Makinistin kendi özeti (MK-30): {@link #rapor(YearMonth)} sonucundan KENDİ satırı alınır (ikinci formül yok; adalet raporuyla aynı sayı). OK-35: ortalama / ortalamaya fark DÖNMEZ.
      * {@code ay} [bu ay - 12, bu ay + 1] dışındaysa 400: makinist ucu keyfi geçmiş taraması yaptırmasın. Başkasının satırı dönmez.
      */
     public MakinistOzetDto makinistOzeti(YearMonth ay, long makinistId) {
@@ -104,9 +104,8 @@ public class AdaletServisi {
         }
         AdaletRaporuDto r = rapor(ay, makinistler.kart(makinistId).map(MakinistKarti::tur).orElse(PersonelTuru.MAKINIST));
         return r.satirlar().stream().filter(s -> s.makinistId().equals(makinistId)).findFirst()
-                .map(s -> new MakinistOzetDto(r.ay(), true, true, s.seferSayisi(), s.gorevSaat(), s.km(), s.kmBilinmeyenSefer(), s.geceSaat(), s.izinGunu(), r.ortalamaSaat(),
-                        s.farkYuzde(), s.yolculukSayisi()))
-                .orElseGet(() -> new MakinistOzetDto(r.ay(), false, true, 0, 0, 0, 0, 0, 0, r.ortalamaSaat(), null, 0));
+                .map(s -> new MakinistOzetDto(r.ay(), true, true, s.seferSayisi(), s.gorevSaat(), s.km(), s.kmBilinmeyenSefer(), s.geceSaat(), s.izinGunu(), s.yolculukSayisi()))
+                .orElseGet(() -> new MakinistOzetDto(r.ay(), false, true, 0, 0, 0, 0, 0, 0, 0));
     }
 
     private static double saat2(long dakika) {

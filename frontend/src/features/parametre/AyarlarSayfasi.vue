@@ -6,6 +6,7 @@ import SayfaBasligi from '@/bilesenler/SayfaBasligi.vue'
 import type { SimgeAdi } from '@/bilesenler/simgeler'
 import VeriDurumu from '@/bilesenler/VeriDurumu.vue'
 import { yoneticiMi } from '@/composables/oturum'
+import { eslesir } from '@/lib/aramaMetni'
 import {
   GUVENILIRLIK_ETIKETLERI,
   SIDDET_ETIKETLERI,
@@ -39,6 +40,8 @@ const taslaklar = reactive<Record<string, Taslak>>({})
 const yuklemeHatasi = ref('')
 const yukleniyor = ref(true)
 const sadeceFarkli = ref(false)
+/** Ayar arama (H6): ad, açıklama, anahtar/K-numarası, birim; "Varsayılandan farklı" ile kesişir. */
+const arama = ref('')
 
 /** Güvenilirlik rozeti NÖTR tonda kalır (hata/başarı renkleriyle karışmasın); düzey metinde, simgede ve kenar çizgisinde (düşük: kesikli) taşınır. */
 const GUVEN_SIMGELERI: Record<Guvenilirlik, SimgeAdi> = {
@@ -102,17 +105,50 @@ const degisti = (s: AyarSatiri) => !degerEsit(s.sayisal, taslak(s).deger, s.dege
 const farkli = (s: AyarSatiri) => !degerEsit(s.sayisal, s.deger, s.varsayilan)
 
 const farkliSayisi = computed(() => satirlar.value.filter(farkli).length)
-/** Süzgeç açıkken yalnız varsayılandan farklı satırlar (kayıt/hata iletisi bekleyen satır kaybolmaz). */
+/** Düzenlenmiş-kaydedilmemiş taslağı, hata ya da "Kaydedildi" bilgisi taşıyan satır HİÇBİR süzgeçle gizlenmez (veri kaybı hissi yok, AK-8.3). */
+const korunan = (s: AyarSatiri) => {
+  const t = taslak(s)
+  return degisti(s) || t.neden !== '' || !!t.bilgi || !!t.hata
+}
+const aramaMetni = (s: AyarSatiri) => `${s.ad} ${s.aciklama} ${s.anahtar} ${s.birim}`
+const aramaAcik = computed(() => arama.value.trim() !== '')
+const suzgecAcik = computed(() => sadeceFarkli.value || aramaAcik.value)
+/** Süzgeç açıkken yalnız eşleşen (ve varsayılandan farklı) satırlar; korunan satırlar her zaman kalır. */
 const gorunenGruplar = computed(() =>
-  sadeceFarkli.value
+  suzgecAcik.value
     ? gruplar.value
         .map((g) => ({
           ...g,
-          satirlar: g.satirlar.filter((s) => farkli(s) || taslak(s).bilgi || taslak(s).hata),
+          satirlar: g.satirlar.filter(
+            (s) =>
+              korunan(s) ||
+              ((!sadeceFarkli.value || farkli(s)) && eslesir(aramaMetni(s), arama.value)),
+          ),
         }))
         .filter((g) => g.satirlar.length > 0)
     : gruplar.value,
 )
+const sonucSayisi = computed(() => gorunenGruplar.value.reduce((n, g) => n + g.satirlar.length, 0))
+
+/** "Aramayı temizle" düğmesi kalkacağından odak arama kutusuna döner (WCAG 2.4.3). */
+function aramayiTemizle() {
+  arama.value = ''
+  document.getElementById('ayar-ara')?.focus()
+}
+
+/** Enter: ilk sonucun değer alanına geç (1 yazma + Enter); Esc: aramayı temizler. */
+async function aramaTusu(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    arama.value = ''
+    return
+  }
+  if (e.key !== 'Enter') return
+  const ilk = gorunenGruplar.value[0]?.satirlar[0]
+  if (!ilk) return
+  e.preventDefault()
+  await nextTick()
+  document.getElementById(kimlik(ilk, 'deger'))?.focus()
+}
 
 /**
  * Hata metinleri TEK kez ve ait olduğu alanın ALTINDA: `neden` hatası neden kutusunun, diğer alan hataları değer alanının altında;
@@ -279,6 +315,20 @@ const degerMetni = (s: AyarSatiri, deger: string): string => {
       </details>
 
       <div v-if="satirlar.length" class="ayar-arac">
+        <div class="arama">
+          <label for="ayar-ara">Ayar ara</label>
+          <input
+            id="ayar-ara"
+            v-model="arama"
+            type="search"
+            autocomplete="off"
+            placeholder="Ad, açıklama ya da kural no (ör. K-14)"
+            @keydown="aramaTusu"
+          />
+        </div>
+        <p class="arama-sonuc" role="status" data-test="arama-sonuc">
+          {{ suzgecAcik ? (sonucSayisi === 0 ? 'Sonuç yok' : `${sonucSayisi} sonuç`) : '' }}
+        </p>
         <div class="suzgec">
           <button
             type="button"
@@ -480,12 +530,19 @@ const degerMetni = (s: AyarSatiri, deger: string): string => {
             metin="Kayıt yok."
           />
           <VeriDurumu
-            v-else-if="sadeceFarkli && gorunenGruplar.length === 0"
+            v-else-if="suzgecAcik && gorunenGruplar.length === 0"
             durum="bos"
-            metin="Varsayılandan farklı ayar yok."
+            :metin="
+              aramaAcik
+                ? `“${arama.trim()}” için ayar bulunamadı.`
+                : 'Varsayılandan farklı ayar yok.'
+            "
           >
             <template #eylem>
-              <button type="button" class="btn" @click="sadeceFarkli = false">
+              <button v-if="aramaAcik" type="button" class="btn" @click="aramayiTemizle">
+                Aramayı temizle
+              </button>
+              <button v-if="sadeceFarkli" type="button" class="btn" @click="sadeceFarkli = false">
                 Süzgeci kaldır
               </button>
             </template>
@@ -552,6 +609,18 @@ h2:focus-visible {
   align-items: center;
   gap: var(--aralik-4);
   margin-bottom: var(--aralik-4);
+}
+.arama {
+  display: flex;
+  align-items: center;
+  gap: var(--aralik-3);
+}
+.arama input {
+  min-width: min(20rem, 100%);
+}
+.arama-sonuc {
+  margin: 0;
+  color: var(--renk-metin-ikincil);
 }
 .ayar-duzen {
   display: block;

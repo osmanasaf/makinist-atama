@@ -9,7 +9,7 @@ import type { KullaniciDto } from '@/api/tipler'
 import { kullanici, yuklendi } from '@/composables/oturum'
 import App from '@/App.vue'
 import { yonlendiriciKur } from '@/router'
-import { rozetYaz } from './rozet'
+import { onayBekleyen, rozetYaz } from './rozet'
 
 const bos = { template: '<div>sayfa</div>' }
 const routelar = [
@@ -43,7 +43,10 @@ describe('BenimKabuk (makinist telefon kabuğu)', () => {
     kullanici.value = null
     yuklendi.value = false
   })
-  afterEach(() => rozetYaz(''))
+  afterEach(() => {
+    rozetYaz('')
+    onayBekleyen.value = 0
+  })
 
   it('makinistte masaüstü menüsü yok; dört alt sekme, ad ve çıkış düğmesi var', async () => {
     const w = await kur('MAKINIST', '/benim/gorevler')
@@ -57,6 +60,29 @@ describe('BenimKabuk (makinist telefon kabuğu)', () => {
     expect(simgeler).toEqual(['tren', 'belge', 'izin', 'rapor'])
     expect(w.get('.benim-ad').text()).toBe('Ali Veli')
     expect(w.findAll('button').map((b) => b.text())).toContain('Çıkış')
+  })
+
+  it('AK-7.5: onay bekleyen varsa Görevler sekmesinde metinli rozet ve erişilebilir ad; yoksa rozet yok', async () => {
+    const w = await kur('MAKINIST', '/benim/gorevler')
+    const gorevler = () => w.get('nav[aria-label="Personel menüsü"] a')
+    expect(gorevler().attributes('aria-label')).toBeUndefined()
+    expect(gorevler().find('.rozet').exists()).toBe(false)
+    onayBekleyen.value = 2
+    await flushPromises()
+    expect(gorevler().attributes('aria-label')).toBe('Görevler, 2 onay bekliyor')
+    expect(gorevler().get('.rozet').text()).toBe('2')
+    expect(gorevler().text()).toContain('Görevler')
+  })
+
+  it('Çıkış ikincil (hayalet) tonda ve çıkınca onay sayısı sıfırlanır (bayat rozet sonraki kullanıcıya geçmez)', async () => {
+    const w = await kur('MAKINIST', '/benim/gorevler')
+    const cikis = w.findAll('button').find((b) => b.text() === 'Çıkış')!
+    expect(cikis.classes()).toContain('btn-hayalet')
+    onayBekleyen.value = 3
+    vi.mocked(api.post).mockResolvedValue(undefined)
+    await cikis.trigger('click')
+    await flushPromises()
+    expect(onayBekleyen.value).toBe(0)
   })
 
   it('atamacıda kabuk yok, masaüstü üst çubuğu var', async () => {

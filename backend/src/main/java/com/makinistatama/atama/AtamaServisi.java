@@ -284,30 +284,36 @@ public class AtamaServisi {
         depo.flush();
     }
 
-    /** ASIL/YARDIMCI kaldırma (rol başına tek atama); YOLCU için {@link #kaldir(long, AtamaRol, Long, Neden, String)}. */
+    /** ASIL/YARDIMCI kaldırma (rol başına tek atama); YOLCU için {@link #kaldir(long, AtamaRol, Long, Long, Neden, String)}. */
     @Transactional
     public KaldirSonucuDto kaldir(long seferId, AtamaRol rol, Neden neden, String nedenNotu) {
-        return kaldir(seferId, rol, null, neden, nedenNotu);
+        return kaldir(seferId, rol, null, null, neden, nedenNotu);
     }
 
     /**
      * {@code rol == YOLCU} ise {@code makinistId} ZORUNLUDUR (bir seferde birden çok yolcu olabilir; yoksa 400) ve satır makinistle bulunur (yoksa ya da satırın rolü
      * YOLCU değilse 404); diğer rollerde {@code makinistId} yok sayılır (MK-38).
+     * <p>
+     * OK-37 (Geri al yarışı): {@code atamaId} verilirse ve o sefer/rolün (YOLCU'da makinistin) güncel ataması bu kimlik değilse ya da hiç yoksa 409 {@code ATAMA_DEGISTI}
+     * ve hiçbir şey silinmez; verilmezse atama kimliği denetlenmez. Rol değiştirme yeni satır (yeni kimlik) yazdığından başkasının araya girmesi yakalanır.
      */
     @Transactional
-    public KaldirSonucuDto kaldir(long seferId, AtamaRol rol, Long makinistId, Neden neden, String nedenNotu) {
+    public KaldirSonucuDto kaldir(long seferId, AtamaRol rol, Long makinistId, Long atamaId, Neden neden, String nedenNotu) {
         SeferDto sefer = seferler.getir(seferId); // 404
         AtamaRol r = rol == null ? AtamaRol.ASIL : rol;
-        Atama a;
+        java.util.Optional<Atama> bulunan;
         if (r == AtamaRol.YOLCU) {
             if (makinistId == null) {
                 throw UygulamaHatasi.dogrulama("makinistId", "Yolcu kaldırmak için makinist belirtilmeli.");
             }
-            a = depo.findBySeferIdAndMakinistId(seferId, makinistId).filter(x -> x.rol() == AtamaRol.YOLCU)
-                    .orElseThrow(() -> UygulamaHatasi.bulunamadi("Bu seferde bu makinist için yolcu kaydı yok."));
+            bulunan = depo.findBySeferIdAndMakinistId(seferId, makinistId).filter(x -> x.rol() == AtamaRol.YOLCU);
         } else {
-            a = depo.findBySeferIdAndRol(seferId, r).orElseThrow(() -> UygulamaHatasi.bulunamadi("Bu seferde bu rolde atama yok."));
+            bulunan = depo.findBySeferIdAndRol(seferId, r);
         }
+        if (atamaId != null && bulunan.map(x -> !atamaId.equals(x.id())).orElse(true)) {
+            throw UygulamaHatasi.cakisma("ATAMA_DEGISTI", "Atama bu arada değişti; hiçbir şey kaldırılmadı. Listeyi yenileyin.");
+        }
+        Atama a = bulunan.orElseThrow(() -> UygulamaHatasi.bulunamadi(r == AtamaRol.YOLCU ? "Bu seferde bu makinist için yolcu kaydı yok." : "Bu seferde bu rolde atama yok."));
         DegisiklikServisi.nedenDogrula(neden, nedenNotu);
         String sicil = makinistler.getir(a.makinistId()).sicil();
         var once = kirmiziEtkisi.once(List.of(a.makinistId()), sefer, x -> x.id().equals(a.id()));

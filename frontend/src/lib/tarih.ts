@@ -51,3 +51,13 @@ export function gunKaydir(tarih: Tarih, gun: number): Tarih {
   d.setUTCDate(d.getUTCDate() + gun)
   return d.toISOString().slice(0, 10)
 }
+
+/** Hedefe kalan süre kısa metin: "31 dk sonra", "3 sa 20 dk sonra", "2 gün sonra"; geçmiş/şimdi → "şimdi". Dakikaya yukarı yuvarlanır. */
+export function kalanMetni(hedefMs: number, simdiMs: number): string {
+  const dk = Math.ceil((hedefMs - simdiMs) / 60_000)
+  if (dk <= 0) return 'şimdi'
+  if (dk < 60) return `${dk} dk sonra`
+  const sa = Math.floor(dk / 60)
+  if (sa >= 48) return `${Math.floor(sa / 24)} gün sonra`
+  return `${sa} sa${dk % 60 ? ` ${dk % 60} dk` : ''} sonra`
+}
