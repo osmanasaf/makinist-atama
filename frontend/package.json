@@ -18,6 +18,8 @@
     "format:check": "prettier --check --experimental-cli src/"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "vue": "^3.5.42",
     "vue-router": "^5.3.1"
   },

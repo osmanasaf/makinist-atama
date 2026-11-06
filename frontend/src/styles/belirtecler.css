@@ -4,54 +4,54 @@
  * Eski adlar (--renk-zemin, --renk-metin ...) anlamsal takma ad olarak kalır; kullanılmayan eski takma adlar H4'te silindi.
  */
 :root {
-  /* ---- ham skala: nötr ---- */
+  /* ---- ham skala: nötr (sıcak kâğıt, palet v2) ---- */
   --renk-n-0: #ffffff;
-  --renk-n-50: #f6f7f9;
-  --renk-n-100: #eceff3;
-  --renk-n-200: #dde2e9;
-  --renk-n-300: #c3cad5;
-  --renk-n-400: #7b8799;
-  --renk-n-500: #5b6678;
-  --renk-n-700: #364152;
-  --renk-n-900: #151b26;
+  --renk-n-50: #f6f5f2;
+  --renk-n-100: #eeece6;
+  --renk-n-200: #e3e0d8;
+  --renk-n-300: #c9c5bb;
+  --renk-n-400: #858178;
+  --renk-n-500: #65625a;
+  --renk-n-700: #44413a;
+  --renk-n-900: #1c1b18;
 
-  /* ---- ham skala: birincil (kurumsal lacivert/mavi) ---- */
-  --renk-p-900: #0f2742;
-  --renk-p-800: #1b3b63;
-  --renk-p-700: #174a96;
-  --renk-p-600: #1f5fbf;
-  --renk-p-50: #e6f0fd;
+  /* ---- ham skala: kabuk grafit (900/800) ve çivit eylem rengi (700/600/50) ---- */
+  --renk-p-900: #15171a;
+  --renk-p-800: #2b2e34;
+  --renk-p-700: #3730a3;
+  --renk-p-600: #4338ca;
+  --renk-p-50: #edeefc;
 
   /* ---- yan menü, odak ---- */
-  --renk-menu-metin: #c9d6e8;
-  --renk-menu-baslik: #9fb4d0;
-  --renk-odak: #0b57d0;
-  --renk-odak-koyu: #8ab4ff;
+  --renk-menu-metin: #c9ccd1;
+  --renk-menu-baslik: #9ba0a8;
+  --renk-odak: #4f46e5;
+  --renk-odak-koyu: #a5b4fc;
 
   /* ---- anlamsal tonlar ---- */
-  --renk-basari-zemin: #e4f3e7;
-  --renk-basari-metin: #1b6e2f;
-  --renk-uyari-zemin: #fff4d6;
-  --renk-uyari-metin: #7a4f00;
-  --renk-uyari-cizgi: #b07d00;
-  --renk-uyari-dolu: #f2b705;
-  --renk-engel-zemin: #fde8e6;
-  --renk-engel-metin: #a3201a;
-  --renk-engel-dolu: #b3261e;
-  --renk-bilgi-zemin: #e6f0fd;
-  --renk-bilgi-metin: #174a96;
-  --renk-gece-zemin: #ecebfa;
-  --renk-gece-metin: #3d3a8c;
+  --renk-basari-zemin: #e6f4ea;
+  --renk-basari-metin: #17663a;
+  --renk-uyari-zemin: #fff1d6;
+  --renk-uyari-metin: #7c4a03;
+  --renk-uyari-cizgi: #b06a00;
+  --renk-uyari-dolu: #f2a516;
+  --renk-engel-zemin: #fdeceb;
+  --renk-engel-metin: #a5191d;
+  --renk-engel-dolu: #c0282b;
+  --renk-bilgi-zemin: #edeefc;
+  --renk-bilgi-metin: #3730a3;
+  --renk-gece-zemin: #e7ebf2;
+  --renk-gece-metin: #2f3b52;
 
   /* ---- roller ---- */
-  --renk-rol-asil-metin: #174a96;
-  --renk-rol-asil-zemin: #e6f0fd;
-  --renk-rol-yardimci-metin: #0b5f5f;
-  --renk-rol-yardimci-zemin: #e0f2f1;
-  --renk-rol-konduktor-metin: #5b3190;
-  --renk-rol-konduktor-zemin: #f0e9fa;
-  --renk-rol-yolcu-metin: #4a5568;
-  --renk-rol-yolcu-zemin: #eef0f4;
+  --renk-rol-asil-metin: #3730a3;
+  --renk-rol-asil-zemin: #edeefc;
+  --renk-rol-yardimci-metin: #0f6a62;
+  --renk-rol-yardimci-zemin: #e2f3f0;
+  --renk-rol-konduktor-metin: #9b2c5e;
+  --renk-rol-konduktor-zemin: #fbeaf1;
+  --renk-rol-yolcu-metin: #4f4c45;
+  --renk-rol-yolcu-zemin: #efede8;
 
   /* ---- zaman çizelgesi çubukları (B1, MK-159): anlamsal takma ad; kontrast çiftleri belirtecler.test.ts'te ---- */
   --renk-cubuk-dolu: var(--renk-p-600);
@@ -81,15 +81,17 @@
   --renk-birincil-koyu: var(--renk-p-700);
   --renk-birincil-yazi: var(--renk-n-0);
   --renk-tehlike: var(--renk-engel-dolu);
-  --renk-tehlike-koyu: #8f1d17;
+  --renk-tehlike-koyu: #8e1a1c;
   --renk-hata-zemin: var(--renk-engel-zemin);
   --renk-menu-zemin: var(--renk-p-900);
   --renk-menu-hover: var(--renk-p-800);
   --renk-menu-aktif: var(--renk-p-700);
 
   /* ---- tipografi ---- */
-  --yazi-ailesi: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --yazi-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --yazi-ailesi:
+    'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --yazi-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
   --yazi-xs: 0.75rem;
   --yazi-sm: 0.8125rem;
   --yazi-md: 0.875rem;
@@ -114,11 +116,11 @@
 
   /* ---- köşe, gölge, hareket ---- */
   --yaricap-sm: 4px;
-  --yaricap: 6px;
+  --yaricap: 8px;
   --yaricap-pill: 999px;
-  --golge-1: 0 1px 2px rgb(21 27 38 / 8%);
-  --golge-2: 0 8px 24px rgb(21 27 38 / 18%);
-  --perde: rgb(21 27 38 / 50%);
+  --golge-1: 0 1px 2px rgb(28 27 24 / 8%);
+  --golge-2: 0 8px 24px rgb(28 27 24 / 18%);
+  --perde: rgb(28 27 24 / 50%);
   --sure-hizli: 120ms;
 
   /* ---- düzen ---- */
