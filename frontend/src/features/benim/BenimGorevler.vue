@@ -282,6 +282,14 @@ const bolumler = computed<Bolum[]>(() => {
   return liste
 })
 
+/** Onay bekleyen kart gün gruplarında çizilmez; gününü kartın kendisi yazar (QA BUG-1). Gün başlığıyla aynı biçim. */
+function gunEtiketi(tarih: string): string {
+  const bugun = veri.value?.bugun ?? ''
+  if (tarih === bugun) return `Bugün (${tarihBicimle(tarih)})`
+  if (tarih === gunKaydir(bugun, 1)) return `Yarın (${tarihBicimle(tarih)})`
+  return tarihBicimle(tarih)
+}
+
 function saatler(g: BenimGorev): string {
   return `${saatBicimle(g.guncelKalkis)} – ${saatBicimle(g.guncelVaris)}${g.varisErtesiGun ? ' (ertesi gün)' : ''}`
 }
@@ -400,6 +408,9 @@ function saatler(g: BenimGorev): string {
                 <p v-if="g.durum === 'IPTAL'" class="benim-satir">
                   <Rozet ton="engel" simge="iptal" metin="İPTAL" />
                 </p>
+                <p v-if="grup.tur === 'onay'" class="benim-satir" data-test="kart-gunu">
+                  <strong>{{ gunEtiketi(g.tarih) }}</strong>
+                </p>
                 <p class="benim-saat">{{ saatler(g) }}</p>
                 <p class="benim-guzergah">
                   <strong>{{ trenAdi(g) }}</strong> · {{ g.kalkisGar }} → {{ g.varisGar }}
@@ -483,6 +494,9 @@ function saatler(g: BenimGorev): string {
             >
               <p v-if="o.intikal.durum === 'IPTAL'" class="benim-satir">
                 <Rozet ton="engel" simge="iptal" metin="İPTAL" />
+              </p>
+              <p v-if="grup.tur === 'onay'" class="benim-satir" data-test="kart-gunu">
+                <strong>{{ gunEtiketi(intikalGunu(o.intikal)) }}</strong>
               </p>
               <p class="benim-saat">
                 {{ saatBicimle(o.intikal.kalkis) }} – {{ saatBicimle(o.intikal.varis) }}

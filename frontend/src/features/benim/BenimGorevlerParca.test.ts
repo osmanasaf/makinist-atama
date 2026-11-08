@@ -79,10 +79,10 @@ describe('BenimGorevler: parçalı tren (F2c)', () => {
     ])
     const kartlar = w.findAll('article')
 
-    expect(kartlar[0]!.find('strong').text()).toBe('DE-1503 · 2/2')
+    expect(kartlar[0]!.find('.benim-guzergah strong').text()).toBe('DE-1503 · 2/2')
     expect(kartlar[0]!.find('button[aria-label="DE-1503 · 2/2 görevini gördüm"]').exists()).toBe(
       true,
     )
-    expect(kartlar[1]!.find('strong').text()).toBe('T9')
+    expect(kartlar[1]!.find('.benim-guzergah strong').text()).toBe('T9')
   })
 })

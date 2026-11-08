@@ -108,6 +108,22 @@ describe('BenimGorevler', () => {
     expect(rozetMetni.value).toBe('1 görev listelendi') // iptal sayılmaz
   })
 
+  it('onay bekleyen kart gün grubunda çizilmediği için gününü kendisi yazar (QA BUG-1)', async () => {
+    vi.mocked(benimApi.gorevler).mockResolvedValue(
+      yanit([
+        gorev({ atamaId: 1, trenNo: 'T0', gordu: 'YENI' }),
+        gorev({ atamaId: 2, trenNo: 'T1', tarih: '2026-10-13', gordu: 'YENI' }),
+        gorev({ atamaId: 3, trenNo: 'T3', tarih: '2026-10-15', gordu: 'DEGISTI' }),
+      ]),
+    )
+    const w = await kur()
+    const gunler = w
+      .findAll('section[data-onay] article')
+      .map((k) => k.get('[data-test=kart-gunu]').text())
+    // Değişti bölümü Yeni'den önce gelir
+    expect(gunler).toEqual(['15.10.2026', 'Bugün (12.10.2026)', 'Yarın (13.10.2026)'])
+  })
+
   it('boş durumda ufku söyler', async () => {
     vi.mocked(benimApi.gorevler).mockResolvedValue(yanit([]))
     const w = await kur()
